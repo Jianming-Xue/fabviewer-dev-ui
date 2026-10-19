@@ -468,3 +468,34 @@ html.vui-light .v-application {
   background-color: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
 }
+
+/* ===== 用户弹窗两列栅格（CreateUserDialog / EditUserDialog 共用，2026-10-19 定稿） =====
+   DOM 顺序即行分配；跨两列元素挂 .vui-user-form--span；
+   FvTimer 拉满所在列（框左右缘与首行控件对齐），时钟钮贴框右缘 */
+.vui-user-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 4px;
+  align-items: start;
+}
+/* 单列变体（2026-10-19 拆分定稿：EditUserDialog / EditUserRolePolicyDialog / ResetPasswordDialog
+   一列排布、首格禁用用户名）：栅格/FvTimer 拉满逻辑与两列档共用，仅列数收为 1 */
+.vui-user-form-grid--one-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+.vui-user-form-grid > .vui-user-form--span {
+  grid-column: 1 / -1;
+}
+.vui-user-form-grid .fv-timer__box {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 拉满后段输入等比伸展（行内 width=基宽，flex-grow 均分余量），年月日不挤左、随框自适应 */
+.vui-user-form-grid .fv-timer__seg {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.vui-user-form-grid .fv-timer__btn {
+  margin-left: auto;
+}

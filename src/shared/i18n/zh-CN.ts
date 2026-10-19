@@ -14,6 +14,7 @@ export default {
     view: '查看',
     edit: '编辑',
     delete: '删除',
+    more: '更多',
     refresh: '刷新',
     close: '关闭',
     copy: '复制信息',

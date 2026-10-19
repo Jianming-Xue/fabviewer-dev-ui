@@ -58,30 +58,52 @@ export interface CreateUserRo {
   roleIds: string[]
   /** 登录策略 id（必填） */
   policyId: string
-  /** 账户激活日期 'YYYY-MM-DD'（必填；晚于今天 → 提交时 enabled 必为 0，表单已联动锁定） */
+  /** 账户激活日期 'YYYY-MM-DD'（必填，UI 默认=当天；晚于今天 → 提交时 enabled 必为 0，表单已联动锁定） */
   accountActiveAt: string
+  /** 账户到期日期 'YYYY-MM-DD'（UI 初始默认=激活+365 天；空串 = 永不过期） */
+  accountExpiresAt: string
   /** 1=启用 / 0=停用 */
   enabled: number
 }
 
-/** 编辑用户入参（2026-10-19 定稿可编辑集：昵称/邮箱/电话/角色/策略/密码有效期/账户有效期/账户到期日；
- *  userName 锁定仅作定位辅助、enabled 表格行开关维护不在编辑表单内改，透传） */
+/** 编辑用户入参（2026-10-19 拆分改造：稀疏语义——userId 定位，其余字段**传则改、不传保持**，
+ *  由 EditUserDialog（昵称/邮箱/电话）与 EditUserRolePolicyDialog（角色/策略/两有效期天数/账户到期日）
+ *  各自只提交自己维护的字段；userName 锁定仅作定位与查重辅助；enabled 由表格开关经 /users/enabled
+ *  独立维护，编辑不经手 */
 export interface UserRo {
   userId: string
-  userName: string
-  nickName: string
-  email: string
-  phoneNumber: string
+  userName?: string
+  nickName?: string
+  email?: string
+  phoneNumber?: string
   /** 挂载角色 id 清单（空数组 = 不挂） */
-  roleIds: string[]
+  roleIds?: string[]
   /** 登录策略 id；空串 = 默认策略 */
-  policyId: string
+  policyId?: string
   /** 密码有效期天数（-1 = 不限） */
-  passwordValidDays: number
+  passwordValidDays?: number
   /** 账户有效期天数（-1 = 不限） */
-  accountValidDays: number
+  accountValidDays?: number
   /** 账户到期日期 'YYYY-MM-DD'；空串 = 永不过期 */
-  accountExpiresAt: string
+  accountExpiresAt?: string
   /** 1=启用 / 0=停用（编辑表单不展示，由页面透传当前值） */
+  enabled?: number
+}
+
+/** 重置密码入参（管理员侧，2026-10-19 More 菜单新增：ResetPasswordDialog 提交；
+ *  复杂度按创建口径不校验（用户定稿），仅非空由表单规则保证） */
+export interface ResetPasswordRo {
+  userId: string
+  /** 新密码明文（经 TLS） */
+  password: string
+}
+
+/** 变更启用状态入参（2026-10-19 改造：开关点击不再即时提交，
+ *  经 ChangeUserStateDialog 录入备注后整体提交；enabled 严格 0/1 服务口径不变） */
+export interface UserStateRo {
+  userId: string
+  /** 目标状态：1=启用 / 0=停用 */
   enabled: number
+  /** 操作备注（必填由表单规则保证） */
+  remark: string
 }

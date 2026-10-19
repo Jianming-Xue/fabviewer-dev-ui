@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useSlots, watch, type VNode } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import FvTableHeader from './FvTableHeader.vue'
+import FvTableHeader, { type FvTableMenuItem } from './FvTableHeader.vue'
 import FvSwitch from './FvSwitch.vue'
 import FvNewButton from './FvNewButton.vue'
 import FvMultiValueCell from './FvMultiValueCell.vue'
@@ -13,8 +13,9 @@ import FvMultiValueCell from './FvMultiValueCell.vue'
  *   · text = 文本（headerClass 调样式）/ switch = FvSwitch（headerClass 调样式）
  *   · multiValue = FvMultiValueCell（首值主题色标签 + [总数]，悬停多行全部值；用户定稿 2026-10-19）
  *   · custom = 客制化（FvTableHeader default 插槽填充单元格）
- *   · action = 固定最后一列的操作列；actions 设 edit/delete/view（图标：修改=主题色 pen、
- *     删除=危险红 trash、查看=信息蓝 eye），各自经 @edit/@delete/@view 回调；不声明则无该列
+ *   · action = 固定最后一列的操作列；actions 设 edit/delete/view/more（图标：修改=主题色 pen、
+ *     删除=危险红 trash、查看=信息蓝 eye、more=次要色 ellipsis 下拉菜单），各自经 @edit/@delete/@view 回调；
+ *     more 点击菜单项经 @more-select 回流 { item, key }；不声明则无该列
  * - 数据：`data` = 当前页数据；`pageContent` = 服务端分页信息（不传则隐藏分页区）
  * - 新增：`insert` 传回调则表格右上角显示 FvNewButton；回调返回新行 → 回显到第一行
  *   并触发 @inserted（data 变更会重置本地回显）
@@ -37,6 +38,8 @@ interface ColDef {
   actionDisabled?: (row: unknown, action: FvTableAction) => boolean
   actionDisabledHint?: string
   actions: FvTableAction[]
+  /** more 动作的下拉菜单项（actions 含 more 时必填，守卫见 collectColumns） */
+  moreMenu?: FvTableMenuItem[]
   customSlot?: (args: { item: unknown }) => VNode[]
 }
 
@@ -44,6 +47,8 @@ const ACTION_META = {
   edit: { icon: 'fas fa-pen', color: 'primary', label: 'common.edit' },
   delete: { icon: 'fas fa-trash', color: 'error', label: 'common.delete' },
   view: { icon: 'fas fa-eye', color: 'info', label: 'common.view' },
+  // more：「…」下拉菜单入口，无主题色——图标走全局同款次要图标色（.fv-table__more-icon，--vui-text-secondary）
+  more: { icon: 'fas fa-ellipsis-h', label: 'common.more' },
 } as const
 type FvTableAction = keyof typeof ACTION_META
 
@@ -79,6 +84,8 @@ const emit = defineEmits<{
   view: [item: Row]
   inserted: [item: Row]
   'switch-change': [payload: { item: Row; key: string; value: boolean }]
+  /** more 下拉菜单项点击：key = FvTableHeader moreMenu 项的 key */
+  'more-select': [payload: { item: Row; key: string }]
 }>()
 
 const { t } = useI18n()
@@ -89,6 +96,18 @@ function rawProp(p: Record<string, unknown>, camel: string): unknown {
   if (p[camel] !== undefined) return p[camel]
   const kebab = camel.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())
   return p[kebab]
+}
+
+/** 运行时守卫（同 openInteractiveDialog 口径）：含 more 的操作列必须设置下拉菜单，
+    未配 moreMenu 报错并摘除 more 按钮（只报一次，防列重算刷屏） */
+let moreGuardFired = false
+function guardActions(actions: FvTableAction[], moreMenu: FvTableMenuItem[] | undefined): FvTableAction[] {
+  if (!actions.includes('more') || moreMenu?.length) return actions
+  if (!moreGuardFired) {
+    moreGuardFired = true
+    console.error('[FvTable] actions 含 "more" 的操作列必须配置 moreMenu 下拉菜单——more 按钮已摘除')
+  }
+  return actions.filter((a) => a !== 'more')
 }
 
 /** 收集 FvTableHeader 声明 → 列定义 */
@@ -115,7 +134,11 @@ const columns = computed<ColDef[]>(() => {
         headerDisabled: rawProp(p, 'headerDisabled') as ColDef['headerDisabled'],
         actionDisabled: rawProp(p, 'actionDisabled') as ColDef['actionDisabled'],
         actionDisabledHint: rawProp(p, 'actionDisabledHint') as string | undefined,
-        actions: ((rawProp(p, 'actions') as FvTableAction[]) ?? []).filter((a) => a in ACTION_META),
+        actions: guardActions(
+          (rawProp(p, 'actions') as FvTableAction[] ?? []).filter((a) => a in ACTION_META),
+          rawProp(p, 'moreMenu') as FvTableMenuItem[] | undefined,
+        ),
+        moreMenu: rawProp(p, 'moreMenu') as FvTableMenuItem[] | undefined,
         customSlot: typeof children?.default === 'function' ? children.default : undefined,
       }
     })
@@ -171,6 +194,11 @@ function cellDisabled(col: ColDef, item: unknown): boolean {
 /** 操作列逐行禁用 */
 function isActionDisabled(col: ColDef, item: unknown, a: FvTableAction): boolean {
   return !!col.actionDisabled?.(item, a)
+}
+
+/** more 菜单项禁用解析：布尔=整列禁、谓词=逐行禁（同 headerDisabled 口径） */
+function isMenuItemDisabled(mi: FvTableMenuItem, item: unknown): boolean {
+  return typeof mi.disabled === 'function' ? mi.disabled(item) : !!mi.disabled
 }
 
 /* ===== 数据展示（insert 回显：本地副本，data 变更即重置） ===== */
@@ -381,31 +409,70 @@ onBeforeUnmount(() => {
         />
 
         <template v-else-if="col.headerType === 'action'">
-          <!-- 逐行禁用（内置行保护等）：按钮置灰；禁用钮不抛鼠标事件，tooltip 挂外层 span -->
-          <v-tooltip
-            v-for="a in col.actions"
-            :key="a"
-            :text="col.actionDisabledHint ?? ''"
-            :disabled="!isActionDisabled(col, item, a) || !col.actionDisabledHint"
-            location="top"
-            content-class="vui-table-tip"
-          >
-            <template #activator="{ props: tipProps }">
-              <span v-bind="tipProps" class="fv-table__action-wrap">
-                <v-btn
-                  icon
-                  variant="text"
-                  size="x-small"
-                  :color="ACTION_META[a].color"
-                  :disabled="isActionDisabled(col, item, a)"
-                  :aria-label="t(ACTION_META[a].label)"
-                  @click.stop="(emit as (e: FvTableAction, item: Row) => void)(a, item as Row)"
+          <template v-for="a in col.actions" :key="a">
+            <!-- more：「…」下拉菜单入口（FvShell 顶栏同款 v-menu+v-tooltip 合并 activator 模式）；
+                 @click.stop 挂 span 而非钮：menu 激活 prop 在 span 上，钮上 stop 会掐断冒泡致菜单不开 -->
+            <v-menu v-if="a === 'more'" location="bottom end">
+              <template #activator="{ props: menuProps }">
+                <v-tooltip
+                  :text="col.actionDisabledHint ?? ''"
+                  :disabled="!isActionDisabled(col, item, a) || !col.actionDisabledHint"
+                  location="top"
+                  content-class="vui-table-tip"
                 >
-                  <v-icon :icon="ACTION_META[a].icon" size="14" />
-                </v-btn>
-              </span>
-            </template>
-          </v-tooltip>
+                  <template #activator="{ props: tipProps }">
+                    <span v-bind="{ ...menuProps, ...tipProps }" class="fv-table__action-wrap" @click.stop>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="x-small"
+                        :disabled="isActionDisabled(col, item, a)"
+                        :aria-label="t(ACTION_META.more.label)"
+                      >
+                        <v-icon :icon="ACTION_META.more.icon" size="14" class="fv-table__more-icon" />
+                      </v-btn>
+                    </span>
+                  </template>
+                </v-tooltip>
+              </template>
+              <v-list density="compact" class="py-1" min-width="140">
+                <v-list-item
+                  v-for="mi in col.moreMenu"
+                  :key="mi.key"
+                  :title="mi.label"
+                  :prepend-icon="mi.icon"
+                  :color="mi.color"
+                  :disabled="isMenuItemDisabled(mi, item)"
+                  @click="emit('more-select', { item: item as Row, key: mi.key })"
+                />
+              </v-list>
+            </v-menu>
+
+            <!-- edit/delete/view：逐行禁用（内置行保护等）按钮置灰；禁用钮不抛鼠标事件，tooltip 挂外层 span -->
+            <v-tooltip
+              v-else
+              :text="col.actionDisabledHint ?? ''"
+              :disabled="!isActionDisabled(col, item, a) || !col.actionDisabledHint"
+              location="top"
+              content-class="vui-table-tip"
+            >
+              <template #activator="{ props: tipProps }">
+                <span v-bind="tipProps" class="fv-table__action-wrap">
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="x-small"
+                    :color="ACTION_META[a].color"
+                    :disabled="isActionDisabled(col, item, a)"
+                    :aria-label="t(ACTION_META[a].label)"
+                    @click.stop="(emit as (e: FvTableAction, item: Row) => void)(a, item as Row)"
+                  >
+                    <v-icon :icon="ACTION_META[a].icon" size="14" />
+                  </v-btn>
+                </span>
+              </template>
+            </v-tooltip>
+          </template>
         </template>
       </template>
     </v-data-table>
@@ -612,6 +679,11 @@ onBeforeUnmount(() => {
 
 .fv-table__action-wrap {
   display: inline-flex;
+}
+
+/* more「…」入口：全局同款次要图标色（与 FvTimer/FvMultiValueCell 等一致，双主题自适应） */
+.fv-table__more-icon {
+  color: var(--vui-text-secondary);
 }
 
 /* v4 表头结构：th > .v-data-table-header__content > (文字 + 图标)——

@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import FvSearchButton from '@/shared/components/FvSearchButton.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTable from '@/shared/components/FvTable.vue'
-import FvTableHeader from '@/shared/components/FvTableHeader.vue'
+import FvTableHeader, { type FvTableActionName } from '@/shared/components/FvTableHeader.vue'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
@@ -44,7 +44,7 @@ function switchDisabled(row: unknown): boolean {
 }
 
 /** 操作列逐行禁用：内置角色禁删除（置灰 + 悬停提示）；编辑保留（名称/描述可改） */
-function actionDisabled(row: unknown, action: 'edit' | 'delete' | 'view'): boolean {
+function actionDisabled(row: unknown, action: FvTableActionName): boolean {
   return (row as RoleDto).roleId === BUILTIN_ROLE_ID && action === 'delete'
 }
 

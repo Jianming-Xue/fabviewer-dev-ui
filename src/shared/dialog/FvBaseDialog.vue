@@ -36,7 +36,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
  * 关闭=四周向中心快速淡出（径向遮罩收拢 + 微缩 + 淡出）。动画在内建，所有基座弹窗自动获得。
  * 语义弹窗（成功/错误/警告/信息/确认）见同目录 FvModalDialogHost，基于本组件实现。
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     /** 标题文案（需完全自定义标题区时用 #title 插槽覆盖） */
     title?: string
@@ -48,8 +48,15 @@ withDefaults(
     centerTitle?: boolean
     /** 遮罩透明度（Vuetify 默认 0.32；调大 = 遮罩加深，如 0.5） */
     scrimOpacity?: number
+    /** 整卡最小高度（px，2026-10-20 增）：字段多的表单弹窗撑出舒展档，正文区 flex:1 吸收余量、
+        按钮区恒在流内。与 body 挂 min-height 的旧错法相反——body min-height 在矮视口会顶破
+        上限把按钮挤出卡外。min(N, 有效上限) 同幅夹取 */
+    minHeight?: number
+    /** 整卡最大高度（CSS 长度，2026-10-20 增）：缺省 = scoped 类规则 80vh（定稿默认档，其余弹窗零影响）；
+        传入则内联覆写——字段多的表单弹窗放大自适应范围用，滚动兜底逻辑（超高时正文内滚）不变 */
+    maxHeight?: string
   }>(),
-  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined },
+  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined },
 )
 
 const visible = defineModel<boolean>({ required: true })
@@ -148,6 +155,10 @@ const cardStyle = computed(() => {
     transform: dragStyle.value,
     '--fv-dialog-ox': `${dx}px`,
     '--fv-dialog-oy': `${dy}px`,
+    // 上限可覆写（缺省走类规则 80vh）；下限与有效上限同幅夹取——矮视口恰好贴上限（正文内滚、
+    // 按钮不挤出），高视口按内容自适应，不固定死
+    ...(props.maxHeight ? { maxHeight: props.maxHeight } : {}),
+    ...(props.minHeight ? { minHeight: `min(${props.minHeight}px, ${props.maxHeight ?? '80vh'})` } : {}),
   }
 })
 

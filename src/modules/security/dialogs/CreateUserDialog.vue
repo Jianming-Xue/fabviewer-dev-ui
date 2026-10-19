@@ -20,12 +20,13 @@ interface SelectOption {
 }
 
 /**
- * 新增用户弹窗（经 openInteractiveDialog 打开，2026-10-19 自 UserEditDialog 拆分定稿）：
- * 字段=用户名/密码/昵称/邮箱/电话/角色(多选)/登录策略/账户激活日期/是否启用；
- * 必填：用户名、密码、角色、策略、激活日期。校验规则（用户定稿 2026-10-19）：
- * 用户名=大小写字母/数字/下划线；**密码创建场景无复杂度限制**；电话=纯数字（选填）；
- * 邮箱=格式校验（选填）。启用开关联动：激活日期>今天 → 自动停用且开关锁定不可改；
- * ≤今天（含未填）→ 开启、可手动调整。
+ * 新增用户弹窗（经 openInteractiveDialog 打开，2026-10-19 自 UserEditDialog 拆分；
+ * 同日晚间改版定稿）：
+ * 行分配=用户名+昵称 / 密码跨两列 / 邮箱+电话 / 角色+策略 / 激活日期+到期日期（激活在前）/
+ * 启用开关跨行；长度限制（用户定稿）：用户名 ≤30 且仅数字/大小写字母/下划线，昵称 ≤30 不限字符类型，
+ * 初始密码不做任何限制（仅必填）。
+ * 日期默认值：激活=当天；到期=激活+365 天（打开弹窗时的初始值，改激活日期不自动跟随）。
+ * 启用开关联动：激活日期>今天 → 关闭且禁用；≤今天（含清空）→ 打开且解除禁用。
  * 提交收口本组件（同 RoleEditDialog 模式）：成功 → emit('resolve', UserDto)+关窗；
  * 失败（用户名重复等）→ showOpError，弹窗保留可改可重试。
  */
@@ -37,6 +38,8 @@ const formRef = ref()
 const saving = ref(false)
 const dateTouched = ref(false)
 
+const DAY_FORMAT = 'YYYY-MM-DD'
+
 const form = reactive({
   userName: '',
   password: '',
@@ -45,8 +48,10 @@ const form = reactive({
   phoneNumber: '',
   roleIds: [] as string[],
   policyId: '',
-  /** 账户激活日期 'YYYY-MM-DD'（FvTimer mode=date） */
-  accountActiveAt: '',
+  /** 账户激活日期：默认当天（用户定稿 2026-10-19） */
+  accountActiveAt: dayjs().format(DAY_FORMAT),
+  /** 账户到期日期：初始默认=激活日期+365 天；空 = 永不过期 */
+  accountExpiresAt: dayjs().add(365, 'day').format(DAY_FORMAT),
   enabled: true,
 })
 
@@ -56,24 +61,31 @@ const DIGITS_PATTERN = /^\d+$/
 const rules = {
   required: (v: unknown) =>
     (Array.isArray(v) ? v.length > 0 : !!String(v ?? '').trim()) || t('validation.required'),
-  userName: (v: string) =>
-    USERNAME_PATTERN.test(v.trim()) || t('security.users.form.userNamePattern'),
+  userName: (v: string) => {
+    const s = v.trim()
+    return (USERNAME_PATTERN.test(s) && s.length <= 30) || t('security.users.form.userNamePattern')
+  },
   email: (v: string) =>
     !v.trim() || EMAIL_PATTERN.test(v.trim()) || t('security.users.form.emailInvalid'),
   phone: (v: string) =>
     !v.trim() || DIGITS_PATTERN.test(v.trim()) || t('security.users.form.phoneDigitsOnly'),
 }
 
-/* ===== 选项数据（挂载角色/策略下拉，FvTextSelect 消费 {title,value}） ===== */
-const roleOptions = ref<SelectOption[]>([])
+/* ===== 选项数据（用户定稿 2026-10-19）：角色=分页滚动加载（FvTextSelect page-loader，
+   默认 10 笔/页、触底翻页、装满 totalSize 自动停）；策略=全量列表（量小不分页） ===== */
+async function rolesLoader(pageIndex: number, pageSize: number) {
+  try {
+    const p = await fetchRolesPage({ pageIndex, pageSize })
+    return { items: p.data.map((r) => ({ title: r.roleName, value: r.roleId })), totalSize: p.totalSize }
+  } catch (e) {
+    showOpError(e)
+    throw e // 组件保留已有页，下次触底可重试
+  }
+}
 const policyOptions = ref<SelectOption[]>([])
 onMounted(async () => {
   try {
-    const [rolesPage, policies] = await Promise.all([
-      fetchRolesPage({ pageIndex: 1, pageSize: 200 }),
-      fetchLoginPolicies(),
-    ])
-    roleOptions.value = rolesPage.data.map((r) => ({ title: r.roleName, value: r.roleId }))
+    const policies = await fetchLoginPolicies()
     policyOptions.value = policies.map((p) => ({ title: p.policyName, value: p.policyId }))
   } catch (e) {
     showOpError(e) // 选项拉取失败：弹窗可用但下拉为空，错误已由全局呈现
@@ -94,9 +106,9 @@ const policyModel = computed({
   },
 })
 
-/* ===== 启用开关联动（用户定稿 2026-10-19）：激活日期>今天 → 停用+锁定；否则开启可调 ===== */
+/* ===== 启用开关联动（用户定稿 2026-10-19）：激活日期>今天 → 关闭+禁用；否则打开+可改 ===== */
 const activeLocked = computed(
-  () => !!form.accountActiveAt && form.accountActiveAt > dayjs().format('YYYY-MM-DD'),
+  () => !!form.accountActiveAt && form.accountActiveAt > dayjs().format(DAY_FORMAT),
 )
 watch(activeLocked, (locked) => (form.enabled = !locked))
 const activeAtErrors = computed(() =>
@@ -116,6 +128,7 @@ async function save() {
     roleIds: [...form.roleIds],
     policyId: form.policyId,
     accountActiveAt: form.accountActiveAt,
+    accountExpiresAt: form.accountExpiresAt,
     enabled: form.enabled ? 1 : 0,
   }
   saving.value = true
@@ -138,9 +151,9 @@ async function save() {
     center-title
     :max-width="600"
   >
-    <!-- 两列布局（用户定稿 2026-10-19）：用户名+昵称 / 邮箱+密码 / 角色+策略 / 激活日期单列；
-         电话未在行分配中点名，单独半列置于密码行后；grid 天然保证左右列与上一行首列控件对齐 -->
-    <v-form ref="formRef" class="vui-create-user-grid pt-1" @submit.prevent="save">
+    <!-- 两列布局（用户定稿 2026-10-19 晚间改版）：用户名+昵称 / 密码跨两列 / 邮箱+电话 /
+         角色+策略 / 激活+到期 / 开关跨行——DOM 顺序即行分配，无需强制换行类 -->
+    <v-form ref="formRef" class="vui-user-form-grid pt-1" @submit.prevent="save">
       <FvTextInput
         v-model="form.userName"
         :label="t('security.users.form.userName')"
@@ -148,14 +161,13 @@ async function save() {
         :hint="t('security.users.form.userNameHint')"
         persistent-hint
         prepend-icon="fas fa-user"
+        maxlength="30"
         autocomplete="off"
       />
-      <FvTextInput v-model="form.nickName" :label="t('security.users.form.nickName')" clear />
       <FvTextInput
-        v-model="form.email"
-        :label="t('security.users.form.email')"
-        :rules="[rules.email]"
-        prepend-icon="fas fa-envelope"
+        v-model="form.nickName"
+        :label="t('security.users.form.nickName')"
+        maxlength="30"
         clear
       />
       <FvTextInput
@@ -164,6 +176,14 @@ async function save() {
         :label="t('security.users.form.password')"
         :rules="[rules.required]"
         autocomplete="new-password"
+        class="vui-user-form--span"
+      />
+      <FvTextInput
+        v-model="form.email"
+        :label="t('security.users.form.email')"
+        :rules="[rules.email]"
+        prepend-icon="fas fa-envelope"
+        clear
       />
       <FvTextInput
         v-model="form.phoneNumber"
@@ -176,11 +196,10 @@ async function save() {
       <FvTextSelect
         v-model="roleModel"
         mode="multiple"
-        :items="roleOptions"
+        :page-loader="rolesLoader"
         :label="t('security.users.form.roles')"
         :rules="[rules.required]"
         prepend-icon="fas fa-user-shield"
-        class="vui-user-form__new-row"
       />
       <FvTextSelect
         v-model="policyModel"
@@ -195,10 +214,15 @@ async function save() {
         :label="t('security.users.form.activeAt')"
         :hint="t('security.users.form.activeAtHint')"
         :error-messages="activeAtErrors"
-        class="vui-user-form__new-row"
       />
-      <!-- 启用开关：默认开启；激活日期晚于今天 → 停用且锁定（联动见 activeLocked） -->
-      <div class="vui-user-form__switch vui-user-form__switch--span">
+      <FvTimer
+        v-model="form.accountExpiresAt"
+        mode="date"
+        :label="t('security.users.form.expiresAt')"
+        :hint="t('security.users.form.expiresAtHint')"
+      />
+      <!-- 启用开关：默认开启；激活日期晚于今天 → 关闭且禁用（联动见 activeLocked） -->
+      <div class="vui-user-form__switch vui-user-form--span">
         <FvSwitch v-model="form.enabled" :disabled="activeLocked" />
         <span class="text-body-2">{{ t('security.users.form.enabled') }}</span>
       </div>
@@ -211,30 +235,12 @@ async function save() {
 </template>
 
 <style scoped>
-/* 两列栅格：列等宽、间距统一；行高随最高项，hint/错误在字段下方不影响列对齐 */
-.vui-create-user-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 16px;
-  row-gap: 4px;
-  align-items: start;
-}
-
-/* 强制换行（用户定稿行分配：角色+策略 / 激活日期单列，电话独占密码行后半列）：
-   落在该行首控件上，grid 自动把它拨到下一行第一列 */
-.vui-user-form__new-row {
-  grid-column-start: 1;
-}
-
-/* 状态开关行：与字段区同距，开关 + 文案左对齐（口径同编辑弹窗） */
+/* 状态开关行：与字段区同距，开关 + 文案左对齐；
+   栅格/跨列/FvTimer 拉满均在 tokens.css 共用段（.vui-user-form-grid） */
 .vui-user-form__switch {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 12px;
-}
-
-.vui-user-form__switch--span {
-  grid-column: 1 / -1;
 }
 </style>

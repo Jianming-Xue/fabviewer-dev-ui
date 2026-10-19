@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import FvSearchButton from '@/shared/components/FvSearchButton.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTable from '@/shared/components/FvTable.vue'
-import FvTableHeader from '@/shared/components/FvTableHeader.vue'
+import FvTableHeader, { type FvTableMenuItem } from '@/shared/components/FvTableHeader.vue'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
@@ -14,8 +14,11 @@ import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
 import CreateUserDialog from '../dialogs/CreateUserDialog.vue'
 import EditUserDialog from '../dialogs/EditUserDialog.vue'
+import ChangeUserStateDialog from '../dialogs/ChangeUserStateDialog.vue'
+import EditUserRolePolicyDialog from '../dialogs/EditUserRolePolicyDialog.vue'
+import ResetPasswordDialog from '../dialogs/ResetPasswordDialog.vue'
 import UserViewDialog from '../dialogs/UserViewDialog.vue'
-import { fetchUsersPage, deleteUser, setUserEnabled } from '@/api/security-management/userRequest'
+import { fetchUsersPage, deleteUser } from '@/api/security-management/userRequest'
 import type { UserDto } from '@/api/security-management/userTypes'
 
 /**
@@ -24,7 +27,10 @@ import type { UserDto } from '@/api/security-management/userTypes'
  * 表格列（2026-10-18 扩全档案）：用户名/昵称/邮箱/电话/状态/角色/策略/账户过期时间/密码过期时间/
  * 密码有效期(天)/账户有效期(天) + 操作；列表不展示 创建时间/上次密码修改/上次登录时间/上次登录IP
  * （查看弹窗全量展示）。
- * 新增按钮（security.users.new 管控）；操作列 = 查看（不管控，恒有）+ 修改 + 删除（各权限管控）。
+ * 新增按钮（security.users.new 管控）；操作列 = 查看（不管控，恒有）+ 修改 + more 下拉菜单
+ *  （角色和策略/重置密码受 edit 管控、删除用户受 delete 管控，2026-10-19 删除从图标钮收进菜单；
+ *   编辑拆分：EditUserDialog 只留昵称/邮箱/电话，角色/策略/两有效期天数/账户到期日移入
+ *   EditUserRolePolicyDialog，重置密码走 ResetPasswordDialog——UserRo 相应改稀疏语义）。
  * 新增/修改提交收口在弹窗内（成功才关窗），删除 = 公共确认 Dialog 后页面提交。
  */
 const { t } = useI18n()
@@ -35,13 +41,33 @@ const permission = usePermissionStore()
 const FEATURE_URL = '/security/users'
 const can = (id: string) => permission.hasControl(FEATURE_URL, id)
 
-/** 操作列：查看不受控恒可见；修改/删除按控件权限显隐 */
-const rowActions = computed<Array<'view' | 'edit' | 'delete'>>(() => {
-  const out: Array<'view' | 'edit' | 'delete'> = ['view']
-  if (can('security.users.edit')) out.push('edit')
-  if (can('security.users.delete')) out.push('delete')
+/** more 下拉菜单（2026-10-19 改造：删除从图标钮收进菜单）：角色和策略/重置密码受 edit 管控、
+    删除用户受 delete 管控——受控项按权限过滤（口径同原图标钮显隐），全无权则菜单为空 */
+const moreMenu = computed<FvTableMenuItem[]>(() => {
+  const out: FvTableMenuItem[] = []
+  if (can('security.users.edit')) {
+    out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield' })
+    out.push({ key: 'resetPwd', label: t('security.users.ctlResetPwd'), icon: 'fas fa-key' })
+  }
+  if (can('security.users.delete'))
+    out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error' })
   return out
 })
+
+/** 操作列：查看不受控恒可见；修改按控件权限显隐；more 仅当菜单有权项时出现（FvTable 守卫要求配了 moreMenu 才能挂 more） */
+const rowActions = computed<Array<'view' | 'edit' | 'more'>>(() => {
+  const out: Array<'view' | 'edit' | 'more'> = ['view']
+  if (can('security.users.edit')) out.push('edit')
+  if (moreMenu.value.length) out.push('more')
+  return out
+})
+
+/** more 菜单分发：角色和策略/重置密码走各自弹窗（落库在弹窗内收口），删除走原公共确认删除链路 */
+function onMoreSelect({ item, key }: { item: UserDto; key: string }) {
+  if (key === 'rolesPolicy') void openRolesPolicy(item)
+  else if (key === 'resetPwd') void openResetPwd(item)
+  else if (key === 'delete') void remove(item)
+}
 
 // ===== 搜索（输入值与已生效值分离：Enter/点击才触发查询） =====
 const keywordInput = ref('')
@@ -66,16 +92,20 @@ function switchDisabled(row: unknown): boolean {
   return !can('security.users.edit')
 }
 
-/** 行内启用开关（FvTable switch 列回调）：切换即落库（setUserEnabled 数字 1/0）；失败回读 */
+/** 行内启用开关（FvTable switch 列回调，2026-10-19 改造）：点击不即时提交——
+    弹 ChangeUserStateDialog 录备注后落库（标题随方向=启用用户/禁用用户）；
+    弹窗未成（取消/失败后关闭）回拨 FvTable 已即时写回的视觉态，服务端状态未动 */
 async function onSwitchChange({ item, value }: { item: UserDto; key: string; value: boolean }) {
-  try {
-    await setUserEnabled(item.userId, value ? 1 : 0)
-    item.enabled = value ? 1 : 0 // 出参口径数字 1/0（FvTable 内部写回的是布尔，此处归一）
-    toast.success(t('security.users.enabledUpdated'))
-  } catch (e) {
-    await loadPage()
-    showOpError(e)
+  const done = await openInteractiveDialog<{ user: UserDto; enabled: number }, boolean | undefined>(
+    ChangeUserStateDialog,
+    { user: item, enabled: value ? 1 : 0 },
+  )
+  if (!done) {
+    item.enabled = value ? 0 : 1 // 回拨开关
+    return
   }
+  item.enabled = value ? 1 : 0 // 出参口径数字 1/0（FvTable 内部写回的是布尔，此处归一）
+  toast.success(t('security.users.enabledUpdated'))
 }
 
 // ===== 分页列表 =====
@@ -152,6 +182,27 @@ async function onInsertUser(): Promise<UserDto | null> {
   return saved
 }
 
+/** 角色和策略（More 菜单）：落库由弹窗内完成（成功才关窗），此处只 Toast + 重拉 */
+async function openRolesPolicy(user: UserDto) {
+  const saved = await openInteractiveDialog<{ user: UserDto }, UserDto | undefined>(
+    EditUserRolePolicyDialog,
+    { user },
+  )
+  if (!saved) return
+  toast.success(t('security.users.updated'))
+  await loadPage()
+}
+
+/** 重置密码（More 菜单）：成功仅提示——列表列不含密码足迹，无需重拉 */
+async function openResetPwd(user: UserDto) {
+  const done = await openInteractiveDialog<{ user: UserDto }, boolean | undefined>(
+    ResetPasswordDialog,
+    { user },
+  )
+  if (!done) return
+  toast.success(t('security.users.passwordReset'))
+}
+
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页） */
 async function remove(user: UserDto) {
   if (!(await dialog.confirm(t('security.users.deleteConfirm')))) return
@@ -197,7 +248,7 @@ async function remove(user: UserDto) {
           :insert="can('security.users.new') ? onInsertUser : undefined"
           @view="openViewer"
           @edit="openEditor"
-          @delete="remove"
+          @more-select="onMoreSelect"
           @switch-change="onSwitchChange"
         >
           <FvTableHeader
@@ -323,7 +374,7 @@ async function remove(user: UserDto) {
               }}</span>
             </template>
           </FvTableHeader>
-          <FvTableHeader header-type="action" :actions="rowActions" />
+          <FvTableHeader header-type="action" :actions="rowActions" :more-menu="moreMenu" />
         </FvTable>
       </div>
     </v-card>

@@ -1,7 +1,7 @@
 import { securityRequest } from './request'
 
 import type { PageDto } from './types'
-import type { CreateUserRo, UserDto, UserPageRo, UserRo } from './userTypes'
+import type { CreateUserRo, ResetPasswordRo, UserDto, UserPageRo, UserRo, UserStateRo } from './userTypes'
 
 /**
  * 用户接口（security-management 服务，前缀 /api/v1/users，2026-10-18 首版，文件分类同角色口径）：
@@ -25,9 +25,15 @@ export function createUser(ro: CreateUserRo): Promise<UserDto> {
   return securityRequest<UserDto>('createUser', 'POST', '/api/v1/users', { body: ro, loading: true })
 }
 
-/** 3 · 编辑用户（UserRo，userId 定位；userName 锁定；可编辑集见 UserRo 注释） */
+/** 3 · 编辑用户（UserRo 稀疏语义，userId 定位；2026-10-19 拆分：EditUserDialog 提交
+ *    昵称/邮箱/电话，EditUserRolePolicyDialog 提交 角色/策略/两有效期天数/到期日，各传各的字段） */
 export function updateUser(ro: UserRo): Promise<UserDto> {
   return securityRequest<UserDto>('updateUser', 'PUT', '/api/v1/users', { body: ro, loading: true })
+}
+
+/** 6 · 重置密码（管理员侧 ResetPasswordRo，2026-10-19 More 菜单） */
+export function resetUserPassword(ro: ResetPasswordRo): Promise<null> {
+  return securityRequest<null>('resetUserPassword', 'PUT', '/api/v1/users/password', { body: ro, loading: true })
 }
 
 /** 4 · 删除用户（userId 写 URL query） */
@@ -35,7 +41,8 @@ export function deleteUser(userId: string): Promise<null> {
   return securityRequest<null>('deleteUser', 'DELETE', '/api/v1/users', { params: { userId }, loading: true })
 }
 
-/** 5 · 是否启用（URL query：enabled 严格 0/1——1=启用、0=停用；调用方由布尔换算，口径同角色 setRoleEnabled） */
-export function setUserEnabled(userId: string, enabled: 0 | 1): Promise<null> {
-  return securityRequest<null>('setUserEnabled', 'POST', '/api/v1/users/enabled', { params: { userId, enabled }, loading: true })
+/** 5 · 变更启用状态（2026-10-19 改造：原 URL query 即时提交 → UserStateRo body 经
+ *    ChangeUserStateDialog 录备注后提交；enabled 严格 0/1 口径不变） */
+export function setUserEnabled(ro: UserStateRo): Promise<null> {
+  return securityRequest<null>('setUserEnabled', 'POST', '/api/v1/users/enabled', { body: ro, loading: true })
 }

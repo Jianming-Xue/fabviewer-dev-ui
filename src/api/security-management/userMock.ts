@@ -4,7 +4,7 @@ import { policies } from './policyMock'
 import { rows as roleRows } from './roleMock'
 
 import type { PageDto, SecurityReplyDto } from './types'
-import type { CreateUserRo, UserDto, UserRo } from './userTypes'
+import type { CreateUserRo, ResetPasswordRo, UserDto, UserRo, UserStateRo } from './userTypes'
 
 /** 角色/策略 id → 名称换算（挂载名与 USER 种子 policyName 同幅；id 查不到原名兜底） */
 const roleNamesOf = (ids: string[]) =>
@@ -127,7 +127,7 @@ registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
     policyName: policyNameOf(ro.policyId ?? ''),
     createdAt: fmtTime(now),
     accountActiveAt: activeAt,
-    accountExpiresAt: '',
+    accountExpiresAt: dayEnd(ro.accountExpiresAt ?? ''),
     passwordChangedAt: fmtTime(now),
     passwordExpiresAt: '',
     lastLoginTime: '',
@@ -139,27 +139,40 @@ registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
   return ok({ ...created })
 })
 
+/** 编辑用户（2026-10-19 拆分改造）：稀疏更新——body 携带的字段才覆盖，未携带保持原值；
+ *  EditUserDialog 只提交 昵称/邮箱/电话，EditUserRolePolicyDialog 只提交 角色/策略/两有效期天数/到期日 */
 registerMock('PUT', '/security-management/api/v1/users', ({ body }) => {
   const ro = body as unknown as UserRo
   const row = rows.find((r) => r.userId === ro?.userId)
   if (!row) return fail('用户不存在')
-  if (!ro?.userName?.trim()) return fail('用户名不能为空')
-  if (rows.some((r) => r.userName === ro.userName.trim() && r.userId !== row.userId)) return fail('该用户名已存在')
+  const uname = ro.userName?.trim()
+  if (uname && uname !== row.userName && rows.some((r) => r.userName === uname && r.userId !== row.userId))
+    return fail('该用户名已存在')
   const updated: UserDto = {
     ...row,
     userName: row.userName, // 创建后锁定，改名忽略
-    nickName: ro.nickName?.trim() ?? '',
-    email: ro.email?.trim() ?? '',
-    phoneNumber: ro.phoneNumber?.trim() ?? '',
-    enabled: ro.enabled === 0 ? 0 : 1,
-    roles: roleNamesOf(ro.roleIds ?? row.roles),
-    policyName: policyNameOf(ro.policyId ?? ''),
-    accountExpiresAt: dayEnd(ro.accountExpiresAt ?? ''),
-    passwordValidDays: Number.isFinite(ro.passwordValidDays) ? ro.passwordValidDays : row.passwordValidDays,
-    accountValidDays: Number.isFinite(ro.accountValidDays) ? ro.accountValidDays : row.accountValidDays,
+    ...(ro.nickName !== undefined ? { nickName: ro.nickName.trim() } : {}),
+    ...(ro.email !== undefined ? { email: ro.email.trim() } : {}),
+    ...(ro.phoneNumber !== undefined ? { phoneNumber: ro.phoneNumber.trim() } : {}),
+    ...(ro.enabled !== undefined ? { enabled: ro.enabled === 0 ? 0 : 1 } : {}),
+    ...(ro.roleIds !== undefined ? { roles: roleNamesOf(ro.roleIds) } : {}),
+    ...(ro.policyId !== undefined ? { policyName: policyNameOf(ro.policyId) } : {}),
+    ...(ro.accountExpiresAt !== undefined ? { accountExpiresAt: dayEnd(ro.accountExpiresAt) } : {}),
+    passwordValidDays: ro.passwordValidDays ?? row.passwordValidDays,
+    accountValidDays: ro.accountValidDays ?? row.accountValidDays,
   }
   rows[rows.indexOf(row)] = updated
   return ok({ ...updated })
+})
+
+/** 重置密码（管理员侧，2026-10-19 More 菜单）：仅更新上次密码修改时间戳，密码明文 mock 不落档 */
+registerMock('PUT', '/security-management/api/v1/users/password', ({ body }) => {
+  const ro = body as unknown as ResetPasswordRo
+  const row = rows.find((r) => r.userId === ro?.userId)
+  if (!row) return fail('用户不存在')
+  if (!ro?.password) return fail('密码不能为空')
+  rows[rows.indexOf(row)] = { ...row, passwordChangedAt: fmtTime(new Date()) }
+  return ok(null)
 })
 
 /** 删除：userId 经 URL query */
@@ -171,12 +184,14 @@ registerMock('DELETE', '/security-management/api/v1/users', ({ params }) => {
   return ok(null)
 })
 
-/** 是否启用：URL query 传参，enabled 严格 0/1（口径同角色 /roles/enabled） */
-registerMock('POST', '/security-management/api/v1/users/enabled', ({ params }) => {
-  const userId = String(params?.userId ?? '')
-  const enabled = Number(params?.enabled)
+/** 变更启用状态（2026-10-19 改造）：UserStateRo body——enabled 严格 0/1（口径同角色 /roles/enabled）
+ *  + 操作备注必填（服务端守卫，前端表单规则之外双保险；备注仅校验，内存态不落档） */
+registerMock('POST', '/security-management/api/v1/users/enabled', ({ body }) => {
+  const ro = body as unknown as UserStateRo
+  const enabled = Number(ro?.enabled)
   if (enabled !== 0 && enabled !== 1) return fail('enabled 必须为 0 或 1')
-  const row = rows.find((r) => r.userId === userId)
+  if (!ro?.remark?.trim()) return fail('备注不能为空')
+  const row = rows.find((r) => r.userId === ro?.userId)
   if (!row) return fail('用户不存在')
   rows[rows.indexOf(row)] = { ...row, enabled }
   return ok(null)

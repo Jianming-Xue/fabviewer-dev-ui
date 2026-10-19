@@ -23,8 +23,12 @@ withDefaults(
     centerTitle?: boolean
     /** 遮罩透明度（Vuetify 默认 0.32；调大 = 遮罩加深，如 0.5） */
     scrimOpacity?: number
+    /** 整卡最小高度（px，透传基座）：字段多的表单弹窗用更舒展的固定档 */
+    minHeight?: number
+    /** 整卡最大高度（CSS 长度，透传基座）：缺省 80vh，字段多的表单弹窗可放大自适应范围 */
+    maxHeight?: string
   }>(),
-  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined },
+  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined },
 )
 
 const open = defineModel<boolean>({ required: true })
@@ -41,6 +45,8 @@ const emit = defineEmits<{ closed: [] }>()
     :max-width="maxWidth"
     :center-title="centerTitle"
     :scrim-opacity="scrimOpacity"
+    :min-height="minHeight"
+    :max-height="maxHeight"
     @closed="emit('closed')"
   >
     <!-- 条件转发：未提供插槽时必须让基座自己的默认内容（标题回退等）生效 -->

@@ -1,35 +1,126 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-/**
- * 全局下拉选择（shared，2026-10-19 定稿）：与 FvTextInput 同族同规格——
- * 边框/焦点主题色/圆角/36px 高全部继承 Vuetify 全局默认（outlined+compact，同 VTextField
- * 走 tokens.css 统一口径），本组件不再逐实例传 variant/density。
- * - mode：'single'（默认）/ 'multiple'
- * - 单选清理（用户定稿 2026-10-19 两次修订）：右侧 clearable 图标清除（默认开启）；
- *   下拉不加空白哨兵行（有清除钮即够）
- * - 多选展示（用户定稿 2026-10-19）：框内最多显示 1 个所选标签，其余以「[+剩余数量]」弱色文本表示；
- *   删除当前标签后下一个已选项自动顶上（chip 按选中序位渲染，天然满足）
- * - prependIcon：框内前缀图标（FA 类名），可选；chip 关闭图标与字段图标同 15px/currentColor 口径
- * - items：字符串数组或 { title, value } 对象数组；rules/hint/error-messages 等经 attrs 透传
- */
+interface Option {
+  title: string
+  value: string
+}
+
+/** 分页加载器：拉第 pageIndex 页（1 起），返回选项页 + 服务端总数 */
+type PageLoader = (
+  pageIndex: number,
+  pageSize: number,
+) => Promise<{ items: Option[]; totalSize: number }>
+
 const props = withDefaults(
   defineProps<{
-    items?: (string | { title: string; value: string })[]
+    /** 静态选项（字符串数组或 {title,value}）；传 pageLoader 时忽略 */
+    items?: (string | Option)[]
     mode?: 'single' | 'multiple'
     prependIcon?: string
+    /** 分页滚动加载（2026-10-19 定稿）：给出后 mount 拉第一页（pageSize 笔），
+        菜单触底自动拉下一页，已加载数 ≥ totalSize 后不再请求 */
+    pageLoader?: PageLoader
+    pageSize?: number
   }>(),
-  { items: () => [], mode: 'single', prependIcon: undefined },
+  { items: () => [], mode: 'single', prependIcon: undefined, pageLoader: undefined, pageSize: 10 },
 )
 
 const model = defineModel<string | string[] | undefined>()
+const emit = defineEmits<{ loaded: [accumulated: Option[]] }>()
 
 const isMulti = computed(() => props.mode === 'multiple')
 
-const normItems = computed(() =>
-  props.items.map((it) => (typeof it === 'object' ? it : { title: String(it), value: String(it) })),
+const normItems = computed<Option[]>(() =>
+  props.pageLoader
+    ? loaded.value
+    : props.items.map((it) => (typeof it === 'object' ? it : { title: String(it), value: String(it) })),
 )
 const multiCount = computed(() => (Array.isArray(model.value) ? model.value.length : 0))
+
+/* ===== 分页滚动加载 ===== */
+const loaded = ref<Option[]>([])
+const totalSize = ref(0)
+const pageIndex = ref(0)
+const busy = ref(false)
+/** 已拉完（有成功页且累计数 ≥ totalSize） */
+const exhausted = computed(
+  () => props.pageLoader != null && pageIndex.value > 0 && loaded.value.length >= totalSize.value,
+)
+
+async function fetchPage(force = false): Promise<boolean> {
+  if (!props.pageLoader || busy.value) return false
+  if (!force && exhausted.value) return false
+  busy.value = true
+  let acc: Option[] | null = null
+  try {
+    const res = await props.pageLoader(pageIndex.value + 1, props.pageSize)
+    pageIndex.value += 1
+    totalSize.value = res.totalSize
+    const seen = new Set(loaded.value.map((i) => i.value))
+    for (const it of res.items) if (!seen.has(it.value)) loaded.value.push(it)
+    acc = [...loaded.value]
+  } catch {
+    // 失败保持已有页；触底/调用方 loadAll 可重试（错误呈现归调用方 loader 内处理）
+  } finally {
+    busy.value = false
+  }
+  // busy 复位后才广播：监听器（如编辑弹窗回显解析）在 loaded 事件里同步调 loadAll 不会被 busy 拒
+  if (acc) emit('loaded', acc)
+  return acc !== null
+}
+/** 拉完剩余全部页（调用方需全量解析时用，如编辑弹窗名称→id 回显） */
+async function loadAll() {
+  let guard = 100
+  while (!exhausted.value && guard-- > 0) {
+    if (!(await fetchPage(true))) break
+  }
+}
+defineExpose({ loadAll })
+
+// mount 即拉第一页；pageLoader 定义期给出、运行期不切换
+if (props.pageLoader) void fetchPage()
+watch(
+  () => props.pageLoader,
+  (v, old) => {
+    if (v && !old) void fetchPage()
+  },
+)
+
+/* 触底监听：Vuetify 4 的 select 浮层内容（.v-select__content）常驻 DOM、关合仅隐藏——
+   focus 后找可见者挂 scroll 监听（微任务重试至多 ~800ms 等浮层显示） */
+let scrollHost: HTMLElement | null = null
+let attachTimer: ReturnType<typeof setTimeout> | null = null
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) void fetchPage()
+}
+function detachScroll() {
+  // 捕获阶段挂的必须按 capture 摘除（scroll 不冒泡，实际滚动元素可能是后代——捕获两相通吃）
+  scrollHost?.removeEventListener('scroll', onScroll, { capture: true })
+  scrollHost = null
+}
+function attachSoon(n = 0) {
+  const el = [...document.querySelectorAll<HTMLElement>('.v-select__content')].find(
+    (x) => x.getClientRects().length > 0,
+  )
+  if (el) {
+    if (scrollHost !== el) {
+      detachScroll()
+      scrollHost = el
+      el.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    }
+    return
+  }
+  if (n < 10) attachTimer = setTimeout(() => attachSoon(n + 1), 80)
+}
+function onActivate() {
+  if (props.pageLoader) attachSoon()
+}
+onBeforeUnmount(() => {
+  if (attachTimer) clearTimeout(attachTimer)
+  detachScroll()
+})
 
 function onSelect(v: string | string[] | null | undefined) {
   if (isMulti.value) {
@@ -50,9 +141,11 @@ function onSelect(v: string | string[] | null | undefined) {
     :chips="isMulti"
     :closable-chips="isMulti"
     :clearable="!isMulti"
+    :loading="busy"
     :prepend-inner-icon="props.prependIcon"
     class="fv-text-select"
     v-bind="$attrs"
+    @focus="onActivate"
     @update:model-value="onSelect"
   >
     <!-- 多选 chip 定制：首项显真实标签（关闭行为经 chip props 透传），第二位显 [+剩余数]，其余不渲染 -->

@@ -14,6 +14,7 @@ export default {
     view: 'View',
     edit: 'Edit',
     delete: 'Delete',
+    more: 'More',
     refresh: 'Refresh',
     close: 'Close',
     copy: 'Copy message',
