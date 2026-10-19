@@ -15,7 +15,8 @@ const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, er
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
 
 /** 内存态角色集（业务命名真实；权限串遵循 Function:/Control: 前端规则） */
-const rows: RoleDto[] = [
+/** 导出给用户 Mock 做 roleId→roleName 换算（同服务内存态互查，仅 Mock 层） */
+export const rows: RoleDto[] = [
   {
     roleId: BUILTIN_ROLE_ID,
     roleName: '系统管理员',

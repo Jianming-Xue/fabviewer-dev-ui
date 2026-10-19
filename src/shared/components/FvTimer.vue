@@ -143,15 +143,16 @@ watch(
 )
 
 function fillSegs(v: string) {
-  const m = v
-    .trim()
-    .match(/^(?:(\d{4})[-/\\.](\d{2})[-/\\.](\d{2})[ T]?)?(\d{2}):(\d{2})(?::(\d{2}))?$/)
-  segs.y = m?.[1] ?? ''
-  segs.mo = m?.[2] ?? ''
-  segs.d = m?.[3] ?? ''
-  segs.h = m?.[4] ?? ''
-  segs.mi = m?.[5] ?? ''
-  segs.s = m?.[6] ?? ''
+  const s = v.trim()
+  // 日期必选+时间可选（'YYYY-MM-DD' 单独也回显——mode=date 的外部初值口径，2026-10-19 修）
+  const dm = s.match(/^(\d{4})[-/\\.](\d{2})[-/\\.](\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/)
+  const tm = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/)
+  segs.y = dm?.[1] ?? ''
+  segs.mo = dm?.[2] ?? ''
+  segs.d = dm?.[3] ?? ''
+  segs.h = dm?.[4] ?? tm?.[1] ?? ''
+  segs.mi = dm?.[5] ?? tm?.[2] ?? ''
+  segs.s = dm?.[6] ?? tm?.[3] ?? ''
   if (!v) for (const k of Object.keys(segs) as SegKey[]) segs[k] = ''
 }
 

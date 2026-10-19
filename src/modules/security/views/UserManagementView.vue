@@ -12,7 +12,8 @@ import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
-import UserEditDialog from '../dialogs/UserEditDialog.vue'
+import CreateUserDialog from '../dialogs/CreateUserDialog.vue'
+import EditUserDialog from '../dialogs/EditUserDialog.vue'
 import UserViewDialog from '../dialogs/UserViewDialog.vue'
 import { fetchUsersPage, deleteUser, setUserEnabled } from '@/api/security-management/userRequest'
 import type { UserDto } from '@/api/security-management/userTypes'
@@ -129,8 +130,8 @@ async function openViewer(user: UserDto) {
 
 /** 编辑：落库由弹窗内完成（成功才关窗、失败保留重试），此处只 Toast + 重拉 */
 async function openEditor(user: UserDto) {
-  const saved = await openInteractiveDialog<{ user?: UserDto }, UserDto | undefined>(
-    UserEditDialog,
+  const saved = await openInteractiveDialog<{ user: UserDto }, UserDto | undefined>(
+    EditUserDialog,
     { user },
   )
   if (!saved) return
@@ -140,8 +141,8 @@ async function openEditor(user: UserDto) {
 
 /** 新增（FvTable insert 回调）：落库由弹窗内完成（成功才关窗）；回显新行 + 计数 +1 */
 async function onInsertUser(): Promise<UserDto | null> {
-  const saved = await openInteractiveDialog<{ user?: UserDto }, UserDto | undefined>(
-    UserEditDialog,
+  const saved = await openInteractiveDialog<Record<string, never>, UserDto | undefined>(
+    CreateUserDialog,
     {},
   )
   if (!saved) return null

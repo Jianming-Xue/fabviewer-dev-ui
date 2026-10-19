@@ -11,6 +11,7 @@ import type { ServiceConfig } from '@/shared/api/http'
 if (import.meta.env.VITE_MOCK === 'true') {
   await import('./authMock')
   await import('./roleMock')
+  await import('./policyMock')
   await import('./userMock')
 }
 

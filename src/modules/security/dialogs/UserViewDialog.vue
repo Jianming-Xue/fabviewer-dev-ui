@@ -34,6 +34,7 @@ const rows = computed(() => [
   { label: t('security.users.col.roles'), value: props.user.roles.length ? props.user.roles.join('、') : '—' },
   { label: t('security.users.col.policy'), value: props.user.policyName || t('security.users.defaultPolicy') },
   { label: t('security.users.col.createdAt'), value: dash(props.user.createdAt) },
+  { label: t('security.users.col.accountActiveAt'), value: dash(props.user.accountActiveAt) },
   { label: t('security.users.col.accountExpiresAt'), value: expireText(props.user.accountExpiresAt) },
   { label: t('security.users.col.passwordChangedAt'), value: dash(props.user.passwordChangedAt) },
   { label: t('security.users.col.passwordExpiresAt'), value: expireText(props.user.passwordExpiresAt) },

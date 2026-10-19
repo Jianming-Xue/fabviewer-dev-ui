@@ -22,6 +22,8 @@ export interface UserDto {
   policyName: string
   /** 账户创建时间（列表不展示） */
   createdAt: string
+  /** 账户激活时间；空串 = 创建即激活（列表不展示，查看弹窗展示） */
+  accountActiveAt: string
   /** 账户过期时间；空串 = 永不过期 */
   accountExpiresAt: string
   /** 上次密码修改时间（列表不展示） */
@@ -43,14 +45,43 @@ export interface UserPageRo extends PageRo {
   keyword?: string
 }
 
-/** 新增/修改共用入参（新增 userId 留空由后端生成；编辑以 userId 定位、userName 锁定；
- *  角色/策略/到期日编辑后续迭代开通，当前 Ro 不含） */
+/** 新增用户入参（2026-10-19 拆分定稿：与编辑分离，userId 由后端生成；
+ *  非空/格式校验归 UI 调用前（CreateUserDialog 表单规则），接口层不设守卫） */
+export interface CreateUserRo {
+  userName: string
+  /** 明文经 TLS；创建场景不做复杂度策略（用户定稿 2026-10-19） */
+  password: string
+  nickName: string
+  email: string
+  phoneNumber: string
+  /** 挂载角色 id 清单（至少 1 个，必填） */
+  roleIds: string[]
+  /** 登录策略 id（必填） */
+  policyId: string
+  /** 账户激活日期 'YYYY-MM-DD'（必填；晚于今天 → 提交时 enabled 必为 0，表单已联动锁定） */
+  accountActiveAt: string
+  /** 1=启用 / 0=停用 */
+  enabled: number
+}
+
+/** 编辑用户入参（2026-10-19 定稿可编辑集：昵称/邮箱/电话/角色/策略/密码有效期/账户有效期/账户到期日；
+ *  userName 锁定仅作定位辅助、enabled 表格行开关维护不在编辑表单内改，透传） */
 export interface UserRo {
   userId: string
   userName: string
   nickName: string
   email: string
   phoneNumber: string
-  /** 1=启用 / 0=停用（新增表单默认 1） */
+  /** 挂载角色 id 清单（空数组 = 不挂） */
+  roleIds: string[]
+  /** 登录策略 id；空串 = 默认策略 */
+  policyId: string
+  /** 密码有效期天数（-1 = 不限） */
+  passwordValidDays: number
+  /** 账户有效期天数（-1 = 不限） */
+  accountValidDays: number
+  /** 账户到期日期 'YYYY-MM-DD'；空串 = 永不过期 */
+  accountExpiresAt: string
+  /** 1=启用 / 0=停用（编辑表单不展示，由页面透传当前值） */
   enabled: number
 }
