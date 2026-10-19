@@ -1,0 +1,36 @@
+@import '../shared/styles/tokens.css';
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--vui-font-ui);
+  font-size: 14px; /* 全局标准字号（05 §2.5 基础字号 14px） */
+  background: var(--vui-bg-layout);
+  color: var(--vui-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 表头 13px 加粗（05 规范 §4.2）。
+   v4 表头行不带 v-data-table__tr 类，选择器直接落在 __th 上 */
+.vui-table--comfortable .v-table__th,
+.vui-table--comfortable .v-data-table__th {
+  font-size: 13px;
+  font-weight: 700;
+  /* 表头深灰色（用户调优 2026-10-15）：文字色 14% 混入容器底色，双主题自适应 */
+  background: color-mix(in srgb, var(--vui-text) 14%, var(--vui-bg-container));
+}
+
+/* 表格行悬停 / 选中（§4.2） */
+.vui-table--comfortable .v-table__tr:hover > .v-table__td,
+.vui-table--comfortable .v-data-table__tr:hover > .v-data-table__td {
+  background: var(--vui-row-hover);
+}
+
+.vui-table--comfortable .v-table__tr.vui-row--selected > .v-table__td,
+.vui-table--comfortable .v-data-table__tr.vui-row--selected > .v-data-table__td {
+  background: var(--vui-row-selected);
+}

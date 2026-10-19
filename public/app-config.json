@@ -1,0 +1,9 @@
+{
+  "_comment": "部署期可调配置（2026-10-17）：直接改本文件即可，无需重新构建。Host 优先级：services[name].host > globalHost > 构建 env FV_APP_HOST > 代码 config.ts 默认 > 内置兜底 http://127.0.0.1:8081；超时（ms）同链：services[name].timeout > globalTimeout > 构建 env FV_APP_TIMEOUT > 代码 config.ts 默认 > 内置 30000。空串/0 = 跳过该层，-1 = 显式不限时。",
+  "globalHost": "",
+  "globalTimeout": 0,
+  "services": {
+    "security-management": { "host": "", "timeout": 0 },
+    "log-service": { "host": "", "timeout": 0 }
+  }
+}

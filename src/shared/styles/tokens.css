@@ -1,0 +1,470 @@
+/**
+ * 设计令牌 —— 05-视觉与交互规范 §二 全量落地
+ * 双模式：html.vui-light（浅色）/ html.vui-dark（深色），index.html 首屏内联预设，防闪白。
+ * 组件一律引用本文件令牌，禁止在页面里硬编码颜色（规范 §五·一致性）。
+ */
+
+/* ===== 圆角阶梯（用户定稿 2026-10-14 收敛） ===== */
+:root {
+  --vui-radius-xs: 6px; /* 标签、徽标、小组件 */
+  --vui-radius-s: 6px; /* 控件统一档：输入框、下拉、按钮（含分页钮） */
+  --vui-radius: 10px; /* 卡片、表格、弹窗、抽屉、浮层面板（合档） */
+  --vui-radius-full: 9999px; /* 头像、状态点、开关 */
+
+  /* ===== 间距（§2.5，4px 基数栅格） ===== */
+  --vui-space-2: 8px;
+  --vui-space-3: 12px;
+  --vui-space-4: 16px;
+  --vui-space-6: 24px;
+  --vui-space-8: 32px;
+
+  /* ===== 布局（§2.6；顶栏高度用户调优 2026-10-14：64px → 48px） ===== */
+  --vui-sidebar-width: 260px;
+  --vui-sidebar-rail: 68px;
+  --vui-topbar-height: 48px;
+  --vui-content-padding: 3px; /* 主内容区视图四向边距（用户定稿 2026-10-15：视图自动纵向铺满） */
+
+  /* ===== 动效（§2.7；侧栏节奏用户调优 2026-10-14：300ms → 450ms） ===== */
+  --vui-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --vui-transition-sidebar: 450ms ease-in-out;
+
+  /* ===== 字体（§2.5，系统栈，不外链字体） ===== */
+  --vui-font-ui:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --vui-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ===== 中性色 + 语义色（§2.3 / §2.4） ===== */
+html.vui-light {
+  color-scheme: light;
+  --vui-text: #060d11;
+  --vui-text-secondary: #616b70;
+  --vui-text-placeholder: rgba(97, 107, 112, 0.6);
+  --vui-border: #e2e6e8;
+  --vui-split: rgba(6, 13, 17, 0.08);
+  --vui-bg-layout: #f9fafb;
+  --vui-bg-container: #ffffff;
+  --vui-bg-elevated: #ffffff;
+  --vui-fill-alter: #eff2f4;
+  --vui-row-hover: #f5f7f8;
+  --vui-row-selected: #eaf4ef;
+
+  --vui-primary: #2f7d5a;
+  --vui-primary-hover: #3a9169;
+  --vui-primary-active: #256847;
+  --vui-primary-bg: #eaf4ef;
+
+  --vui-success: #1e7406;
+  --vui-warning: #ed9a30;
+  --vui-error: #e7180b;
+  --vui-error-bg: #fceeec;
+
+  /* 表格悬浮提示底色（用户定稿 2026-10-19，同日再调浅一档）：浅色模式深灰，深色模式纯黑 */
+  --vui-tooltip-bg: #5a5a5a;
+
+  /* 悬浮提示内的状态色（深底专用亮色版）：正文语义色压深灰底对比不足，单独设档 */
+  --vui-tip-success: #6fd48a;
+  --vui-tip-warning: #ffbe63;
+  --vui-tip-error: #ff8d86;
+  --vui-info: #1677ff;
+
+  --vui-topbar-bg: rgba(249, 250, 251, 0.8);
+
+  /* 弹窗遮罩色（用户调优 2026-10-14）：浅色用黑；透明度由 FvBaseDialog 的 scrimOpacity 控制 */
+  --vui-scrim: #000;
+
+  /* ===== 侧栏（跟随主题；2026-10-14 用户定稿：不做恒深色） ===== */
+  --vui-sidebar-bg: #ffffff;
+  --vui-sidebar-border: #e2e6e8;
+  --vui-sidebar-text: #616b70;
+  --vui-sidebar-text-hover: #060d11;
+  --vui-sidebar-active: #2f7d5a; /* 选中项：仅文字/图标变主色（用户定稿） */
+  --vui-ripple: rgba(
+    6,
+    13,
+    17,
+    0.12
+  ); /* 点击水波纹：浅灰（用户定稿 2026-10-14，图标按钮与菜单一致） */
+
+  /* ===== logo 色板（原图两套配色，按表底对比度映射：浅底配深细节） ===== */
+  --vui-logo-main: #38785a;
+  --vui-logo-d1: #26382f;
+  --vui-logo-d2: #22332b;
+  --vui-logo-d3: #213129;
+  --vui-logo-d4: #273a30;
+  --vui-logo-d5: #20302a;
+  --vui-logo-d6: #26382f;
+}
+
+html.vui-dark {
+  color-scheme: dark;
+  --vui-text: #e2e6e8;
+  --vui-text-secondary: #869197;
+  --vui-text-placeholder: rgba(134, 145, 151, 0.6);
+  --vui-border: #292929;
+  --vui-split: rgba(226, 230, 232, 0.1);
+  --vui-bg-layout: #010101;
+  --vui-bg-container: #141414;
+  --vui-bg-elevated: #181818;
+  --vui-fill-alter: #1e1e1e;
+  --vui-row-hover: #1e1e1e;
+  --vui-row-selected: #1d2c26;
+
+  --vui-primary: #4caa84;
+  --vui-primary-hover: #5fbc96;
+  --vui-primary-active: #3b8c6b;
+  --vui-primary-bg: #1d2c26;
+
+  --vui-success: #2f9f3d;
+  --vui-warning: #ed9a30;
+  --vui-error: #ff3a37;
+  --vui-error-bg: #351919;
+
+  --vui-tooltip-bg: #000;
+
+  --vui-tip-success: #2f9f3d;
+  --vui-tip-warning: #ed9a30;
+  --vui-tip-error: #ff3a37;
+  --vui-info: #4096ff;
+
+  --vui-topbar-bg: rgba(1, 1, 1, 0.8);
+
+  /* 深色主题遮罩改浅色：黑遮黑不可见（页面本底近黑） */
+  --vui-scrim: #fff;
+
+  /* ===== 侧栏（跟随主题） ===== */
+  --vui-sidebar-bg: #090909;
+  --vui-sidebar-border: #1b1b1b;
+  --vui-sidebar-text: rgba(226, 230, 232, 0.72);
+  --vui-sidebar-text-hover: #e2e6e8;
+  --vui-sidebar-active: #4caa84;
+  --vui-ripple: rgba(226, 230, 232, 0.16);
+
+  /* ===== logo：深底配浅细节（原图 light 细节值 + dark 主色） ===== */
+  --vui-logo-main: #4caa84;
+  --vui-logo-d1: #f2f6ed;
+  --vui-logo-d2: #edf3e8;
+  --vui-logo-d3: #edf2e8;
+  --vui-logo-d4: #f2f7ed;
+  --vui-logo-d5: #f1f5ec;
+  --vui-logo-d6: #f2f6ed;
+}
+
+/* ===== 全局滚动约束（用户定稿 2026-10-15）=====
+   页面级（html/body）不出任何滚动条；纵向滚动只出现在主内容区（.vui-content，见 FvShell），
+   横向滚动全站禁止。
+   注意：以下两条命中"路由视图根元素"（跨组件边界，不携带壳层 scope id），必须放全局层 */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 任何载入主内容区的视图自动纵向铺满：自然高度不足时撑满、超出时内容区滚动 */
+.vui-content > * {
+  flex: 1 0 auto;
+}
+
+/* 满高页面（如表格页，根元素加 vui-fill 类）：允许收缩到容器高——
+   页面内部区域自行滚动（表格区 overflow + 表头 sticky 吸顶） */
+.vui-content > .vui-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 表格悬浮提示统一底色（用户定稿 2026-10-19）：tooltip 经 Teleport 挂 overlay，
+   以 content-class="vui-table-tip" 命中；底色走 --vui-tooltip-bg（浅=深灰/深=黑），文字白 */
+.vui-table-tip {
+  background: var(--vui-tooltip-bg);
+  color: #fff;
+}
+
+/* ===== Vuetify 组件圆角对齐阶梯 ===== */
+.v-application {
+  font-family: var(--vui-font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 全局按钮圆角（用户定稿 2026-10-14）：控件统一档 6px。直接覆盖 + !important——
+   Vuetify 4 的 .v-btn 写死 border-radius: 4px 且不消费 --v-btn-border-radius 变量，
+   组件样式又晚于本文件注入（同优先级会被后注入者胜出） */
+.v-btn {
+  border-radius: var(--vui-radius-s) !important;
+}
+
+/* 普通按钮（用户定稿 2026-10-14）：凡未指定颜色的按钮（重置/取消/复制信息等）统一
+   透明底 + 主色边框；点击反馈 = 水波纹（浅灰令牌），悬停不变底色口径不变。
+   守卫：bg- 与 text- 前缀工具类 = 已指定颜色的按钮（Vuetify 以工具类挂色）；图标按钮与分页钮不参与（保持原样式） */
+.v-btn:not([class*='bg-']):not([class*='text-']):not(.v-btn--icon):not(.v-pagination__item):not(
+    .v-pagination__prev
+  ):not(.v-pagination__next) {
+  background: transparent !important;
+  border: 1px solid var(--vui-primary) !important;
+  box-shadow: none !important;
+}
+
+/* 卡片 10px：Vuetify 4 写死 4px 且不消费 --v-card-border-radius（同按钮问题），须直接覆盖 */
+.v-card {
+  border-radius: var(--vui-radius) !important;
+}
+
+.v-field,
+.v-select__selection {
+  border-radius: var(--vui-radius-s);
+}
+
+/* 分页钮在 Vuetify 4 中不是 v-btn（无 .v-btn 类），单独对齐控件统一档 */
+.v-pagination__item,
+.v-pagination__prev,
+.v-pagination__next {
+  border-radius: var(--vui-radius-s);
+}
+
+/* 表格容器 10px：与按钮同款问题——Vuetify 4 写死 4px 且不消费 --v-table-border-radius，须直接覆盖 */
+.v-table {
+  border-radius: var(--vui-radius) !important;
+}
+
+.v-dialog > .v-overlay__content {
+  border-radius: var(--vui-radius); /* 弹窗与卡片合档 10px；卡片的圆角由上方 .v-card 全局规则接管 */
+}
+
+/* 公共基础 Dialog 遮罩颜色主题化（用户调优 2026-10-14）：浅色=黑（Vuetify 默认 #000）；
+   深色改浅色令牌 --vui-scrim（黑遮黑不可见）。透明度由 FvBaseDialog 的 scrimOpacity 控制 */
+html.vui-dark .vui-base-overlay .v-overlay__scrim {
+  background: var(--vui-scrim);
+}
+
+.v-navigation-drawer--right {
+  border-radius: 0;
+}
+
+/* ===== 焦点环（§2.7：仅 focus-visible，2px 主色 + 1px 间距）。
+   输入类控件除外：字段聚焦已有主色描边，再叠焦点环会出双框（用户定稿 2026-10-14） ===== */
+.v-application :focus-visible:not(input, textarea, select, [contenteditable]) {
+  outline: 2px solid var(--vui-primary);
+  outline-offset: 1px;
+}
+
+/* ===== 全局交互基线（用户定稿 2026-10-14）：按钮 / 图标 / 菜单项悬停一律不变底色，
+   唯一点击反馈 = 水波纹（v-btn / v-list-item 默认自带 ripple）。表格行悬停属 §4.2 规范，不在此列 ===== */
+.v-btn__overlay,
+.v-list-item__overlay,
+.v-list-item__underlay {
+  opacity: 0 !important;
+}
+
+/* 点击水波纹全局统一浅灰令牌（用户定稿 2026-10-14）：图标按钮、菜单项、复选/单选、
+   ghost 无色按钮、普通按钮、文字按钮——凡非实底彩色钮；
+   唯一例外：实底彩色钮（bg-*）保持白色 currentColor 涟漪（灰涟漪在饱和底色上对比不足） */
+.v-btn--icon .v-ripple__container,
+.v-btn:not([class*='bg-']) .v-ripple__container,
+.v-list-item .v-ripple__container,
+.v-selection-control .v-ripple__container {
+  color: var(--vui-ripple);
+}
+
+/* 下拉与输入控件文字统一标准字号 14px（Vuetify 深层规则会压到 ~13.33px，需 !important 盖住） */
+.v-field__input,
+.v-field__input input,
+.v-select__selection-text,
+.v-list-item {
+  font-size: 14px !important;
+}
+
+/* 弹层下拉列表（菜单/选择器）：行高收紧为 40px；横向滚动条默认裁剪——
+   列表项文字自身换行不会产生真实横向溢出，4px 级舍入溢出不该出滚动条（用户定稿 2026-10-14） */
+.v-overlay__content .v-list {
+  overflow-x: hidden;
+}
+
+.v-overlay__content .v-list-item {
+  height: 40px;
+  min-height: 40px;
+  padding-block: 0;
+}
+
+/* 弹层列表图标与侧栏菜单图标同大小（15px） */
+.v-overlay__content .v-list-item .v-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* 主界面全局背景：浅色模式沿用登录页的主题色浅渐变（左上 → 右下），fixed 锁定视口、滚动不动；深色保持纯色 */
+html.vui-light .v-application {
+  background-image: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--vui-primary) 12%, var(--vui-bg-layout)),
+    var(--vui-bg-layout)
+  );
+  background-attachment: fixed;
+}
+
+/* 输入/选择控件高度对齐 05 §2.5 默认档 36px（Vuetify 内部 __input 有 40px 最小高度，需显式定高） */
+.v-input--density-compact {
+  --v-input-control-height: 36px;
+}
+
+.v-input--density-compact .v-field {
+  height: 36px;
+  min-height: 36px;
+}
+
+.v-input--density-compact .v-field__input {
+  min-height: 36px;
+  padding-block: 0 !important;
+}
+
+/* 字段 Label 移到输入框上方（用户定稿 2026-10-14）。
+   v4 outlined 的 label 有两份：基础副本（.v-field__field 内）与浮动副本（.v-field__outline__notch 内，
+   负责在边框上开缺口）。做法：隐藏浮动副本，把基础副本钉到字段上方并锁定浮动动画 */
+.v-text-field,
+.v-select,
+.v-autocomplete,
+.v-combobox {
+  padding-top: 24px;
+}
+
+.v-text-field .v-field__outline__notch .v-field-label,
+.v-select .v-field__outline__notch .v-field-label,
+.v-autocomplete .v-field__outline__notch .v-field-label,
+.v-combobox .v-field__outline__notch .v-field-label {
+  display: none !important;
+}
+
+/* 锚点归还字段盒：__field 改静态后，label 的绝对定位锚到 .v-field（left:0 = 盒左缘，图标不再推偏） */
+.v-text-field .v-field__field,
+.v-select .v-field__field,
+.v-autocomplete .v-field__field,
+.v-combobox .v-field__field {
+  position: static !important;
+}
+
+.v-text-field .v-field__field .v-field-label,
+.v-select .v-field__field .v-field-label,
+.v-autocomplete .v-field__field .v-field-label,
+.v-combobox .v-field__field .v-field-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  margin: 0 !important; /* v4 给 label 的自身外边距（图标字段 6px / 普通 16px）归零对齐盒左缘 */
+  padding: 0 !important;
+  transform: none !important;
+  opacity: 1 !important;
+  visibility: visible !important; /* v4 浮动时对基础副本设 visibility:hidden（不是 opacity） */
+  height: auto;
+  line-height: 18px;
+  font-size: 13px;
+  color: var(
+    --vui-text-secondary
+  ) !important; /* !important：压制 v4 的 active/error 状态色（红闪来源） */
+  transition: none !important;
+  max-width: none !important;
+  white-space: nowrap;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* 字段内图标（前缀/后缀/清除）统一缩小到 15px（用户定稿 2026-10-14；
+   2026-10-16 补 v4 改名后的清除类 .v-field__clearable——原 .v-field__clear 是 v3 类名，规则一直未命中） */
+.v-field .v-field__prepend-inner > .v-icon,
+.v-field .v-field__append-inner > .v-icon,
+.v-field .v-field__clear > .v-icon,
+.v-field .v-field__clearable > .v-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
+/* 字段聚焦描边 = 主题色（用户定稿 2026-10-18）：Vuetify 4 outline 段用 currentColor 描边，
+   聚焦时 opacity→1 + 2px，currentColor=正文色 → 实际呈现近黑色；此处把 focused 态 outline
+   的 currentColor 源改写为 --vui-primary，全站 FvTextInput/Select/日期时间等一并归一。
+   错误态不加 --focused 覆盖（:not 排除），仍走 Vuetify 红色。 */
+.v-field--focused:not(.v-field--error) .v-field__outline {
+  color: var(--vui-primary);
+}
+
+/* 聚焦时 outline 段全亮（Vuetify 变量在部分场景停在 0.38 不爬升——直接钉死,
+   保证描边实色主题色,与 FvTimer 聚焦观感一致） */
+.v-field--focused:not(.v-field--error) .v-field__outline__start,
+.v-field--focused:not(.v-field--error) .v-field__outline__end,
+.v-field--focused:not(.v-field--error) .v-field__outline__notch::before,
+.v-field--focused:not(.v-field--error) .v-field__outline__notch::after {
+  opacity: 1;
+}
+
+/* 单选 / 复选框文字统一标准字号 14px（用户定稿 2026-10-14） */
+.v-selection-control .v-label {
+  font-size: 14px !important;
+}
+
+/* ===== 等宽字体工具类（仅「机器值」：日志 / 代码 / ID / 时间戳） ===== */
+.vui-mono {
+  font-family: var(--vui-font-mono);
+}
+
+/* ===== 数字列纵向对齐（§2.5） ===== */
+.vui-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== 表格密度（§2.7 默认舒适档 44px）：由组件 density="comfortable" 原生提供 ===== */
+
+.vui-table--comfortable .v-table__td,
+.vui-table--comfortable .v-table__th,
+.vui-table--comfortable .v-data-table__td,
+.vui-table--comfortable .v-data-table__th {
+  padding-block: 8px;
+  box-sizing: border-box; /* 表格单元格默认 content-box：44px 高度须含 8px 上下内边距 */
+}
+
+/* 进行中的块：整行标记底色（模块 1 · 01 §3.7） */
+.vui-row--running {
+  background: color-mix(in srgb, var(--vui-info) 7%, transparent);
+}
+
+/* ===== 日历面板 v-date-picker（用户定稿 2026-10-18，全系统弹层统一） =====
+   面板属性在组件上设：hide-header（去 Select date/Enter date 标题行）、
+   weekday-format="short"（星期简写随语言：英文三字母 Mon~Sun / 中文 周一~周日，
+   Vuetify locale 由 i18n 同步，见 shared/plugins/vuetify.ts）、first-day-of-week="0"（周日起始）、
+   color="primary"。此处落三条全局规则：标题栏横分割线 / 标题栏排布 / 选中日期主题色。 */
+
+/* 标题栏与日期之间的横线分割 */
+.v-date-picker .v-date-picker-controls {
+  border-bottom: 1px solid var(--vui-split);
+  margin-bottom: 6px;
+}
+
+/* 标题栏排布：双箭头翻年（不动月份）+ 单箭头翻月（1月左翻→上年12月、12月右翻→次年1月，
+   VDatePickerControls 原生语义），中间某年某月文字（FvTimer/DateTimeField 的 #controls 槽）。
+   箭头钮= x-small/14px icon/text variant，与 FvTable 分页箭头同规格；钮组贴近左右两侧。
+   注意：VDatePickerControls 经 VDefaultsProvider 给插槽内 VBtn 下发 density=comfortable（钮缩至 20px），
+   组件插槽按钮须显式 density="default" 覆盖，才与分页 32×32 同尺寸 */
+.vui-cal-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.vui-cal-ctrl__group {
+  display: flex;
+  align-items: center;
+}
+.vui-cal-ctrl__text {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vui-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 选中日期主题色标记（Vuetify 默认选中式样为 surface-variant 灰，选择器权重更高，此处覆盖） */
+.v-date-picker
+  .v-date-picker-month__day--selected:not(.v-date-picker-month__day--range-middle)
+  > .v-btn {
+  background-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}

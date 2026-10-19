@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAB Viewer</title>
+    <script>
+      // 主题防闪白：首屏内联判定（本地存储 > 系统偏好），早于应用挂载执行（05 规范 §五）
+      ;(function () {
+        try {
+          var saved = localStorage.getItem('vui.theme')
+          var dark =
+            saved === 'dark' ||
+            (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.add(dark ? 'vui-dark' : 'vui-light')
+        } catch (e) {
+          document.documentElement.classList.add('vui-light')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
