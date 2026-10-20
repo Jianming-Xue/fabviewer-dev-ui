@@ -245,10 +245,13 @@ html.vui-dark .vui-base-overlay .v-overlay__scrim {
 
 /* ===== 全局交互基线（用户定稿 2026-10-14）：按钮 / 图标 / 菜单项悬停一律不变底色，
    唯一点击反馈 = 水波纹（v-btn / v-list-item 默认自带 ripple）。
-   2026-10-20 起表格行亦并入本基线（悬停不变底、选中=primary 10% 透明，见 main.css） ===== */
+   2026-10-20 起表格行亦并入本基线（悬停不变底、选中=primary 10% 透明，见 main.css）；
+   同日 Checkbox 并入：勾选框悬停不变色（摘 Vuetify 选择控件 hover 圆形 currentColor 垫层
+   .v-selection-control__input::before，原 FvTreeList 局部规则升为全局） ===== */
 .v-btn__overlay,
 .v-list-item__overlay,
-.v-list-item__underlay {
+.v-list-item__underlay,
+.v-selection-control__input::before {
   opacity: 0 !important;
 }
 

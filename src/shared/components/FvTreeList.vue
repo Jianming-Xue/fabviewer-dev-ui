@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 
+import FvCheckbox from '@/shared/components/FvCheckbox.vue'
+
 import FvTreeList from './FvTreeList.vue'
 import type { FvTreeNode, FvTreeState } from './FvTree.vue'
 
@@ -123,12 +125,11 @@ const toggleCollapse = (n: FvTreeNode) => setCollapsed(n, !collapseMap[n.id])
         <span v-else class="fv-tree__expander fv-tree__expander--placeholder" />
         <!-- 三态样式（用户定稿 2026-10-16）：选中/不选 = Vuetify 原始 glyph 仅换主题色；
              被动选中 = 外框（far fa-square）+ 中心小实体方框（::after 心） -->
-        <v-checkbox-btn
+        <FvCheckbox
+          icon-only
           :model-value="stateOf(n) === 'on'"
           :indeterminate="stateOf(n) === 'part'"
           indeterminate-icon="far fa-square"
-          density="compact"
-          hide-details
           :disabled="readonly"
           @click.stop
           @update:model-value="(v: boolean) => onCheck(n, v)"
@@ -217,10 +218,7 @@ const toggleCollapse = (n: FvTreeNode) => setCollapsed(n, !collapseMap[n.id])
   font-size: 14px;
 }
 
-/* 选择框悬停不变色（用户定稿 2026-10-16）：压掉 Vuetify 选择控件 hover 的圆形 currentColor 底 */
-.fv-tree :deep(.v-selection-control__input::before) {
-  opacity: 0 !important;
-}
+/* 选择框悬停不变色：已升为全局交互基线（tokens.css，2026-10-20 Checkbox 并入），本组件不再逐处压制 */
 
 /* 选择框不占满剩余宽度（VSelectionControl 根默认伸展），label 紧贴选择框而非被推到行尾 */
 .fv-tree :deep(.v-selection-control) {

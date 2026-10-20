@@ -3,6 +3,8 @@ import { reactive, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 
+import FvCheckbox from '@/shared/components/FvCheckbox.vue'
+
 import { useSearchStore, type ColumnSettings } from '../stores/search'
 
 /**
@@ -47,32 +49,12 @@ function confirm() {
       </p>
 
       <div class="text-body-2 text-medium-emphasis mb-1">{{ t('ruleSearch.drawer.hideable') }}</div>
-      <v-checkbox
-        v-model="draft.showTotalCost"
-        :label="t('ruleSearch.columns.totalCostTime')"
-        density="compact"
-        hide-details
-      />
-      <v-checkbox
-        v-model="draft.showCostSummary"
-        :label="t('ruleSearch.columns.costSummary')"
-        density="compact"
-        hide-details
-      />
-      <v-checkbox
-        v-model="draft.showUnaccounted"
-        :label="t('ruleSearch.columns.unaccountedCost')"
-        density="compact"
-        hide-details
-      />
+      <FvCheckbox v-model="draft.showTotalCost" :label="t('ruleSearch.columns.totalCostTime')" />
+      <FvCheckbox v-model="draft.showCostSummary" :label="t('ruleSearch.columns.costSummary')" />
+      <FvCheckbox v-model="draft.showUnaccounted" :label="t('ruleSearch.columns.unaccountedCost')" />
 
       <div class="text-body-2 text-medium-emphasis mt-4 mb-1">{{ t('ruleSearch.drawer.optional') }}</div>
-      <v-checkbox
-        v-model="draft.showExecStatus"
-        :label="t('ruleSearch.columns.execStatus')"
-        density="compact"
-        hide-details
-      />
+      <FvCheckbox v-model="draft.showExecStatus" :label="t('ruleSearch.columns.execStatus')" />
 
       <div class="text-body-2 text-medium-emphasis mt-4 mb-2">{{ t('ruleSearch.drawer.lockObject') }}</div>
       <v-select

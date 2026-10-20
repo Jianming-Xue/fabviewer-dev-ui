@@ -51,9 +51,14 @@ const form = reactive({
   accountExpiresAt: props.user.accountExpiresAt ? props.user.accountExpiresAt.slice(0, 10) : '',
 })
 
+/* 有效期天数规则（2026-10-20 用户定稿）：与登录策略弹窗（PolicyEditDialog）同一口径——
+   1~999 的整数；本弹窗语义留空=不限（提交换算 -1），故空值放行 */
+const VALID_DAYS_MAX = 999
 const rules = {
   days: (v: string) =>
-    !v.trim() || (/^\d+$/.test(v.trim()) && Number(v) > 0) || t('security.users.form.positiveInt'),
+    !v.trim() ||
+    (/^\d+$/.test(v.trim()) && Number(v) >= 1 && Number(v) <= VALID_DAYS_MAX) ||
+    t('security.users.form.daysRange'),
 }
 
 /* ===== 名称字典制（用户定稿 2026-10-20，替换旧"分页加载+名称反查 id"机制）=====
@@ -136,6 +141,7 @@ async function save() {
         mode="multiple"
         :items="roleOptions"
         :label="t('security.users.form.roles')"
+        required
         prepend-icon="fas fa-user-shield"
         @open="onRolesOpen"
       />
@@ -143,6 +149,7 @@ async function save() {
         v-model="policyModel"
         :items="policyOptions"
         :label="t('security.users.form.policy')"
+        required
         clearable
         prepend-icon="fas fa-file-shield"
         @open="onPolicyOpen"
@@ -151,7 +158,7 @@ async function save() {
         v-model="form.passwordValidDays"
         :label="t('security.users.form.passwordValidDays')"
         :rules="[rules.days]"
-        :hint="t('security.users.form.positiveInt')"
+        :hint="t('security.users.form.daysRangeHint')"
         show-hint
         inputmode="numeric"
         clear
@@ -160,6 +167,8 @@ async function save() {
         v-model="form.accountValidDays"
         :label="t('security.users.form.accountValidDays')"
         :rules="[rules.days]"
+        :hint="t('security.users.form.daysRangeHint')"
+        show-hint
         inputmode="numeric"
         clear
       />

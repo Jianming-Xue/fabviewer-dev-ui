@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import FvLogo from '@/app/images/FvLogo.vue'
+import FvCheckbox from '@/shared/components/FvCheckbox.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import LoginArtLog from '@/app/images/LoginArtLog.vue'
 import LoginArtReport from '@/app/images/LoginArtReport.vue'
@@ -239,13 +240,7 @@ const expired = route.query.reason === 'expired'
           required
           autocomplete="current-password"
         />
-        <v-checkbox
-          v-model="form.remember"
-          :label="t('login.rememberMe')"
-          :ripple="true"
-          density="compact"
-          hide-details
-          class="mt-1"
+        <FvCheckbox v-model="form.remember" :label="t('login.rememberMe')" class="mt-1"
         />
         <v-btn block color="primary" type="submit" :loading="loading" class="mt-6">
           {{ t('login.signIn') }}

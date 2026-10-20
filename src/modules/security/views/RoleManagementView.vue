@@ -239,6 +239,10 @@ async function remove(role: RoleDto) {
 
 /* 搜索框加大（用户调优 2026-10-15） */
 .vui-roles-keyword {
+  /* 搜索框外边距清零（2026-10-20）：全局字段规范 margin 3/3/7 在 align-end 搜索栏里
+     把框体抬起 7px、与搜索按钮底边错位——仅本页搜索框局部归零（scoped 双特异度压全局），
+     其余页面字段保持全局节奏 */
+  margin: 0;
   width: 480px;
   max-width: 480px;
 }

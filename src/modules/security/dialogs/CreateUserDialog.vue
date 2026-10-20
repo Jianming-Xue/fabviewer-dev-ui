@@ -10,6 +10,7 @@ import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
 import { showOpError } from '@/shared/api/opError'
 import { createUser } from '@/api/security-management/requests/userRequest'
+import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 import {
   roleOptions,
   policyOptions,
@@ -29,7 +30,8 @@ import type {
  * 行分配=用户名+昵称 / 密码跨两列 / 邮箱+电话 / 角色+策略 / 激活日期+到期日期（激活在前）/
  * 启用开关跨行；长度限制（用户定稿）：用户名 ≤30 且仅数字/大小写字母/下划线，昵称 ≤30 不限字符类型，
  * 初始密码不做任何限制（仅必填）。
- * 日期默认值：激活=当天；到期=激活+365 天（打开弹窗时的初始值，改激活日期不自动跟随）。
+ * 日期默认值：激活=当天；到期初始=激活+365，选定登录策略后由策略账户有效期驱动
+ * （-1 清空 / N=激活+N 天；激活或策略变动即重算，2026-10-20 晚定稿）。
  * 启用开关联动：激活日期>今天 → 关闭且禁用；≤今天（含清空）→ 打开且解除禁用。
  * 提交收口本组件（同 RoleEditDialog 模式）：成功 → emit('resolve', UserDto)+关窗；
  * 失败（用户名重复等）→ showOpError，弹窗保留可改可重试。
@@ -96,6 +98,63 @@ function onPolicyOpen() {
   })
 }
 
+/* ===== 到期日期策略驱动（用户定稿 2026-10-20 晚，替代原固定"激活+365"）=====
+   选中策略 → fetchPolicyDetail 取账户有效期天数 accountValidDays：
+   -1 = 永不过期 → 清空到期日期；N>0 → 到期日期 = 激活日期 + N 天；
+   激活日期或策略任一变动都重算；未选策略时沿用 365 天缺省；
+   detail 拉取失败保持当前到期值不动（带过期响应守卫，防快速切换策略错值）。 */
+const DEFAULT_ACCOUNT_VALID_DAYS = 365
+const policyAccountDays = ref<number | null>(null)
+
+function recalcExpires() {
+  if (!form.accountActiveAt) return
+  const days = policyAccountDays.value ?? DEFAULT_ACCOUNT_VALID_DAYS
+  form.accountExpiresAt =
+    days === -1
+      ? ''
+      : dayjs(form.accountActiveAt, 'YYYY-MM-DD').add(days, 'day').format('YYYY-MM-DD')
+}
+
+watch(
+  () => form.policyId,
+  (id) => {
+    if (!id) {
+      policyAccountDays.value = null
+      recalcExpires()
+      return
+    }
+    fetchPolicyDetail(id).then(
+      (p) => {
+        if (form.policyId !== id) return // 过期响应丢弃
+        policyAccountDays.value = p.accountValidDays
+        recalcExpires()
+      },
+      () => {
+        /* 详情失败：到期日期保持现值（下拉清理另有 @open 通道） */
+      },
+    )
+  },
+)
+watch(() => form.accountActiveAt, recalcExpires)
+
+/* ===== 到期日期手动调整约束（用户定稿 2026-10-20 晚）=====
+   任何情况下：到期必须晚于激活日期（不得 ≤）；
+   策略 accountValidDays ≠ -1 时：到期不得大于 激活日期 + 策略天数（上限=策略窗口）。
+   经 FvTimer errorMessages 外部通道呈现（红描边+错误徽标），save 拦截提交。 */
+const expiresCap = computed(() => {
+  if (policyAccountDays.value === null || policyAccountDays.value <= 0) return ''
+  if (!form.accountActiveAt) return ''
+  return dayjs(form.accountActiveAt, 'YYYY-MM-DD').add(policyAccountDays.value, 'day').format('YYYY-MM-DD')
+})
+const expiresErrors = computed(() => {
+  const v = form.accountActiveAt && form.accountExpiresAt
+  if (!v) return []
+  if (form.accountExpiresAt <= form.accountActiveAt) return [t('security.users.form.expiresAfterActive')]
+  if (expiresCap.value && form.accountExpiresAt > expiresCap.value)
+    return [t('security.users.form.expiresOverPolicy', { n: policyAccountDays.value, cap: expiresCap.value })]
+  return []
+})
+
 /* FvTextSelect model 为联合类型（单/多选共用），表单窄化包装 */
 const roleModel = computed({
   get: () => form.roleIds as string | string[] | undefined,
@@ -123,6 +182,7 @@ async function save() {
   const { valid } = await formRef.value.validate()
   dateTouched.value = true
   if (!valid || !form.accountActiveAt || saving.value) return
+  if (expiresErrors.value.length) return // 到期日期违反激活/策略窗口约束（错误已经徽标呈现）
   const ro: CreateUserRo = {
     userName: form.userName.trim(),
     password: form.password,
@@ -230,7 +290,8 @@ async function save() {
         v-model="form.accountExpiresAt"
         mode="date"
         :label="t('security.users.form.expiresAt')"
-        :hint="t('security.users.form.expiresAtHint')"
+        :hint="t('security.users.form.expiresAtPolicyHint')"
+        :error-messages="expiresErrors"
         show-hint
       />
       <!-- 启用开关：默认开启；激活日期晚于今天 → 关闭且禁用（联动见 activeLocked） -->
