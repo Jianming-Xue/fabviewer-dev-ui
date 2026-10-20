@@ -13,9 +13,13 @@ import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
 import RoleEditDialog from '../dialogs/RoleEditDialog.vue'
 import RolePermissionDialog from '../dialogs/RolePermissionDialog.vue'
-import { fetchRolesPage, deleteRole, setRoleEnabled } from '@/api/security-management/roleRequest'
-import { BUILTIN_ROLE_ID } from '@/api/security-management/roleTypes'
-import type { RoleDto } from '@/api/security-management/roleTypes'
+import {
+  fetchRolesPage,
+  deleteRole,
+  setRoleEnabled,
+} from '@/api/security-management/requests/roleRequest'
+import { BUILTIN_ROLE_ID } from '@/api/security-management/types/roleTypes'
+import type { RoleDto } from '@/api/security-management/types/roleTypes'
 
 /**
  * 角色管理（模块 · 用户和安全）：搜索卡片 + 结果卡片。
@@ -135,7 +139,7 @@ async function openPermissions(role: RoleDto) {
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页）。内置角色双保险拦截 */
 async function remove(role: RoleDto) {
   if (role.roleId === BUILTIN_ROLE_ID) return
-  if (!(await dialog.confirm(t('security.roles.deleteConfirm')))) return
+  if (!(await dialog.confirm(t('security.roles.deleteConfirm', { name: role.roleName })))) return
   try {
     await deleteRole(role.roleId)
     toast.success(t('security.roles.deleted'))

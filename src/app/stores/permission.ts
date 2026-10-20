@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { fetchPermissions } from '@/api/security-management/authRequest'
+import { fetchPermissions } from '@/api/security-management/requests/authRequest'
 
 const STORAGE_KEY = 'vui.permissions'
 

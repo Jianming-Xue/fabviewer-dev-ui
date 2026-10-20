@@ -7,19 +7,22 @@
  */
 import type { PageRo } from './types'
 
-/** 用户返回对象（档案 + 状态 + 挂载 + 到期足迹全量） */
 export interface UserDto {
   userId: string
   userName: string
   nickName: string
   email: string
   phoneNumber: string
+  /** 头像（小图）：base64 图像内容（data URL 可直接渲染）；2026-10-20 自 LoginDto 迁入，
+   *  仅随档案展示（顶栏/用户信息弹窗），用户管理界面不编辑 */
+  avatar: string
   /** 用户状态：1=启用 / 0=停用 */
   enabled: number
-  /** 挂载角色名清单（v1 直接下发名称用于展示；改挂功能上线后切 roleId 关联） */
-  roles: string[]
-  /** 挂载登录策略名；空串 = 未挂（前端呈现为「默认策略」） */
-  policyName: string
+  /** 挂载角色 id 清单（用户定稿 2026-10-20：后端只存/发 ID，
+   *  展示名由前端名称字典翻译，见 ./rolePolicyNameCollection） */
+  roleIds: string[]
+  /** 挂载登录策略 id；空串 = 未挂（前端呈现为「默认策略」） */
+  policyId: string
   /** 账户创建时间（列表不展示） */
   createdAt: string
   /** 账户激活时间；空串 = 创建即激活（列表不展示，查看弹窗展示） */
@@ -96,6 +99,16 @@ export interface ResetPasswordRo {
   userId: string
   /** 新密码明文（经 TLS） */
   password: string
+}
+
+/** 单属性修改入参（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑）：
+ *  userId = 登录用户名（与 /auth/change_password 同口径显式带身份，不走请求头）；
+ *  可编辑白名单：nickName / email / phoneNumber（头像与账号字段不在此列） */
+export interface UserAttributeRo {
+  /** 登录用户名 */
+  userId: string
+  attName: 'nickName' | 'email' | 'phoneNumber'
+  attValue: string
 }
 
 /** 变更启用状态入参（2026-10-19 改造：开关点击不再即时提交，

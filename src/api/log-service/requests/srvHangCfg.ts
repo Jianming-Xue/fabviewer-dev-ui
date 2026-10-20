@@ -1,11 +1,12 @@
 import { createServiceRequest } from '@/shared/api/http'
 
-import config from './config'
+import config from '../config'
 
-import type { PageDto, SrvHangCfgDto, SrvHangCfgRo } from './types'
+import type { PageDto, SrvHangCfgDto, SrvHangCfgRo } from '../types/types'
 
 /** 微服务绑定 request：URL = 服务 Host + /log-service + 后端给定接口路径 */
 const request = createServiceRequest(config)
+
 
 /** 1 · 分页取配置（GET，URL 参数仅 pageIndex / pageSize；默认 ruleName+hangReason 升序） */
 export function fetchSrvHangCfgPage(pageIndex: number, pageSize = 20): Promise<PageDto<SrvHangCfgDto>> {

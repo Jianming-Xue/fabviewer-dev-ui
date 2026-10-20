@@ -12,6 +12,12 @@ type PageLoader = (
   pageSize: number,
 ) => Promise<{ items: Option[]; totalSize: number }>
 
+/**
+ * 字段外观契约（2026-10-20 与 FvTextInput 同批定稿）：label / hint / showHint / required——
+ * 底部 detail 行不展示 hint（tokens.css「字段错误气泡」段），hint 文案走 label 后问号图标
+ * tooltip（showHint 开关控显隐）；required=true 时 label 前红星；校验错误由 detail 渲染、
+ * 全局样式浮成控件右上角气泡。
+ */
 const props = withDefaults(
   defineProps<{
     /** 静态选项（字符串数组或 {title,value}）；传 pageLoader 时忽略 */
@@ -22,12 +28,34 @@ const props = withDefaults(
         菜单触底自动拉下一页，已加载数 ≥ totalSize 后不再请求 */
     pageLoader?: PageLoader
     pageSize?: number
+    /** 字段 Label（顶部；红星/问号接管渲染时组件自绘，否则透传 Vuetify 原生） */
+    label?: string
+    /** 提示词文案（经问号图标 tooltip 展示，不再进底部 detail 行） */
+    hint?: string
+    /** 带提示词开关：true 且 hint 非空时 label 后显示问号图标，否则隐藏 */
+    showHint?: boolean
+    /** 必填标志（rules 含必填的字段由调用点标注）：label 前红星 */
+    required?: boolean
   }>(),
-  { items: () => [], mode: 'single', prependIcon: undefined, pageLoader: undefined, pageSize: 10 },
+  {
+    items: () => [],
+    mode: 'single',
+    prependIcon: undefined,
+    pageLoader: undefined,
+    pageSize: 10,
+    label: undefined,
+    hint: undefined,
+    showHint: false,
+    required: false,
+  },
 )
 
+/** 是否接管 label 渲染（红星或问号任一需要即走自定义槽，否则保持 Vuetify 原生渲染） */
+const customLabel = computed(() => props.required || (props.showHint && !!props.hint))
+
 const model = defineModel<string | string[] | undefined>()
-const emit = defineEmits<{ loaded: [accumulated: Option[]] }>()
+/** loaded=分页加载累计项（pageLoader 模式）；open=下拉被点开（调用方借机刷新选项数据，2026-10-20 加） */
+const emit = defineEmits<{ loaded: [accumulated: Option[]]; open: [] }>()
 
 const isMulti = computed(() => props.mode === 'multiple')
 
@@ -142,12 +170,31 @@ function onSelect(v: string | string[] | null | undefined) {
     :closable-chips="isMulti"
     :clearable="!isMulti"
     :loading="busy"
+    :label="label"
     :prepend-inner-icon="props.prependIcon"
     class="fv-text-select"
     v-bind="$attrs"
     @focus="onActivate"
+    @click="emit('open')"
     @update:model-value="onSelect"
   >
+    <template v-if="customLabel" #label>
+      <span v-if="props.required" class="fv-field__required-star">*</span>
+      <span>{{ label }}</span>
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
+    <!-- 校验错误：右上角气球徽标（同 FvTextInput 口径，样式在 tokens.css 字段气泡段） -->
+    <template #message="{ message }">
+      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
     <!-- 多选 chip 定制：首项显真实标签（关闭行为经 chip props 透传），第二位显 [+剩余数]，其余不渲染 -->
     <template v-if="isMulti" #chip="{ item, index, props: chipProps }">
       <v-chip v-if="index === 0" v-bind="chipProps" closable size="small" :text="item.title" />

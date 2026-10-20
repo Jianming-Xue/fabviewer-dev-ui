@@ -1,7 +1,8 @@
 import { registerMock } from '@/shared/api/mock'
 
-import type { ChangePasswordRo, LoginDto, LoginFailCode, LoginRo } from './authTypes'
-import type { SecurityReplyDto } from './types'
+import type { ChangePasswordRo, LoginDto, LoginFailCode, LoginRo } from '../types/authTypes'
+import type { SecurityReplyDto } from '../types/types'
+import type { UserDto } from '../types/userTypes'
 
 /**
  * 认证/权限 Mock（security-management 服务出参壳口径，2026-10-16 自 app/api 迁入，
@@ -47,17 +48,32 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
   if (trigger) return authFail(trigger)
   if (!username || !password) return fail<LoginDto>('用户名或密码不能为空')
   const now = new Date()
-  const contents: LoginDto = {
-    token: `mock-token-${Date.now().toString(36)}`,
-    expiresIn: 8 * 3600, // 8 小时有效
+  // 演示口径（2026-10-20 嵌套改版）：admin 挂标准策略 P001、test 挂强策略 P002、其余不挂——
+  // user.policyId 非空时前端登录成功后拉策略详情（改密按策略限制），为空/拉取失败走基础限制
+  const policyId = username === 'admin' ? 'P001' : username === 'test' ? 'P002' : ''
+  const user: UserDto = {
+    userId: username === 'admin' ? 'U0001' : username === 'test' ? 'U0003' : 'U9000',
     userName: username,
     nickName: username === 'admin' ? '系统管理员' : username === 'test' ? '测试工程师' : `${username}（演示）`,
     email: `${username.toLowerCase()}@fabcorp.example`,
     phoneNumber: '138-0000-1234',
     avatar: AVATAR_DATA_URL,
-    loginTime: fmtTime(now),
+    enabled: 1,
+    roleIds: username === 'admin' ? ['ADMIN'] : username === 'test' ? ['VIEWER'] : [],
+    policyId,
+    createdAt: '2025-01-15 09:00:00',
+    accountActiveAt: '',
+    accountExpiresAt: '',
+    passwordChangedAt: fmtTime(new Date(now.getTime() - 30 * 24 * 3600 * 1000)),
+    passwordExpiresAt: '',
     lastLoginTime: fmtTime(new Date(now.getTime() - 7 * 24 * 3600 * 1000)), // 演示：上次登录 = 7 天前
     lastLoginIp: '10.20.33.121',
+    passwordValidDays: 90,
+    accountValidDays: -1,
+  }
+  const contents: LoginDto = {
+    token: `mock-token-${Date.now().toString(36)}`,
+    user,
   }
   return ok(contents)
 })
@@ -74,6 +90,7 @@ registerMock('GET', '/security-management/api/v1/auth/permissions', ({ params })
       'Control:/log-searching/mes-rule-info', // 功能级通配：检索页全部控件
       'Control:/security/roles', // 功能级通配：角色页全部控件
       'Control:/security/users', // 功能级通配：用户页全部控件
+      'Control:/security/login-policy', // 功能级通配：登录策略页全部控件
       'Control:/config/srv-hang', // 功能级通配：配置页全部控件
     ])
   }
@@ -86,7 +103,9 @@ registerMock('GET', '/security-management/api/v1/auth/permissions', ({ params })
   return ok([])
 })
 
-/** 修改密码：入参 ChangePasswordRo（username + oldPassword + newPassword）；旧密码非空 + 新密码 ≥8 位（演示口径） */
+/** 修改密码：入参 ChangePasswordRo（username + oldPassword + newPassword）；
+ *  服务端基础守卫（2026-10-20 口径对齐前端无策略退化）：旧密码非空 + 新密码 6~18 位；
+ *  策略级复杂度以前端 LoginPolicy 校验为主 */
 registerMock('POST', '/security-management/api/v1/auth/change_password', ({ body }) => {
   const ro = body as unknown as ChangePasswordRo
   const username = String(ro?.username ?? '')
@@ -96,6 +115,6 @@ registerMock('POST', '/security-management/api/v1/auth/change_password', ({ body
   if (oldPassword.toLowerCase() === 'fail') {
     return fail('旧密码不正确（Mock：旧密码为 fail 时模拟校验失败）')
   }
-  if (newPassword.length < 8) return fail('新密码长度至少 8 位')
+  if (newPassword.length < 6 || newPassword.length > 18) return fail('新密码长度需为 6~18 位')
   return ok(null)
 })

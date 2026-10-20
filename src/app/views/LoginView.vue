@@ -7,14 +7,15 @@ import FvLogo from '@/app/images/FvLogo.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import LoginArtLog from '@/app/images/LoginArtLog.vue'
 import LoginArtReport from '@/app/images/LoginArtReport.vue'
-import { changePasswordRequest } from '@/api/security-management/authRequest'
-import { LoginFailError } from '@/api/security-management/authTypes'
+import { changePasswordRequest } from '@/api/security-management/requests/authRequest'
+import { LoginFailError } from '@/api/security-management/types/authTypes'
 import { useAuthStore } from '@/app/stores/auth'
+import { newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
 import { ApiError } from '@/shared/api/errors'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
 
-import type { LoginFailCode } from '@/api/security-management/authTypes'
+import type { LoginFailCode } from '@/api/security-management/types/authTypes'
 
 /** 登录失败码 → i18n 文案键（errMsg 是机器码，展示归前端词典，2026-10-17 口径） */
 const LOGIN_FAIL_TEXT: Record<LoginFailCode, string> = {
@@ -86,7 +87,9 @@ pwdForm.username = form.username
 
 const rules = {
   required: (v: string) => !!v || t('validation.required'),
-  min: (v: string) => v.length >= 8 || t('login.passwordMin'),
+  /** 新密码限制（2026-10-20 统一口径）：登录页改密卡 = 未登录无策略 → 基础长度 6~18；
+   *  与顶栏改密弹窗共用工厂，若会话策略已载（异常回跳场景）自动按策略校验 */
+  policy: newPwdPolicyRule(() => auth.loginPolicy, t),
   match: (v: string) => v === pwdForm.newPassword || t('login.passwordMismatch'),
 }
 
@@ -219,11 +222,12 @@ const expired = route.query.reason === 'expired'
       />
 
       <!-- 登录模式 -->
-      <v-form v-if="mode === 'login'" ref="formRef" @submit.prevent="onLogin">
+      <v-form v-if="mode === 'login'" ref="formRef" class="vui-form-col" @submit.prevent="onLogin">
         <FvTextInput
           v-model="form.username"
           :label="t('login.username')"
           :rules="[rules.required]"
+          required
           autocomplete="username"
           prepend-icon="fas fa-user"
         />
@@ -232,6 +236,7 @@ const expired = route.query.reason === 'expired'
           type="password"
           :label="t('login.password')"
           :rules="[rules.required]"
+          required
           autocomplete="current-password"
         />
         <v-checkbox
@@ -248,11 +253,12 @@ const expired = route.query.reason === 'expired'
       </v-form>
 
       <!-- 修改密码模式 -->
-      <v-form v-else ref="pwdFormRef" @submit.prevent="onChangePassword">
+      <v-form v-else ref="pwdFormRef" class="vui-form-col" @submit.prevent="onChangePassword">
         <FvTextInput
           v-model="pwdForm.username"
           :label="t('login.username')"
           :rules="[rules.required]"
+          required
           autocomplete="username"
           prepend-icon="fas fa-user"
         />
@@ -261,13 +267,15 @@ const expired = route.query.reason === 'expired'
           type="password"
           :label="t('login.oldPassword')"
           :rules="[rules.required]"
+          required
           autocomplete="current-password"
         />
         <FvTextInput
           v-model="pwdForm.newPassword"
           type="password"
           :label="t('login.newPassword')"
-          :rules="[rules.required, rules.min]"
+          :rules="[rules.required, rules.policy]"
+          required
           autocomplete="new-password"
         />
         <FvTextInput
@@ -275,6 +283,7 @@ const expired = route.query.reason === 'expired'
           type="password"
           :label="t('login.confirmPassword')"
           :rules="[rules.required, rules.match]"
+          required
           autocomplete="new-password"
         />
         <v-btn block color="primary" type="submit" :loading="loading" class="mt-2">

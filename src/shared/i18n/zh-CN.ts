@@ -92,5 +92,10 @@ export default {
     lengthLimit: '长度不能超过 {n} 个字符',
     charLimit: '仅允许 {chars}',
     duplicateConfig: '该 Rule Name 与 Hang Reason 的组合已存在',
+    pwdLen: '密码长度需为 {min}~{max} 位',
+    pwdNeedDigit: '密码须包含至少一个数字',
+    pwdNeedUpper: '密码须包含至少一个大写字母',
+    pwdNeedLower: '密码须包含至少一个小写字母',
+    pwdNeedSpecial: '密码须包含至少一个指定的特殊字符',
   },
 }

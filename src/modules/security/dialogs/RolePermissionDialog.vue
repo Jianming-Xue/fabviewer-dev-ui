@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import PermissionTree from '../components/PermissionTree.vue'
 import { showOpError } from '@/shared/api/opError'
-import { assignRolePermissions } from '@/api/security-management/roleRequest'
-import type { RoleDto } from '@/api/security-management/roleTypes'
+import { assignRolePermissions } from '@/api/security-management/requests/roleRequest'
+import type { RoleDto } from '@/api/security-management/types/roleTypes'
 
 /**
  * 权限分配弹窗（角色表格「权限」单元格入口，经 openInteractiveDialog 打开）：

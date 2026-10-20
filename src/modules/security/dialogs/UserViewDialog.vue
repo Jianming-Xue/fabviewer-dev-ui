@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
+import { roleNameOf, policyNameOf } from '@/api/security-management/rolePolicyNameCollection'
 
-import type { UserDto } from '@/api/security-management/userTypes'
+import type { UserDto } from '@/api/security-management/types/userTypes'
 
 /**
  * 用户信息查看弹窗（用户表格「查看」入口，经 openInteractiveDialog 打开，2026-10-18）：
@@ -31,8 +32,9 @@ const rows = computed(() => [
     label: t('security.users.col.status'),
     value: props.user.enabled === 1 ? t('security.users.enabledOn') : t('security.users.enabledOff'),
   },
-  { label: t('security.users.col.roles'), value: props.user.roles.length ? props.user.roles.join('、') : '—' },
-  { label: t('security.users.col.policy'), value: props.user.policyName || t('security.users.defaultPolicy') },
+  // 挂载 ID 经名称字典翻译（用户定稿 2026-10-20；字典稍后到达亦自动重显名）
+  { label: t('security.users.col.roles'), value: props.user.roleIds.map(roleNameOf).filter(Boolean).join('、') || '—' },
+  { label: t('security.users.col.policy'), value: policyNameOf(props.user.policyId) || t('security.users.defaultPolicy') },
   { label: t('security.users.col.createdAt'), value: dash(props.user.createdAt) },
   { label: t('security.users.col.accountActiveAt'), value: dash(props.user.accountActiveAt) },
   { label: t('security.users.col.accountExpiresAt'), value: expireText(props.user.accountExpiresAt) },

@@ -1,4 +1,4 @@
-import type { RuleInfoDto } from '@/api/log-service/types'
+import type { RuleInfoDto } from '@/api/log-service/types/types'
 import type { ColumnSettings } from '../stores/search'
 import { msToSeconds } from '@/shared/utils/time'
 

@@ -1,4 +1,4 @@
-import { reactive, type Component } from 'vue'
+import { markRaw, reactive, type Component } from 'vue'
 
 /**
  * 只接受 FvInteractiveDialogHost 体系的弹窗组件（即继承业务基类 FvInteractiveDialog 的组件，
@@ -55,7 +55,8 @@ export function openInteractiveDialog<P extends object = object, R = unknown>(
 ): Promise<R | undefined> {
   return new Promise((resolve) => {
     const item: ActiveDialog = {
-      component,
+      // 组件定义入 reactive 队列会被 Proxy 包裹（Vue warn: made a reactive object）——markRaw 豁免
+      component: markRaw(component),
       props: (props ?? {}) as Record<string, unknown>,
       result: undefined,
       resolve: (value) => resolve(value as R | undefined),

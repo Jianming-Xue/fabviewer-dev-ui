@@ -3,8 +3,8 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
-import { fetchRuleInfoDetail } from '@/api/log-service/ruleInfo'
-import type { RuleInfoDto } from '@/api/log-service/types'
+import { fetchRuleInfoDetail } from '@/api/log-service/requests/ruleInfo'
+import type { RuleInfoDto } from '@/api/log-service/types/types'
 import { downloadBlob } from '@/shared/utils/download'
 
 /**

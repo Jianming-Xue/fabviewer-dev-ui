@@ -5,8 +5,11 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
-import { updateUser } from '@/api/security-management/userRequest'
-import type { UserDto, UserRo } from '@/api/security-management/userTypes'
+import { updateUser } from '@/api/security-management/requests/userRequest'
+import type {
+  UserDto,
+  UserRo,
+} from '@/api/security-management/types/userTypes'
 
 /**
  * 编辑用户弹窗（经 openInteractiveDialog 打开，2026-10-19 自二合一 UserEditDialog 拆分；

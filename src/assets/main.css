@@ -24,13 +24,16 @@ body {
   background: color-mix(in srgb, var(--vui-text) 14%, var(--vui-bg-container));
 }
 
-/* 表格行悬停 / 选中（§4.2） */
-.vui-table--comfortable .v-table__tr:hover > .v-table__td,
-.vui-table--comfortable .v-data-table__tr:hover > .v-data-table__td {
-  background: var(--vui-row-hover);
+/* 表格行悬停 / 选中（2026-10-20 用户定稿：与侧栏菜单统一口径）——
+   悬停恒不变底色：Vuetify 4 行悬停是 td::after 浮层（.v-table--hover 开启时），
+   这里按与本项目 v-list-item__overlay opacity:0 相同的思路摘除浮层内容；
+   旧页面（Config/MES 结果表/HangDialog 用 vui-row--selected 行类）选中底同步换为
+   菜单同配方 primary 10% 透明叠加（原实色令牌 --vui-row-selected 退役删除） */
+.vui-table--comfortable.v-table--hover > .v-table__wrapper > table > tbody > tr:hover > td::after {
+  content: none;
 }
 
 .vui-table--comfortable .v-table__tr.vui-row--selected > .v-table__td,
 .vui-table--comfortable .v-data-table__tr.vui-row--selected > .v-data-table__td {
-  background: var(--vui-row-selected);
+  background: color-mix(in srgb, var(--vui-primary) 10%, transparent);
 }

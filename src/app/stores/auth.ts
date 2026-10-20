@@ -1,58 +1,53 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { loginRequest, logoutRequest } from '@/api/security-management/authRequest'
+import { loginRequest, logoutRequest } from '@/api/security-management/requests/authRequest'
+import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 import { getDeviceId, getClientIp } from '@/shared/utils/device'
 
-import type { LoginDto } from '@/api/security-management/authTypes'
+import type { LoginDto } from '@/api/security-management/types/authTypes'
+import type { PolicyDto } from '@/api/security-management/types/policyTypes'
+import type { UserDto } from '@/api/security-management/types/userTypes'
 import { usePermissionStore } from '@/app/stores/permission'
 
 const STORAGE_KEY = 'vui.auth'
 
-/** 登录档案（来源 = LoginDto，2026-10-18 接顶栏头像/菜单）；旧持久化缺字段一律补空串 */
-interface StoredUser {
-  name: string
-  nickName: string
-  email: string
-  phone: string
-  /** 小头像 base64（data URL），空串 = 未提供（顶栏退化为文字缩写） */
-  avatar: string
-}
+/** Token 有效期临时定值（2026-10-20：LoginDto.expiresIn 已移除，
+ *  后续有效期口径并入登录策略统一后再改为策略驱动） */
+const TOKEN_TTL_MS = 8 * 3600 * 1000
 
-/** 登录足迹（LoginDto 随档案下发，2026-10-18 用户信息弹窗消费） */
-interface StoredTrace {
-  loginTime: string
-  lastLoginTime: string
-  lastLoginIp: string
+/** 空档案（初始/旧持久化格式兜底；旧版本存的是扁平档案，读不出的字段一律补默认） */
+const EMPTY_USER: UserDto = {
+  userId: '',
+  userName: '',
+  nickName: '',
+  email: '',
+  phoneNumber: '',
+  avatar: '',
+  enabled: 0,
+  roleIds: [],
+  policyId: '',
+  createdAt: '',
+  accountActiveAt: '',
+  accountExpiresAt: '',
+  passwordChangedAt: '',
+  passwordExpiresAt: '',
+  lastLoginTime: '',
+  lastLoginIp: '',
+  passwordValidDays: -1,
+  accountValidDays: -1,
 }
 
 interface StoredAuth {
   token: string
   /** 过期时刻（epoch ms） */
   expiresAt: number
-  user: StoredUser
-  trace: StoredTrace
+  /** 用户档案（LoginDto 嵌套改版 2026-10-20：整包 UserDto 入库，头像/足迹随档案） */
+  user: UserDto
 }
 
-const EMPTY_USER: StoredUser = { name: '', nickName: '', email: '', phone: '', avatar: '' }
-const EMPTY_TRACE: StoredTrace = { loginTime: '', lastLoginTime: '', lastLoginIp: '' }
-
-function normalizeTrace(raw?: Partial<StoredTrace> | null): StoredTrace {
-  return {
-    loginTime: raw?.loginTime ?? '',
-    lastLoginTime: raw?.lastLoginTime ?? '',
-    lastLoginIp: raw?.lastLoginIp ?? '',
-  }
-}
-
-function normalizeUser(raw?: Partial<StoredUser> | null): StoredUser {
-  return {
-    name: raw?.name ?? '',
-    nickName: raw?.nickName ?? '',
-    email: raw?.email ?? '',
-    phone: raw?.phone ?? '',
-    avatar: raw?.avatar ?? '',
-  }
+function normalizeUser(raw?: Partial<UserDto> | null): UserDto {
+  return { ...EMPTY_USER, ...raw, roleIds: [...(raw?.roleIds ?? [])] }
 }
 
 function load(): StoredAuth | null {
@@ -61,13 +56,8 @@ function load(): StoredAuth | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as StoredAuth
     if (!parsed?.token || !parsed?.expiresAt) return null
-    // 过期与否交给 expireIfNeeded 判定（守卫需要区分「从未登录」与「登录失效」）；user/trace 归一兼容旧格式
-    return {
-      token: parsed.token,
-      expiresAt: parsed.expiresAt,
-      user: normalizeUser(parsed.user),
-      trace: normalizeTrace(parsed.trace),
-    }
+    // 过期与否交给 expireIfNeeded 判定（守卫需要区分「从未登录」与「登录失效」）；user 归一兼容旧格式
+    return { token: parsed.token, expiresAt: parsed.expiresAt, user: normalizeUser(parsed.user) }
   } catch {
     return null
   }
@@ -78,32 +68,54 @@ function persist(value: StoredAuth | null): void {
   else localStorage.removeItem(STORAGE_KEY)
 }
 
-/** 认证状态：token 本地持久化（含过期时刻），登录失效 = 过期或不存在 */
+/** 认证状态：token + 用户档案本地持久化（含过期时刻），登录失效 = 过期或不存在 */
 export const useAuthStore = defineStore('auth', () => {
   const auth = ref<StoredAuth | null>(load())
   let justExpired = auth.value !== null && auth.value.expiresAt <= Date.now()
 
+  /** 登录策略详情（2026-10-20）：登录返回 user.policyId 非空时异步拉取；
+   *  null = 无策略或拉取失败（不阻塞登录）——修改密码退化为基础长度限制（6~18）；
+   *  仅存内存不持久化：刷新后按新会话登录重新拉取 */
+  const loginPolicy = ref<PolicyDto | null>(null)
+
   const isLoggedIn = computed(() => auth.value !== null && auth.value.expiresAt > Date.now())
-  const userName = computed(() => auth.value?.user.name ?? '')
-  /** 登录档案（只读）：顶栏头像/用户菜单消费 */
-  const profile = computed<StoredUser>(() => auth.value?.user ?? EMPTY_USER)
-  /** 登录足迹（只读）：用户信息弹窗消费 */
-  const trace = computed<StoredTrace>(() => auth.value?.trace ?? EMPTY_TRACE)
+  const userName = computed(() => auth.value?.user.userName ?? '')
+  /** 用户档案全量（只读）：用户信息弹窗等消费 */
+  const user = computed<UserDto>(() => auth.value?.user ?? EMPTY_USER)
+  /** 顶栏便捷视图（头像/昵称/邮箱/电话） */
+  const profile = computed(() => ({
+    name: user.value.userName,
+    nickName: user.value.nickName,
+    email: user.value.email,
+    phone: user.value.phoneNumber,
+    avatar: user.value.avatar,
+  }))
 
   async function login(username: string, password: string): Promise<LoginDto> {
     // 登录入参 = 账密 + 本机 IP / 设备指纹透传（LoginRo，2026-10-17 口径；IP 尽力获取取不到为空串）
     const res = await loginRequest({ username, password, clientIp: await getClientIp(), deviceId: getDeviceId() })
-    // 档案与足迹整体入库（昵称/邮箱/电话/头像 + 本次/上次登录时间、上次登录 IP，随 LoginDto 下发，2026-10-18）
+    // 档案整体入库（嵌套 UserDto：昵称/邮箱/电话/头像 + 上次登录时间/IP，2026-10-20 改版）
     auth.value = {
       token: res.token,
-      expiresAt: Date.now() + res.expiresIn * 1000,
-      user: normalizeUser({ name: res.userName, nickName: res.nickName, email: res.email, phone: res.phoneNumber, avatar: res.avatar }),
-      trace: normalizeTrace({ loginTime: res.loginTime, lastLoginTime: res.lastLoginTime, lastLoginIp: res.lastLoginIp }),
+      expiresAt: Date.now() + TOKEN_TTL_MS,
+      user: normalizeUser(res.user),
     }
     justExpired = false
     persist(auth.value)
+    // 登录策略：policyId 非空 → 异步拉详情（不阻塞登录跳转；失败静默，改密走基础限制）
+    loginPolicy.value = null
+    if (res.user.policyId) {
+      void fetchPolicyDetail(res.user.policyId).then(
+        (policy) => {
+          loginPolicy.value = policy
+        },
+        () => {
+          /* 详情拉取失败不影响登录：修改密码限制自动退化为基础内容（6~18 长度） */
+        },
+      )
+    }
     // 登录成功即按服务端确认的身份拉取权限清单（菜单/控件权限由此派生，见 stores/permission.ts）
-    await usePermissionStore().loadPermissions(res.userName)
+    await usePermissionStore().loadPermissions(res.user.userName)
     return res
   }
 
@@ -114,15 +126,25 @@ export const useAuthStore = defineStore('auth', () => {
       /* 后端登出失败不阻塞本地清理 */
     }
     auth.value = null
+    loginPolicy.value = null
     justExpired = false
     persist(null)
     usePermissionStore().clear()
+  }
+
+  /** 单属性本地同步（2026-10-20 用户信息弹窗行内编辑）：/users/attribute 提交成功后调用，
+   *  会话档案即唯一事实源，同步持久化供刷新后沿用 */
+  function patchUser(patch: Partial<UserDto>): void {
+    if (!auth.value) return
+    auth.value = { ...auth.value, user: { ...auth.value.user, ...patch } }
+    persist(auth.value)
   }
 
   /** 校验过期（路由守卫每次导航调用）：返回 true = 登录失效（从未登录不算） */
   function expireIfNeeded(): boolean {
     if (auth.value && auth.value.expiresAt <= Date.now()) {
       auth.value = null
+      loginPolicy.value = null
       persist(null)
       usePermissionStore().clear() // 会话失效连带清理权限
       justExpired = true
@@ -130,5 +152,5 @@ export const useAuthStore = defineStore('auth', () => {
     return justExpired
   }
 
-  return { isLoggedIn, userName, profile, trace, login, logout, expireIfNeeded }
+  return { isLoggedIn, userName, user, profile, loginPolicy, login, logout, patchUser, expireIfNeeded }
 })

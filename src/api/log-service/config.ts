@@ -9,7 +9,7 @@ import type { ServiceConfig } from '@/shared/api/http'
 
 // Mock 处理器：仅 VITE_MOCK=true 时加载（构建期静态替换 → 生产包不含 mock 代码）
 if (import.meta.env.VITE_MOCK === 'true') {
-  await import('./mock')
+  await import('./mocks/mock')
 }
 
 const config: ServiceConfig = {

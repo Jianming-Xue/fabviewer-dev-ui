@@ -171,6 +171,7 @@ function onReset() {
           :label="t('ruleSearch.filter.endTime')"
           :error-messages="endErrors"
           :hint="t('time.mustLaterThan')"
+          show-hint
         />
 
         <!-- 行 2 -->
@@ -202,7 +203,7 @@ function onReset() {
           :label="t('ruleSearch.filter.minCost')"
           :error-messages="minCostErrors"
           :hint="t('ruleSearch.filter.unitSeconds')"
-          persistent-hint
+          show-hint
           inputmode="decimal"
           clear
           @click:clear="onMinClear"

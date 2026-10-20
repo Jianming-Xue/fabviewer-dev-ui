@@ -21,6 +21,10 @@ import { computed, nextTick, ref } from 'vue'
  *   2026-10-16 用户定稿）；password 形态后缀为明文切换，同样不适用。
  * - disabled = true：禁用态。原生 disabled 会禁止选字（无法复制），故用 readonly 模拟；
  *   置灰只作用于输入框本体的文字与边框，label 与 hint 保持原色，内容可选中复制。
+ * - label / hint / showHint / required（2026-10-20 用户定稿）：底部 detail 行不再展示 hint
+ *   （样式收口 tokens.css「字段错误气泡」段）——hint 文案改挂 label 后问号图标的 tooltip，
+ *   showHint 开关控制图标显隐；required=true（规则含必填的字段由调用点标注）时 label 前红星；
+ *   错误消息经 #message 槽渲染为右上角气球徽标（每错一枚，悬停出红字 tooltip）。
  */
 const props = withDefaults(
   defineProps<{
@@ -34,9 +38,30 @@ const props = withDefaults(
     clear?: boolean
     /** 禁用态：readonly 模拟（可选中复制），外观对齐原生 disabled */
     disabled?: boolean
+    /** 字段 Label（顶部；红星/问号接管渲染时组件自绘，否则透传 Vuetify 原生） */
+    label?: string
+    /** 提示词文案（经问号图标 tooltip 展示，不再进底部 detail 行） */
+    hint?: string
+    /** 带提示词开关：true 且 hint 非空时 label 后显示问号图标，否则隐藏 */
+    showHint?: boolean
+    /** 必填标志（rules 含必填的字段由调用点标注）：label 前红星 */
+    required?: boolean
   }>(),
-  { type: 'text', prependIcon: undefined, appendIcon: undefined, clear: false, disabled: false },
+  {
+    type: 'text',
+    prependIcon: undefined,
+    appendIcon: undefined,
+    clear: false,
+    disabled: false,
+    label: undefined,
+    hint: undefined,
+    showHint: false,
+    required: false,
+  },
 )
+
+/** 是否接管 label 渲染（红星或问号任一需要即走自定义槽，否则保持 Vuetify 原生渲染） */
+const customLabel = computed(() => props.required || (props.showHint && !!props.hint))
 
 /** Vuetify 的 clear 动作把 model 回写为 null——在组件边界归一为空串，
     否则 null 流进调用方的 rules（v.trim() 抛 TypeError 中断校验、红 hint 不显示）与提交载荷 */
@@ -76,6 +101,7 @@ function onClearClick() {
     v-model="model"
     class="fv-text-input fv-text-input--comment"
     :class="{ 'fv-text-input--disabled': props.disabled }"
+    :label="label"
     variant="outlined"
     density="compact"
     rows="1"
@@ -87,13 +113,32 @@ function onClearClick() {
     :append-inner-icon="effectiveAppend"
     @keydown.enter="onCommentEnter"
     v-bind="$attrs"
-  />
+  >
+    <template v-if="customLabel" #label>
+      <span v-if="props.required" class="fv-field__required-star">*</span>
+      <span>{{ label }}</span>
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
+    <!-- 校验错误：右上角气球徽标（每条消息一枚，颜色/锚点配方在 tokens.css 字段气泡段），悬停出红字 tooltip -->
+    <template #message="{ message }">
+      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
+  </v-textarea>
   <v-text-field
     v-else
     ref="fieldRef"
     v-model="model"
     class="fv-text-input"
     :class="{ 'fv-text-input--disabled': props.disabled }"
+    :label="label"
     :type="isPwd ? (pwdVisible ? 'text' : 'password') : 'text'"
     :readonly="props.disabled"
     :aria-disabled="props.disabled || undefined"
@@ -104,7 +149,25 @@ function onClearClick() {
     @click:append-inner="isPwd && (pwdVisible = !pwdVisible)"
     @click:clear="onClearClick"
     v-bind="$attrs"
-  />
+  >
+    <template v-if="customLabel" #label>
+      <span v-if="props.required" class="fv-field__required-star">*</span>
+      <span>{{ label }}</span>
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
+    <!-- 校验错误：右上角气球徽标（每条消息一枚，颜色/锚点配方在 tokens.css 字段气泡段），悬停出红字 tooltip -->
+    <template #message="{ message }">
+      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
+        </template>
+      </v-tooltip>
+    </template>
+  </v-text-field>
 </template>
 
 <style scoped>

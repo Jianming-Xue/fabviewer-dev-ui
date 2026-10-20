@@ -18,8 +18,12 @@ import ChangeUserStateDialog from '../dialogs/ChangeUserStateDialog.vue'
 import EditUserRolePolicyDialog from '../dialogs/EditUserRolePolicyDialog.vue'
 import ResetPasswordDialog from '../dialogs/ResetPasswordDialog.vue'
 import UserViewDialog from '../dialogs/UserViewDialog.vue'
-import { fetchUsersPage, deleteUser } from '@/api/security-management/userRequest'
-import type { UserDto } from '@/api/security-management/userTypes'
+import {
+  fetchUsersPage,
+  deleteUser,
+} from '@/api/security-management/requests/userRequest'
+import { ensureRoleNames, ensurePolicyNames, roleNameOf, policyNameOf } from '@/api/security-management/rolePolicyNameCollection'
+import type { UserDto } from '@/api/security-management/types/userTypes'
 
 /**
  * 用户管理（模块 6 · 用户和安全，2026-10-18 首版）：上搜索卡片 + 下结果表格卡片（布局总纲同角色页）。
@@ -108,8 +112,22 @@ async function onSwitchChange({ item, value }: { item: UserDto; key: string; val
   toast.success(t('security.users.enabledUpdated'))
 }
 
-// ===== 分页列表 =====
-const rows = ref<UserDto[]>([])
+/* ===== 分页列表（挂载名翻译，用户定稿 2026-10-20）=====
+   后端用户接口只发 ID（roleIds/policyId）；本视图进页预载全局名称字典（rolePolicyNameCollection），
+   表格行经 computed 派生展示字段——字典刷新到达即自动重显名，无需重拉用户页 */
+interface UserRow extends UserDto {
+  roleNames: string[]
+  policyNameShow: string
+}
+function toRow(u: UserDto): UserRow {
+  return {
+    ...u,
+    roleNames: u.roleIds.map(roleNameOf).filter(Boolean),
+    policyNameShow: u.policyId ? policyNameOf(u.policyId) : '',
+  }
+}
+const users = ref<UserDto[]>([])
+const rows = computed<UserRow[]>(() => users.value.map(toRow))
 const pageIndex = ref(1)
 const pageSize = ref(10)
 const pageContent = ref<{
@@ -128,7 +146,7 @@ async function loadPage() {
       pageSize: pageSize.value,
       keyword: keyword.value,
     })
-    rows.value = res.data
+    users.value = res.data
     const totalPage = Math.max(1, Math.ceil(res.totalSize / res.pageSize))
     pageContent.value = {
       total: res.totalSize,
@@ -151,7 +169,12 @@ function search() {
 /** 翻页/改每页大小 → 重新加载（FvTable 的 v-model 驱动） */
 watch([pageIndex, pageSize], () => void loadPage())
 
-onMounted(loadPage)
+onMounted(() => {
+  // 进用户界面先查全局角色/策略名称字典并缓存（失败不拦列表加载）
+  void ensureRoleNames()
+  void ensurePolicyNames()
+  void loadPage()
+})
 
 /** 查看：只读展示弹窗（行数据即全量），不回收结果 */
 async function openViewer(user: UserDto) {
@@ -170,7 +193,7 @@ async function openEditor(user: UserDto) {
 }
 
 /** 新增（FvTable insert 回调）：落库由弹窗内完成（成功才关窗）；回显新行 + 计数 +1 */
-async function onInsertUser(): Promise<UserDto | null> {
+async function onInsertUser(): Promise<UserRow | null> {
   const saved = await openInteractiveDialog<Record<string, never>, UserDto | undefined>(
     CreateUserDialog,
     {},
@@ -179,7 +202,7 @@ async function onInsertUser(): Promise<UserDto | null> {
   toast.success(t('security.users.created'))
   if (pageContent.value)
     pageContent.value = { ...pageContent.value, total: pageContent.value.total + 1 }
-  return saved
+  return toRow(saved)
 }
 
 /** 角色和策略（More 菜单）：落库由弹窗内完成（成功才关窗），此处只 Toast + 重拉 */
@@ -205,7 +228,7 @@ async function openResetPwd(user: UserDto) {
 
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页） */
 async function remove(user: UserDto) {
-  if (!(await dialog.confirm(t('security.users.deleteConfirm')))) return
+  if (!(await dialog.confirm(t('security.users.deleteConfirm', { name: user.userName })))) return
   try {
     await deleteUser(user.userId)
     toast.success(t('security.users.deleted'))
@@ -281,20 +304,20 @@ async function remove(user: UserDto) {
             header-type="switch"
             :header-disabled="switchDisabled"
           />
-          <!-- 角色列：多值单元格（FvMultiValueCell，header-type="multiValue"，用户定稿 2026-10-19） -->
+          <!-- 角色列：多值单元格（ID 已经名称字典翻译为 roleNames，2026-10-20） -->
           <FvTableHeader
             :title="t('security.users.col.roles')"
-            data-key="roles"
+            data-key="roleNames"
             header-type="multiValue"
           />
           <FvTableHeader
             :title="t('security.users.col.policy')"
-            data-key="policyName"
+            data-key="policyNameShow"
             header-type="custom"
           >
             <template #default="{ item }">
               <span class="text-body-2 text-medium-emphasis">{{
-                (item as UserDto).policyName || t('security.users.defaultPolicy')
+                (item as UserRow).policyNameShow || t('security.users.defaultPolicy')
               }}</span>
             </template>
           </FvTableHeader>

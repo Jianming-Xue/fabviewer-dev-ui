@@ -3,7 +3,7 @@ import { zipSync, strToU8 } from 'fflate'
 import { ApiError } from '@/shared/api/errors'
 import { registerMock } from '@/shared/api/mock'
 
-import type { PageDto, SrvHangCfgDto, SrvHangCfgRo, CostBreakDownDto, HangEntryDto, RuleInfoDto, RuleSearchRo } from './types'
+import type { PageDto, SrvHangCfgDto, SrvHangCfgRo, CostBreakDownDto, HangEntryDto, RuleInfoDto, RuleSearchRo } from '../types/types'
 
 // ===== 可复现的种子随机（演示数据稳定，刷新不漂移） =====
 function mulberry32(seed: number): () => number {

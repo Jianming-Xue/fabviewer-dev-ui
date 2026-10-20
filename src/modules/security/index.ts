@@ -5,7 +5,7 @@ import enUS from './i18n/en-US'
 
 /**
  * 用户和安全管理（2026-10-15 新增）：用户管理 / 角色管理 / 登录策略管理。
- * 角色管理已实现（角色 ID/名称/描述/启用 + 功能控件权限树）；另两个功能占位。
+ * 三个功能均已实现（2026-10-20 登录策略管理页落地：全量列表 + 新增/编辑/删除）。
  */
 const securityModule: FvModule = {
   id: 'security',
@@ -45,7 +45,11 @@ const securityModule: FvModule = {
       url: '/security/login-policy',
       order: 30,
       component: () => import('./views/LoginPolicyView.vue'),
-      controls: [],
+      controls: [
+        { id: 'security.login-policy.new', key: 'security.loginPolicy.ctlNew', type: 'button' },
+        { id: 'security.login-policy.edit', key: 'security.loginPolicy.ctlEdit', type: 'button' },
+        { id: 'security.login-policy.delete', key: 'security.loginPolicy.ctlDelete', type: 'button' },
+      ],
     },
   ],
   messages: { 'zh-CN': zhCN, 'en-US': enUS },

@@ -3,9 +3,12 @@ import { ApiError } from '@/shared/api/errors'
 import { formatTxTime, getUiVersion, makeTxId } from '@/shared/utils/tx'
 import { useAuthStore } from '@/app/stores/auth'
 
-import config from './config'
+import config from '../config'
 
-import type { SecurityReplyDto } from './types'
+import type { SecurityReplyDto } from '../types/types'
+
+
+
 
 /**
  * security-management 服务私有请求层（2026-10-16 定稿）：
@@ -20,7 +23,7 @@ import type { SecurityReplyDto } from './types'
 const raw = createServiceRequest(config)
 
 /** 原始回复壳（交易头服务私有包装）：需直接读 code/success/errMsg 组合的场景用
- *  （如登录特殊口径——success=0 但 errMsg 携机器码即失败，见 ./authRequest） */
+ *  （如登录特殊口径——success=0 但 errMsg 携机器码即失败，见 ./requests） */
 export async function securityReply<T>(
   txName: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -53,3 +56,4 @@ export async function securityRequest<T>(
   }
   return envelope.contents
 }
+

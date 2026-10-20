@@ -46,8 +46,6 @@ html.vui-light {
   --vui-bg-container: #ffffff;
   --vui-bg-elevated: #ffffff;
   --vui-fill-alter: #eff2f4;
-  --vui-row-hover: #f5f7f8;
-  --vui-row-selected: #eaf4ef;
 
   --vui-primary: #2f7d5a;
   --vui-primary-hover: #3a9169;
@@ -107,8 +105,6 @@ html.vui-dark {
   --vui-bg-container: #141414;
   --vui-bg-elevated: #181818;
   --vui-fill-alter: #1e1e1e;
-  --vui-row-hover: #1e1e1e;
-  --vui-row-selected: #1d2c26;
 
   --vui-primary: #4caa84;
   --vui-primary-hover: #5fbc96;
@@ -248,7 +244,8 @@ html.vui-dark .vui-base-overlay .v-overlay__scrim {
 }
 
 /* ===== 全局交互基线（用户定稿 2026-10-14）：按钮 / 图标 / 菜单项悬停一律不变底色，
-   唯一点击反馈 = 水波纹（v-btn / v-list-item 默认自带 ripple）。表格行悬停属 §4.2 规范，不在此列 ===== */
+   唯一点击反馈 = 水波纹（v-btn / v-list-item 默认自带 ripple）。
+   2026-10-20 起表格行亦并入本基线（悬停不变底、选中=primary 10% 透明，见 main.css） ===== */
 .v-btn__overlay,
 .v-list-item__overlay,
 .v-list-item__underlay {
@@ -498,4 +495,123 @@ html.vui-light .v-application {
 }
 .vui-user-form-grid .fv-timer__btn {
   margin-left: auto;
+}
+
+/* ===== 字段间距规格（用户定稿 2026-10-20 五调：上 3px / 左右 3px / 下 7px）=====
+   FvTextInput/FvTextSelect/FvTimer 三控件同口径；盒内 padding 一律 0
+   （Vuetify padding 变量与图标容器全清零；__input 行归 compact 原生规则
+   min-height:36 + padding-block:0，盒高恒 36 不赘述）。
+   FvTimer 根盒同步外边距保同列盒缘对齐（CreateUserDialog 混排定稿 ≤2px 要求）。
+   comment 形态（textarea 108px 自带 8px 上内边距定稿）padding 豁免、仅吃外边距 */
+.fv-text-input,
+.fv-text-select,
+.fv-timer {
+  margin: 3px 3px 7px;
+}
+
+/* 字段纵列表单（纯堆叠 v-form 专用）：块级流下相邻 margin 会折叠（4+1→4px），
+   而弹窗栅格（grid row-gap 不折叠，4+4+1=9px）观感不一致——flex-column 天然禁止折叠，
+   补 row-gap 4px 后与 .vui-user-form-grid 完全同节奏（2026-10-20 定稿）。
+   用类不用全局 form 选择器：搜索条等 d-flex 横排 form 不受波及 */
+.vui-form-col {
+  display: flex;
+  flex-direction: column;
+  row-gap: 4px;
+}
+
+.fv-text-input,
+.fv-text-select {
+  --v-field-padding-start: 0px;
+  --v-field-padding-end: 0px;
+  --v-field-padding-top: 0px;
+  --v-field-padding-bottom: 0px;
+}
+
+.fv-text-input .v-field__prepend-inner,
+.fv-text-select .v-field__prepend-inner {
+  padding-inline-start: 0;
+}
+
+.fv-text-input .v-field__append-inner,
+.fv-text-select .v-field__append-inner {
+  padding-inline-end: 0;
+}
+
+.fv-text-input:not(.fv-text-input--comment) .v-field__input,
+.fv-text-select .v-field__input {
+  padding-block: 0 !important;
+}
+
+/* ===== 字段错误气泡 + 提示问号（FvTextInput / FvTextSelect 共用，2026-10-20 用户定稿） =====
+   口径：底部 hint/错误 detail 行不再占布局——
+   ① hint 文案改挂 label 后问号图标的 tooltip（组件 showHint 开关控制图标显隐）；
+   ② 出现校验错误时，detail 行整体绝对定位悬浮到控件右上角成气泡：
+      底=错误色 10% 混浮起色、文字=错误色 12px；无错误消息时整块隐藏（:has 门控） */
+.fv-text-input,
+.fv-text-select {
+  position: relative;
+}
+
+.fv-text-input > .v-input__details,
+.fv-text-select > .v-input__details {
+  display: none;
+  position: absolute;
+  /* Vuetify 给 details 设了 grid-area:messages——.v-input 网格容器里绝对定位子元的
+     包含块会被收缩到消息行（贴底），破坏右上角锚定；归 auto 以整盒为包含块 */
+  grid-area: auto;
+  /* 徽标右下角=field 右上角：top=24px 即 label 区高度（.v-text-field/.v-select 的
+     padding-top，两值联动改），整体上移一个自身高度；横向零偏移不悬出右缘 */
+  top: 24px;
+  right: 0;
+  z-index: 6;
+  min-height: 0;
+  transform: translate(0, -100%);
+  max-width: 280px;
+}
+
+/* 有错误（#message 槽渲染出徽标）才显示；多条消息=并排多枚徽标，各自带 tooltip */
+.fv-text-input > .v-input__details:has(.v-messages__message),
+.fv-text-select > .v-input__details:has(.v-messages__message) {
+  display: flex;
+  gap: 4px;
+}
+
+/* 错误徽标（用户定稿 2026-10-20 由文字气泡改版）：气球/泡状圆徽——
+   底色沿用错误色 10% 混浮起色配方不变、仍在右上角；悬停 tooltip 显错误信息 */
+.fv-field__err-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--vui-error) 10%, var(--vui-bg-elevated));
+  color: var(--vui-error);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--vui-text) 18%, transparent);
+  flex: 0 0 auto;
+}
+
+/* tooltip 错误信息红字：vui-table-tip 深底上走亮红档（正文错误色压深底对比不足，
+   同表格状态文字 --vui-tip-* 口径）；双类特异度压过 .vui-table-tip 的白字 */
+.vui-table-tip.vui-field-err-tip {
+  color: var(--vui-tip-error);
+}
+
+/* 必填红星（label 前，Element 风）：错误色 */
+.fv-field__required-star {
+  margin-right: 2px;
+  color: var(--vui-error);
+}
+
+/* label 后提示问号：次要文字色、光标求助态、基线微降对齐；
+   Vuetify 的 .v-field-label 整块 pointer-events:none（点击穿透聚焦），
+   图标必须显式恢复 auto 才能接收 hover（tooltip 激活） */
+.fv-field__hint-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: -2px;
+  color: var(--vui-text-secondary);
+  cursor: help;
+  pointer-events: auto;
 }

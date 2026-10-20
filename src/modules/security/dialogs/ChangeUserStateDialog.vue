@@ -5,8 +5,11 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
-import { setUserEnabled } from '@/api/security-management/userRequest'
-import type { UserDto, UserStateRo } from '@/api/security-management/userTypes'
+import { setUserEnabled } from '@/api/security-management/requests/userRequest'
+import type {
+  UserDto,
+  UserStateRo,
+} from '@/api/security-management/types/userTypes'
 
 /**
  * 变更启用状态弹窗（经 openInteractiveDialog 打开，2026-10-19 改造：表格开关点击不再即时提交，
@@ -71,6 +74,7 @@ async function save() {
         type="comment"
         :label="t('security.users.form.remark')"
         :rules="[rules.required]"
+        required
         maxlength="200"
       />
     </v-form>

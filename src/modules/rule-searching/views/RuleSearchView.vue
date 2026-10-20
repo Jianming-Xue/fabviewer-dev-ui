@@ -12,7 +12,7 @@ import ResultTable from '../components/ResultTable.vue'
 import HangDialog from '../dialogs/HangDialog.vue'
 import RuleLogDialog from '../dialogs/RuleLogDialog.vue'
 import { buildResultColumns, cellText } from '../components/resultColumns'
-import { downloadFullLog } from '@/api/log-service/ruleInfo'
+import { downloadFullLog } from '@/api/log-service/requests/ruleInfo'
 import { useSearchStore } from '../stores/search'
 
 const { t } = useI18n()

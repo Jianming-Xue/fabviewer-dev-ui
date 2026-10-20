@@ -1,9 +1,9 @@
 import { registerMock } from '@/shared/api/mock'
 
-import { BUILTIN_ROLE_ID } from './roleTypes'
+import { BUILTIN_ROLE_ID } from '../types/roleTypes'
 
-import type { AssignRolePermissionRo, RoleDto, RoleRo } from './roleTypes'
-import type { PageDto, SecurityReplyDto } from './types'
+import type { AssignRolePermissionRo, RoleDto, RoleNameDto, RoleRo } from '../types/roleTypes'
+import type { PageDto, SecurityReplyDto } from '../types/types'
 
 /**
  * security-management 服务 Mock（2026-10-17 后端口径）：出参统一壳
@@ -13,9 +13,9 @@ import type { PageDto, SecurityReplyDto } from './types'
  */
 const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
-
-/** 内存态角色集（业务命名真实；权限串遵循 Function:/Control: 前端规则） */
-/** 导出给用户 Mock 做 roleId→roleName 换算（同服务内存态互查，仅 Mock 层） */
+/** 内存态角色集（业务命名真实；权限串遵循 Function:/Control: 前端规则）。
+ *  导出供名称字典接口活引用（rows 原地变更即时反映）；用户 Mock 只存 roleId，
+ *  ID→Name 翻译在前端 ./rolePolicyNameCollection（2026-10-20 定稿） */
 export const rows: RoleDto[] = [
   {
     roleId: BUILTIN_ROLE_ID,
@@ -222,6 +222,11 @@ registerMock('POST', '/security-management/api/v1/roles/permissions', ({ body })
   rows[rows.indexOf(row)] = { ...row, permissions: [...(ro.permissions ?? [])] }
   return ok(null)
 })
+
+/** 全局角色名称字典（活引用 rows：增删改名即时反映到用户侧下拉/缓存刷新） */
+registerMock('GET', '/security-management/api/v1/roles/name/list', () =>
+  ok<RoleNameDto[]>(rows.map((r) => ({ roleId: r.roleId, roleName: r.roleName }))),
+)
 
 /** 是否启用：URL query 传参，enabled 严格 0/1；内置角色禁停用 */
 registerMock('POST', '/security-management/api/v1/roles/enabled', ({ params }) => {

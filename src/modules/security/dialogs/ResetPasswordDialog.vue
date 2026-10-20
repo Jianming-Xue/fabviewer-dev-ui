@@ -5,8 +5,11 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
-import { resetUserPassword } from '@/api/security-management/userRequest'
-import type { ResetPasswordRo, UserDto } from '@/api/security-management/userTypes'
+import { resetUserPassword } from '@/api/security-management/requests/userRequest'
+import type {
+  ResetPasswordRo,
+  UserDto,
+} from '@/api/security-management/types/userTypes'
 
 /**
  * 重置密码弹窗（经 openInteractiveDialog 打开，2026-10-19 用户表格 More 菜单「重置密码」入口）：
@@ -67,6 +70,7 @@ async function save() {
         type="password"
         :label="t('security.users.form.newPassword')"
         :rules="[rules.required]"
+        required
         prepend-icon="fas fa-key"
         autocomplete="new-password"
       />

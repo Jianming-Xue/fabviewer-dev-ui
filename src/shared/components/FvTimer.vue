@@ -24,7 +24,8 @@ import { useI18n } from 'vue-i18n'
  * - 两位段（月/日/时/分/秒）唯一解时自动补全两位并跳格（如分输 '6' → '06'）；
  *   年不补零，离开时不足 4 位或越界 → 自动修正为当年；
  * - 尾部图标统一 fas fa-clock，颜色随字段文本色（与 FvTextInput 字段图标一致）；
- * - errorMessages（外部跨字段校验，与内部红提示同消息行、红描边）/ hint（弱化提示占同一行）/
+ * - errorMessages（外部跨字段校验，与内部红提示同走右上角错误气泡、红描边）/ hint+showHint
+ *   （2026-10-20 与 FvTextInput 统一：提示词经 label 后问号图标 tooltip，底部消息行废止）/
  *   clearable+clear 事件（清空全部段并通知父级联动默认值）——供检索表单等场景替换自建时间控件（2026-10-19）。
  * 表格展示变体 FvTimerCell 待验收后派生。
  */
@@ -52,8 +53,10 @@ const props = withDefaults(
     confirmDisabled?: boolean
     /** 外部校验消息（跨字段规则由父级算好传入，如 MES 检索"结束须晚于开始"；与内部红提示合并显示） */
     errorMessages?: string | string[]
-    /** 弱化提示文案（无错误时占同一消息行，同 v-text-field hint 口径） */
+    /** 提示词文案（2026-10-20 改：经 label 后问号图标 tooltip 展示，不再占底部行——同 FvTextInput 口径） */
     hint?: string
+    /** 带提示词开关：true 且 hint 非空时 label 后显示问号图标，否则隐藏 */
+    showHint?: boolean
     /** 显示清除钮（有内容时）；点击清空全部段并触发 clear 事件供父级联动默认值 */
     clearable?: boolean
   }>(),
@@ -67,6 +70,7 @@ const props = withDefaults(
     confirmDisabled: false,
     errorMessages: undefined,
     hint: '',
+    showHint: false,
     clearable: false,
   },
 )
@@ -277,7 +281,7 @@ const extErr = computed(() =>
     .filter((x): x is string => !!x)
     .join(' · '),
 )
-/** 消息行与红描边统一取「内部错误优先，其次外部消息」 */
+/** 错误气泡与红描边统一取「内部错误优先，其次外部消息」（2026-10-20：底部消息行废止改气泡，hint 改问号 tooltip） */
 const shownError = computed(() => error.value || extErr.value)
 const hasContent = computed(() => activeSegs.value.some((s) => (segs[s.key] ?? '') !== ''))
 function onClear() {
@@ -519,8 +523,24 @@ watch(menu, (open) => {
 
 <template>
   <div class="fv-timer" :class="{ 'fv-timer--disabled': props.disabled }">
-    <div v-if="props.label" class="fv-timer__label">{{ props.label }}</div>
+    <div v-if="props.label" class="fv-timer__label">
+      {{ props.label }}
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+        <template #activator="{ props: tipProps }">
+          <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
+        </template>
+      </v-tooltip>
+    </div>
     <div class="fv-timer__line">
+      <!-- 校验错误徽标（内部错误优先、其次外部消息合并一枚）：右下角贴盒右上角，
+           悬停出红字 tooltip；徽标/tooltip 样式在 tokens.css 字段气泡段 -->
+      <div v-if="shownError" class="fv-timer__bubble">
+        <v-tooltip :text="shownError" content-class="vui-table-tip vui-field-err-tip">
+          <template #activator="{ props: tipProps }">
+            <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
+          </template>
+        </v-tooltip>
+      </div>
       <!-- 分段输入框（点击聚焦首个未填段；键盘逐段编辑；尾部图标开面板，规格同 FvTextInput 字段图标 15px） -->
       <div
         ref="boxEl"
@@ -709,15 +729,6 @@ watch(menu, (open) => {
         </v-menu>
       </div>
     </div>
-    <div
-      class="fv-timer__msg"
-      :class="{
-        'fv-timer__msg--on': !!shownError,
-        'fv-timer__msg--hint': !shownError && !!props.hint,
-      }"
-    >
-      {{ shownError || props.hint || ' ' }}
-    </div>
   </div>
 </template>
 
@@ -740,6 +751,16 @@ watch(menu, (open) => {
   display: flex;
   align-items: center;
   gap: 4px;
+  position: relative; /* 错误气泡定位锚 */
+}
+
+/* 错误徽标锚点（本体视觉=fv-field__err-badge 全局类）：右下角=盒右上角（2026-10-20 由文字气泡改版） */
+.fv-timer__bubble {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(0, -100%);
+  z-index: 6;
 }
 
 .fv-timer__box {
@@ -747,7 +768,7 @@ watch(menu, (open) => {
   align-items: center;
   box-sizing: border-box; /* 项目无全局 border-box：36px 必须含 1px 上下边框（对齐字段实测高 36） */
   height: 36px;
-  padding: 0 10px;
+  padding: 0; /* 内边距归零；间距改根组件外边距 10px/3px（tokens.css 字段间距规格，2026-10-20 三调） */
   /* 字段描边真值（实测 .v-field__outline__start：--vui-text 87% × 元素透明度 38% ≈ 33%） */
   border: 1px solid color-mix(in srgb, var(--vui-text) 33%, transparent);
   border-radius: 6px;
@@ -793,21 +814,6 @@ watch(menu, (open) => {
   user-select: none;
 }
 
-.fv-timer__msg {
-  font-size: 12px;
-  line-height: 14px;
-  min-height: 14px;
-  color: transparent;
-}
-
-.fv-timer__msg--on {
-  color: var(--vui-error);
-}
-
-/* hint 态：弱化灰（同 v-text-field persistent-hint 观感） */
-.fv-timer__msg--hint {
-  color: var(--vui-text-secondary);
-}
 
 /* 清除钮：紧随段后、开面板时钟钮之前，弱化色 hover 提亮 */
 .fv-timer__clear {
@@ -838,6 +844,9 @@ watch(menu, (open) => {
   display: inline-flex;
   align-items: center;
   margin-left: 6px;
+  /* 末尾图标右距对齐 FvTextInput 右侧图标：字段 .v-field 自带 padding-inline 12px（图标距右框 12），
+     本盒为 1px 真实边框 → 留 11px（11+1=12，外缘测量一致，2026-10-20 实测校准） */
+  margin-right: 11px;
   color: inherit;
   cursor: pointer;
 }

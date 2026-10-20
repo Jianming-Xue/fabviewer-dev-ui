@@ -1,92 +1,94 @@
 import { registerMock } from '@/shared/api/mock'
 
-import { policies } from './policyMock'
-import { rows as roleRows } from './roleMock'
-
-import type { PageDto, SecurityReplyDto } from './types'
-import type { CreateUserRo, ResetPasswordRo, UserDto, UserRo, UserStateRo } from './userTypes'
-
-/** 角色/策略 id → 名称换算（挂载名与 USER 种子 policyName 同幅；id 查不到原名兜底） */
-const roleNamesOf = (ids: string[]) =>
-  (ids ?? []).map((id) => roleRows.find((r) => r.roleId === id)?.roleName ?? id)
-const policyNameOf = (id: string) => policies.find((p) => p.policyId === id)?.policyName ?? ''
-/** 'YYYY-MM-DD' → 当日 00:00:00（激活）；空串原样 */
-const dayStart = (d: string) => (d ? `${d} 00:00:00` : '')
-/** 'YYYY-MM-DD' → 当日 23:59:59（到期含当天）；空串原样 = 永不过期 */
-const dayEnd = (d: string) => (d ? `${d} 23:59:59` : '')
+import type { PageDto, SecurityReplyDto } from '../types/types'
+import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口 Mock（2026-10-18，壳/分页/URL query 口径同角色）：
+ * 挂载一律存/发 ID（roleIds/policyId，用户定稿 2026-10-20）——名称翻译不再由本 Mock 跨域换算，
+ * 前端名称字典见 ../rolePolicyNameCollection；种子 ID 与 roleMock/policyMock 种子对齐。
  * keyword 模糊匹配 userName/nickName/email；userName 唯一（重复返回业务失败，演练前端失败分支）；
  * userId 由后端生成（Mock 以时间戳 36 进制模拟）；布尔一律 1/0，日期为 'YYYY-MM-DD HH:mm:ss' 串，
  * 空串 = 永不过期 / 未发生，-1 = 有效期不限。
  */
 const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
-
 const p2 = (n: number) => String(n).padStart(2, '0')
 const fmtTime = (d: Date) =>
   `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
+const dayStart = (d: string) => (d ? `${d} 00:00:00` : '')
+/** 'YYYY-MM-DD' → 当日 23:59:59（到期含当天）；空串原样 = 永不过期 */
+const dayEnd = (d: string) => (d ? `${d} 23:59:59` : '')
+
+/**
+ * 用户接口 Mock（2026-10-18，壳/分页/URL query 口径同角色）：
+ * 挂载一律存/发 ID（roleIds/policyId，用户定稿 2026-10-20）——名称翻译不再由本 Mock 跨域换算，
+ * 前端名称字典见 ./rolePolicyNameCollection；种子 ID 与 roleMock/policyMock 种子对齐。
+ * keyword 模糊匹配 userName/nickName/email；userName 唯一（重复返回业务失败，演练前端失败分支）；
+ * userId 由后端生成（Mock 以时间戳 36 进制模拟）；布尔一律 1/0，日期为 'YYYY-MM-DD HH:mm:ss' 串，
+ * 空串 = 永不过期 / 未发生，-1 = 有效期不限。
+ */
+
 
 /** 内存态用户集（业务命名真实，10 条 = pageSize 10 下两页；含永不过期/已过期/停用/未登录等演示形态） */
 const rows: UserDto[] = [
   {
     userId: 'U0001', userName: 'admin', nickName: '系统管理员', email: 'admin@fabcorp.example', phoneNumber: '138-0000-0001',
-    enabled: 1, roles: ['系统管理员'], policyName: '',
+    avatar: '', enabled: 1, roleIds: ['ADMIN'], policyId: '',
     createdAt: '2025-01-15 09:00:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-08-01 10:00:00', passwordExpiresAt: '',
     lastLoginTime: '2026-10-17 08:55:12', lastLoginIp: '10.20.33.101', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userId: 'U0002', userName: 'zhang.xiaofeng', nickName: '张小峰', email: 'zhang.xf@fabcorp.example', phoneNumber: '138-0000-0002',
-    enabled: 1, roles: ['运维工程师'], policyName: '标准策略',
+    avatar: '', enabled: 1, roleIds: ['OPR-ENGINEER'], policyId: 'P001',
     createdAt: '2025-06-03 10:30:00', accountActiveAt: '', accountExpiresAt: '2027-06-02 23:59:59', passwordChangedAt: '2026-08-25 09:12:00', passwordExpiresAt: '2026-11-23 09:12:00',
     lastLoginTime: '2026-10-16 20:41:33', lastLoginIp: '10.20.33.121', passwordValidDays: 365, accountValidDays: 365,
   },
   {
     userId: 'U0003', userName: 'li.na', nickName: '李娜', email: 'li.na@fabcorp.example', phoneNumber: '138-0000-0003',
-    enabled: 0, roles: ['只读用户'], policyName: '',
+    avatar: '', enabled: 0, roleIds: ['VIEWER'], policyId: '',
     createdAt: '2025-09-18 14:05:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-03-02 11:20:00', passwordExpiresAt: '',
     lastLoginTime: '2026-09-30 17:26:40', lastLoginIp: '10.20.33.88', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userId: 'U0004', userName: 'wang.jianguo', nickName: '王建国', email: '', phoneNumber: '138-0000-0004',
-    enabled: 1, roles: ['审计角色'], policyName: '标准策略',
+    avatar: '', enabled: 1, roleIds: ['AUDITOR'], policyId: 'P001',
     createdAt: '2024-10-01 08:00:00', accountActiveAt: '', accountExpiresAt: '2026-10-01 00:00:00', passwordChangedAt: '2026-06-11 15:30:00', passwordExpiresAt: '2026-12-15 15:30:00',
     lastLoginTime: '2026-09-28 09:02:11', lastLoginIp: '10.20.34.17', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userId: 'U0005', userName: 'chen.siya', nickName: '陈思雅', email: 'chen.sy@fabcorp.example', phoneNumber: '',
-    enabled: 1, roles: ['设备工程师', '工艺工程师'], policyName: '强策略',
+    avatar: '', enabled: 1, roleIds: ['EQUIP-ENGINEER', 'PROCESS-ENGINEER'], policyId: 'P002',
     createdAt: '2026-02-14 13:45:00', accountActiveAt: '', accountExpiresAt: '2026-08-13 13:45:00', passwordChangedAt: '2026-09-20 10:05:00', passwordExpiresAt: '2026-11-19 10:05:00',
     lastLoginTime: '2026-10-17 07:58:03', lastLoginIp: '10.20.35.62', passwordValidDays: 60, accountValidDays: 180,
   },
   {
     userId: 'U0006', userName: 'liu.dehua', nickName: '刘德华', email: 'liu.dh@fabcorp.example', phoneNumber: '138-0000-0006',
-    enabled: 1, roles: ['维护技术员'], policyName: '',
+    avatar: '', enabled: 1, roleIds: ['MAINT-TECH'], policyId: '',
     createdAt: '2026-07-01 09:30:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-07-01 09:30:00', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userId: 'U0007', userName: 'zhao.min', nickName: '赵敏', email: 'zhao.min@fabcorp.example', phoneNumber: '138-0000-0007',
-    enabled: 0, roles: ['工艺工程师'], policyName: '标准策略',
+    avatar: '', enabled: 0, roleIds: ['PROCESS-ENGINEER'], policyId: 'P001',
     createdAt: '2025-03-22 16:20:00', accountActiveAt: '', accountExpiresAt: '2027-03-21 23:59:59', passwordChangedAt: '2025-12-30 14:10:00', passwordExpiresAt: '2026-12-24 14:10:00',
     lastLoginTime: '2026-08-15 11:47:29', lastLoginIp: '10.20.33.140', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userId: 'U0008', userName: 'sunlei.etl', nickName: '孙磊', email: 'sun.lei@fabcorp.example', phoneNumber: '138-0000-0008',
-    enabled: 1, roles: ['ETL 操作员'], policyName: '',
+    avatar: '', enabled: 1, roleIds: ['ETL-OPERATOR'], policyId: '',
     createdAt: '2025-11-08 10:00:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-10-10 09:00:00', passwordExpiresAt: '',
     lastLoginTime: '2026-10-17 08:30:55', lastLoginIp: '10.20.36.9', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userId: 'U0009', userName: 'zhou.yajing', nickName: '周雅静', email: '', phoneNumber: '',
-    enabled: 1, roles: [], policyName: '',
+    avatar: '', enabled: 1, roleIds: [], policyId: '',
     createdAt: '2026-10-15 15:20:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-10-15 15:20:00', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userId: 'U0010', userName: 'wu.qiang', nickName: '吴强', email: 'wu.qiang@fabcorp.example', phoneNumber: '138-0000-0010',
-    enabled: 1, roles: ['质量查看员'], policyName: '强策略',
+    avatar: '', enabled: 1, roleIds: ['QA-VIEWER'], policyId: 'P002',
     createdAt: '2026-05-06 11:11:00', accountActiveAt: '', accountExpiresAt: '2026-11-02 11:11:00', passwordChangedAt: '2026-09-01 08:45:00', passwordExpiresAt: '2026-10-31 08:45:00',
     lastLoginTime: '2026-10-16 16:20:07', lastLoginIp: '10.20.33.203', passwordValidDays: 60, accountValidDays: 180,
   },
@@ -122,9 +124,10 @@ registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
     nickName: ro.nickName?.trim() ?? '',
     email: ro.email?.trim() ?? '',
     phoneNumber: ro.phoneNumber?.trim() ?? '',
+    avatar: '',
     enabled: ro.enabled === 0 ? 0 : 1,
-    roles: roleNamesOf(ro.roleIds),
-    policyName: policyNameOf(ro.policyId ?? ''),
+    roleIds: [...(ro.roleIds ?? [])],
+    policyId: ro.policyId ?? '',
     createdAt: fmtTime(now),
     accountActiveAt: activeAt,
     accountExpiresAt: dayEnd(ro.accountExpiresAt ?? ''),
@@ -155,8 +158,8 @@ registerMock('PUT', '/security-management/api/v1/users', ({ body }) => {
     ...(ro.email !== undefined ? { email: ro.email.trim() } : {}),
     ...(ro.phoneNumber !== undefined ? { phoneNumber: ro.phoneNumber.trim() } : {}),
     ...(ro.enabled !== undefined ? { enabled: ro.enabled === 0 ? 0 : 1 } : {}),
-    ...(ro.roleIds !== undefined ? { roles: roleNamesOf(ro.roleIds) } : {}),
-    ...(ro.policyId !== undefined ? { policyName: policyNameOf(ro.policyId) } : {}),
+    ...(ro.roleIds !== undefined ? { roleIds: [...ro.roleIds] } : {}),
+    ...(ro.policyId !== undefined ? { policyId: ro.policyId } : {}),
     ...(ro.accountExpiresAt !== undefined ? { accountExpiresAt: dayEnd(ro.accountExpiresAt) } : {}),
     passwordValidDays: ro.passwordValidDays ?? row.passwordValidDays,
     accountValidDays: ro.accountValidDays ?? row.accountValidDays,
@@ -172,6 +175,23 @@ registerMock('PUT', '/security-management/api/v1/users/password', ({ body }) => 
   if (!row) return fail('用户不存在')
   if (!ro?.password) return fail('密码不能为空')
   rows[rows.indexOf(row)] = { ...row, passwordChangedAt: fmtTime(new Date()) }
+  return ok(null)
+})
+
+/** 单属性修改（2026-10-20 用户信息弹窗行内编辑）：白名单 attName 三选，
+ *  按 body.userId（登录用户名）定位当前用户（显式入参口径，同 change_password） */
+registerMock('POST', '/security-management/api/v1/users/attribute', ({ body }) => {
+  const ro = body as unknown as UserAttributeRo
+  const userName = String(ro?.userId ?? '').trim()
+  const row = rows.find((r) => r.userName.toLowerCase() === userName.toLowerCase())
+  if (!row) return fail('用户不存在')
+  if (ro?.attName !== 'nickName' && ro?.attName !== 'email' && ro?.attName !== 'phoneNumber')
+    return fail('不支持的属性名')
+  const value = String(ro.attValue ?? '').trim()
+  if (ro.attName === 'nickName' && value.length > 30) return fail('昵称不超过 30 个字符')
+  if (ro.attName === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return fail('邮箱格式不正确')
+  if (ro.attName === 'phoneNumber' && value && !/^[\d-]*$/.test(value)) return fail('电话仅允许数字与连字符')
+  rows[rows.indexOf(row)] = { ...row, [ro.attName]: value }
   return ok(null)
 })
 

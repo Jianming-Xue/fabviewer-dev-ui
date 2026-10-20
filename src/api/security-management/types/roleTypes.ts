@@ -5,7 +5,6 @@
  */
 import type { PageRo } from './types'
 
-/** 角色返回对象：布尔一律数字 1/0（后端口径） */
 export interface RoleDto {
   roleId: string
   roleName: string
@@ -31,6 +30,13 @@ export interface RoleRo {
 export interface AssignRolePermissionRo {
   roleId: string
   permissions: string[]
+}
+
+/** 名称字典项（GET /roles/name/list 出参，用户定稿 2026-10-20）：
+ *  用户侧只存/传 roleId，展示名由前端经该全局字典 ID→Name 翻译并缓存 */
+export interface RoleNameDto {
+  roleId: string
+  roleName: string
 }
 
 /** 内置角色编码（种子数据）：后端不再下发 builtin 标志，前端按此常量识别——

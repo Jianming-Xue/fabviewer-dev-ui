@@ -1,7 +1,7 @@
 import { securityRequest } from './request'
 
-import type { PageDto } from './types'
-import type { AssignRolePermissionRo, RoleDto, RolePageRo, RoleRo } from './roleTypes'
+import type { PageDto } from '../types/types'
+import type { AssignRolePermissionRo, RoleDto, RoleNameDto, RolePageRo, RoleRo } from '../types/roleTypes'
 
 /**
  * 角色接口（security-management 服务，前缀 /api/v1/roles，2026-10-17 后端口径）：
@@ -44,4 +44,10 @@ export function assignRolePermissions(ro: AssignRolePermissionRo): Promise<null>
 /** 6 · 是否启用（URL query：enabled 严格 0/1——1=启用、0=停用；调用方由布尔换算后传入） */
 export function setRoleEnabled(roleId: string, enabled: 0 | 1): Promise<null> {
   return securityRequest<null>('setRoleEnabled', 'POST', '/api/v1/roles/enabled', { params: { roleId, enabled }, loading: true })
+}
+
+/** 7 · 全局角色名称字典（用户定稿 2026-10-20：用户侧只存 ID，前端进入用户界面预载缓存、
+ *  点开角色下拉时重拉刷新；出参仅 ID+Name，不分页） */
+export function fetchRoleNames(): Promise<RoleNameDto[]> {
+  return securityRequest<RoleNameDto[]>('fetchRoleNames', 'GET', '/api/v1/roles/name/list')
 }

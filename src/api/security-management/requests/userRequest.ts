@@ -1,7 +1,7 @@
 import { securityRequest } from './request'
 
-import type { PageDto } from './types'
-import type { CreateUserRo, ResetPasswordRo, UserDto, UserPageRo, UserRo, UserStateRo } from './userTypes'
+import type { PageDto } from '../types/types'
+import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserPageRo, UserRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口（security-management 服务，前缀 /api/v1/users，2026-10-18 首版，文件分类同角色口径）：
@@ -45,4 +45,10 @@ export function deleteUser(userId: string): Promise<null> {
  *    ChangeUserStateDialog 录备注后提交；enabled 严格 0/1 口径不变） */
 export function setUserEnabled(ro: UserStateRo): Promise<null> {
   return securityRequest<null>('setUserEnabled', 'POST', '/api/v1/users/enabled', { body: ro, loading: true })
+}
+
+/** 6 · 单属性修改（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑昵称/邮箱/电话；
+ *    入参 UserAttributeRo{userId=登录用户名, attName, attValue}，同改密接口显式带身份口径） */
+export function updateUserAttribute(ro: UserAttributeRo): Promise<null> {
+  return securityRequest<null>('updateUserAttribute', 'POST', '/api/v1/users/attribute', { body: ro, loading: true })
 }

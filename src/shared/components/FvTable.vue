@@ -20,8 +20,9 @@ import FvMultiValueCell from './FvMultiValueCell.vue'
  * - 新增：`insert` 传回调则表格右上角显示 FvNewButton；回调返回新行 → 回显到第一行
  *   并触发 @inserted（data 变更会重置本地回显）
  * - 空数据：仅显示表头（2026-10-16 改，原恒显 5 空白行；Vuetify no-data 行一并隐藏）
- * - 选择：`selectMode` = 'single'（点击行选中：整行文字主题色 + 首格左侧 5px 主题色竖条，
- *   不显示复选框列）/ 'multiple'（第一列固定复选框）。选中结果经 v-model:selected 回流
+ * - 选择：`selectMode` = 'single'（点击行选中：整行淡主题色底 + 文字随明暗主题联动 +
+ *   首格左侧 5px 主题色竖条，操作列底色不变；不显示复选框列）/ 'multiple'（第一列固定复选框）。
+ *   选中结果经 v-model:selected 回流
  *   （single 为 Row | null，multiple 为 Row[]）
  * - 翻页/改每页大小经 v-model:page-index / v-model:page-size 回流，由调用方重新取数
  */
@@ -366,7 +367,6 @@ onBeforeUnmount(() => {
       :loading="loading"
       :items-per-page="-1"
       hide-default-footer
-      hover
       density="comfortable"
       class="vui-table--comfortable"
       no-data-text=""
@@ -770,9 +770,12 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--vui-text) 14%, var(--vui-bg-container));
 }
 
-/* 单选选中行：整行文字主题色 + 首格左侧 5px 主题色竖条（inset 阴影实现，不占布局） */
+/* 单选选中行（2026-10-20 改版，同日与侧栏菜单统一）：整行淡主题色底——与菜单选中同配方
+   primary 10% 透明叠于容器底（明暗双主题自适应）；文字回归常规主题令牌色（随深浅联动，
+   不再强制主题绿）；首格保留 5px 主题色竖条；悬停不变底色（见 main.css 全局段）；
+   操作列=sticky 末列，自带不透明微异底色，天然不随行底色染色（用户定稿：action 列底色不变） */
 .fv-table :deep(tr.fv-row--selected) {
-  color: var(--vui-primary);
+  background: color-mix(in srgb, var(--vui-primary) 10%, transparent);
 }
 
 .fv-table :deep(tr.fv-row--selected td:first-child) {

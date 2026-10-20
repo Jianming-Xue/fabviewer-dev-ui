@@ -9,15 +9,19 @@ import FvTextSelect from '@/shared/components/FvTextSelect.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
 import { showOpError } from '@/shared/api/opError'
-import { createUser } from '@/api/security-management/userRequest'
-import { fetchRolesPage } from '@/api/security-management/roleRequest'
-import { fetchLoginPolicies } from '@/api/security-management/policyRequest'
-import type { CreateUserRo, UserDto } from '@/api/security-management/userTypes'
-
-interface SelectOption {
-  title: string
-  value: string
-}
+import { createUser } from '@/api/security-management/requests/userRequest'
+import {
+  roleOptions,
+  policyOptions,
+  ensureRoleNames,
+  ensurePolicyNames,
+  knownRoleIds,
+  knownPolicyIds,
+} from '@/api/security-management/rolePolicyNameCollection'
+import type {
+  CreateUserRo,
+  UserDto,
+} from '@/api/security-management/types/userTypes'
 
 /**
  * 新增用户弹窗（经 openInteractiveDialog 打开，2026-10-19 自 UserEditDialog 拆分；
@@ -71,26 +75,26 @@ const rules = {
     !v.trim() || DIGITS_PATTERN.test(v.trim()) || t('security.users.form.phoneDigitsOnly'),
 }
 
-/* ===== 选项数据（用户定稿 2026-10-19）：角色=分页滚动加载（FvTextSelect page-loader，
-   默认 10 笔/页、触底翻页、装满 totalSize 自动停）；策略=全量列表（量小不分页） ===== */
-async function rolesLoader(pageIndex: number, pageSize: number) {
-  try {
-    const p = await fetchRolesPage({ pageIndex, pageSize })
-    return { items: p.data.map((r) => ({ title: r.roleName, value: r.roleId })), totalSize: p.totalSize }
-  } catch (e) {
-    showOpError(e)
-    throw e // 组件保留已有页，下次触底可重试
-  }
-}
-const policyOptions = ref<SelectOption[]>([])
-onMounted(async () => {
-  try {
-    const policies = await fetchLoginPolicies()
-    policyOptions.value = policies.map((p) => ({ title: p.policyName, value: p.policyId }))
-  } catch (e) {
-    showOpError(e) // 选项拉取失败：弹窗可用但下拉为空，错误已由全局呈现
-  }
+/* ===== 选项数据（用户定稿 2026-10-20 改名称字典制）：角色/策略下拉一律消费 rolePolicyNameCollection 的
+   name/list 全局缓存（进入用户页已预载，此处兜底再保）；点开下拉→强刷缓存→
+   按新字典清理查无此名的已选 ID：角色逐个清、策略整体清空 ===== */
+onMounted(() => {
+  void ensureRoleNames()
+  void ensurePolicyNames()
 })
+
+function onRolesOpen() {
+  void ensureRoleNames(true).then(() => {
+    const known = knownRoleIds()
+    const kept = form.roleIds.filter((id) => known.has(id))
+    if (kept.length !== form.roleIds.length) form.roleIds = kept
+  })
+}
+function onPolicyOpen() {
+  void ensurePolicyNames(true).then(() => {
+    if (form.policyId && !knownPolicyIds().has(form.policyId)) form.policyId = ''
+  })
+}
 
 /* FvTextSelect model 为联合类型（单/多选共用），表单窄化包装 */
 const roleModel = computed({
@@ -159,7 +163,8 @@ async function save() {
         :label="t('security.users.form.userName')"
         :rules="[rules.required, rules.userName]"
         :hint="t('security.users.form.userNameHint')"
-        persistent-hint
+        show-hint
+        required
         prepend-icon="fas fa-user"
         maxlength="30"
         autocomplete="off"
@@ -175,6 +180,7 @@ async function save() {
         type="password"
         :label="t('security.users.form.password')"
         :rules="[rules.required]"
+        required
         autocomplete="new-password"
         class="vui-user-form--span"
       />
@@ -196,23 +202,28 @@ async function save() {
       <FvTextSelect
         v-model="roleModel"
         mode="multiple"
-        :page-loader="rolesLoader"
+        :items="roleOptions"
         :label="t('security.users.form.roles')"
         :rules="[rules.required]"
+        required
         prepend-icon="fas fa-user-shield"
+        @open="onRolesOpen"
       />
       <FvTextSelect
         v-model="policyModel"
         :items="policyOptions"
         :label="t('security.users.form.policy')"
         :rules="[rules.required]"
+        required
         prepend-icon="fas fa-file-shield"
+        @open="onPolicyOpen"
       />
       <FvTimer
         v-model="form.accountActiveAt"
         mode="date"
         :label="t('security.users.form.activeAt')"
         :hint="t('security.users.form.activeAtHint')"
+        show-hint
         :error-messages="activeAtErrors"
       />
       <FvTimer
@@ -220,6 +231,7 @@ async function save() {
         mode="date"
         :label="t('security.users.form.expiresAt')"
         :hint="t('security.users.form.expiresAtHint')"
+        show-hint
       />
       <!-- 启用开关：默认开启；激活日期晚于今天 → 关闭且禁用（联动见 activeLocked） -->
       <div class="vui-user-form__switch vui-user-form--span">

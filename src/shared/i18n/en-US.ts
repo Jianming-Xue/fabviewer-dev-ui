@@ -93,5 +93,10 @@ export default {
     lengthLimit: 'No more than {n} characters',
     charLimit: 'Allowed characters: {chars}',
     duplicateConfig: 'This Rule Name + Hang Reason combination already exists',
+    pwdLen: 'Password must be {min}–{max} characters',
+    pwdNeedDigit: 'Password must contain at least one digit',
+    pwdNeedUpper: 'Password must contain at least one uppercase letter',
+    pwdNeedLower: 'Password must contain at least one lowercase letter',
+    pwdNeedSpecial: 'Password must contain at least one of the defined special characters',
   },
 }

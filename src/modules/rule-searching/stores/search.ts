@@ -9,9 +9,12 @@ import {
   fetchRuleInfoPage,
   fetchRuleResultList,
   fetchServerCategoryList,
-  type PageRequest,
-} from '@/api/log-service/ruleInfo'
-import type { RuleInfoDto, RuleSearchRo } from '@/api/log-service/types'
+} from '@/api/log-service/requests/ruleInfo'
+import type { PageRequest } from '@/api/log-service/requests/ruleInfo'
+import type {
+  RuleInfoDto,
+  RuleSearchRo,
+} from '@/api/log-service/types/types'
 import { minutesAgo, nowMinute, normalizeServerNumbers, toApiTime } from '@/shared/utils/time'
 
 /** 折叠开关状态记忆（§2.6：存浏览器本地） */

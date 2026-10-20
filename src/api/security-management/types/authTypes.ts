@@ -1,3 +1,7 @@
+import { ApiError } from '@/shared/api/errors'
+
+import type { UserDto } from './userTypes'
+
 /**
  * 认证业务对象（security-management 服务，2026-10-17 口径）：
  * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 CLAUDE.md）。
@@ -7,9 +11,7 @@
  * errMsg 携带 LoginFailCode 机器码（展示文案由 UI 层按码映射 i18n）；
  * 常规壳规则（success ≠ 0 = 失败）同样成立——拆解逻辑见 ./authRequest 的 loginRequest。
  */
-import { ApiError } from '@/shared/api/errors'
 
-/** 登录入参（POST /auth/login）：账密之外透传本机 IP 与设备指纹（见 shared/utils/device） */
 export interface LoginRo {
   username: string
   password: string
@@ -19,23 +21,15 @@ export interface LoginRo {
   deviceId: string
 }
 
-/** 登录返回对象：token + 用户档案 + 登录足迹 */
+/** 登录返回对象（2026-10-20 嵌套改版，消除与 UserDto 的档案字段双写）：
+ *  会话件仅 token（原 expiresIn/loginTime 移除——有效期口径后续并入登录策略统一）；
+ *  档案整体嵌套 UserDto（头像 avatar 亦迁入，展示不编辑）；
+ *  登录策略即 user.policyId（用户指出不设双字段）：非空 → 登录成功后前端调 fetchPolicyDetail
+ *  取 PolicyDto 存 auth store 供修改密码按策略限制；为空或拉取失败 = 修改密码只保留基础限制 */
 export interface LoginDto {
   token: string
-  /** 有效期（秒） */
-  expiresIn: number
-  userName: string
-  nickName: string
-  email: string
-  phoneNumber: string
-  /** 头像（小图）：base64 图像内容（data URL 可直接渲染） */
-  avatar: string
-  /** 本次登录时间 */
-  loginTime: string
-  /** 上次登录时间 */
-  lastLoginTime: string
-  /** 上次登录 IP */
-  lastLoginIp: string
+  /** 用户档案全量（含头像、登录足迹与挂载策略 policyId） */
+  user: UserDto
 }
 
 /** 登录业务失败机器码（特殊壳口径下经 errMsg 下发） */

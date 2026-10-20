@@ -1,11 +1,12 @@
 import { baseOf, createServiceRequest, MOCK_ENABLED, resolveUrl } from '@/shared/api/http'
 
-import config from './config'
+import config from '../config'
 
-import type { RuleDetailDto, HangEntryDto, PageDto, RuleInfoDto, RuleSearchRo } from './types'
+import type { RuleDetailDto, HangEntryDto, PageDto, RuleInfoDto, RuleSearchRo } from '../types/types'
 
 /** 微服务绑定 request：URL = 服务 Host + /log-service + 后端给定接口路径 */
 const request = createServiceRequest(config)
+
 
 /** 分页查询请求体（§5.3-9） */
 export interface PageRequest {
@@ -13,7 +14,6 @@ export interface PageRequest {
   pageSize: number
   parameters: RuleSearchRo
 }
-
 // ===== 候选类接口 1~6（进页面加载；ipaddress 随 Environment 变化重取） =====
 
 export function fetchEnvList(): Promise<{ env: string[] }> {

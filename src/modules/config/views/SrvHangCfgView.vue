@@ -11,9 +11,9 @@ import {
   fetchSrvHangCfgPage,
   toggleSrvHangCfgState,
   updateSrvHangCfg,
-} from '@/api/log-service/srvHangCfg'
+} from '@/api/log-service/requests/srvHangCfg'
 import { applyMatchMode, splitMatchMode, type MatchMode } from '../matchMode'
-import type { SrvHangCfgDto } from '@/api/log-service/types'
+import type { SrvHangCfgDto } from '@/api/log-service/types/types'
 
 const { t } = useI18n()
 const dialog = useModalDialog()

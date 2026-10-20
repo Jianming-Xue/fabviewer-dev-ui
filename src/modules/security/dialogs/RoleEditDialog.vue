@@ -5,8 +5,11 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
-import { createRole, updateRole } from '@/api/security-management/roleRequest'
-import type { RoleDto } from '@/api/security-management/roleTypes'
+import {
+  createRole,
+  updateRole,
+} from '@/api/security-management/requests/roleRequest'
+import type { RoleDto } from '@/api/security-management/types/roleTypes'
 
 /**
  * 角色信息弹窗（新增/编辑二合一，经 openInteractiveDialog 打开）：
@@ -67,17 +70,24 @@ async function save() {
     :title="editing ? t('security.roles.edit') : t('security.roles.add')"
     center-title
   >
-    <v-form ref="formRef" class="pt-1" @submit.prevent="save">
+    <v-form ref="formRef" class="pt-1 vui-form-col" @submit.prevent="save">
       <FvTextInput
         v-model="form.roleId"
         :label="t('security.roles.form.id')"
         :rules="[rules.required, rules.id]"
         :disabled="editing"
         :hint="editing ? undefined : t('security.roles.form.idHint')"
-        persistent-hint
+        :show-hint="!editing"
+        required
         prepend-icon="fas fa-id-badge"
       />
-      <FvTextInput v-model="form.roleName" :label="t('security.roles.form.name')" :rules="[rules.required]" clear />
+      <FvTextInput
+        v-model="form.roleName"
+        :label="t('security.roles.form.name')"
+        :rules="[rules.required]"
+        required
+        clear
+      />
       <FvTextInput v-model="form.description" :label="t('security.roles.form.description')" type="comment" />
     </v-form>
     <template #actions>

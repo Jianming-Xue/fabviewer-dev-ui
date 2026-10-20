@@ -7,7 +7,7 @@ import FvMultiValueCell from '@/shared/components/FvMultiValueCell.vue'
 import { formatThousands, msToSeconds } from '@/shared/utils/time'
 import { useSearchStore } from '../stores/search'
 import { buildResultColumns, type ResultColumn } from './resultColumns'
-import type { RuleInfoDto } from '@/api/log-service/types'
+import type { RuleInfoDto } from '@/api/log-service/types/types'
 
 const { t } = useI18n()
 const store = useSearchStore()

@@ -2,13 +2,13 @@ import { ApiError } from '@/shared/api/errors'
 
 import { securityReply, securityRequest } from './request'
 
-import { isLoginFailCode, LoginFailError } from './authTypes'
+import { isLoginFailCode, LoginFailError } from '../types/authTypes'
 
-import type { ChangePasswordRo, LoginDto, LoginRo } from './authTypes'
+import type { ChangePasswordRo, LoginDto, LoginRo } from '../types/authTypes'
 
 /**
  * 认证/权限接口（security-management 服务，前缀 /api/v1/auth，2026-10-17 文件分类同角色口径：
- * 业务对象在 ./authTypes，本文件只放调用）：
+ * 业务对象在 ./types，本文件只放调用）：
  * 登录 POST /login（LoginRo → LoginDto）；登出 POST /logout（空体，静默失败不阻塞本地清理）；
  * 修改密码 POST /change_password（ChangePasswordRo → null）；
  * 权限 GET /permissions（URL query username → 权限串清单）。
@@ -48,3 +48,5 @@ export function fetchPermissions(username: string): Promise<string[]> {
 }
 
 // Mock 注册点已迁至 ./config.ts（项目约定 2026-10-18：Mock 一律收在 api 层服务入口）
+
+// Mock 注册点已迁至 ../config.ts（项目约定 2026-10-18：Mock 一律收在 api 层服务入口）
