@@ -23,9 +23,10 @@ FvBaseDialog（全局基座：三区布局/拖动/开合动画/尺寸上限）
 - 语义弹窗（成功/错误/警告/信息/确认）一律 `useModalDialog()` 五件套；非关键提示一律 `useAlertToast()`。禁止各页面自建 `v-snackbar` / 裸 `v-dialog` / alert。
 - **Dialog 组件一律放在 `dialogs/` 文件夹下**：应用级放 `src/app/dialogs/`，模块级放 `src/modules/<模块>/dialogs/`；不得散落在 `components/`、`views/` 等其他目录。
 
-## 后端交互对象命名（2026-10-17 定稿）
+## 后端交互对象命名（2026-10-17 定稿，2026-10-20 晚目录化补注）
 
 与后端交互的对象：**请求体以 `Ro` 结尾**（Request Object，如 `RoleRo` / `SrvHangCfgRo` / `RuleSearchRo`），
 **返回对象以 `Dto` 结尾**（如 `RoleDto` / `PageDto` / `LoginDto` / `RuleInfoDto`）。
-类型定义落在各服务 `src/api/<service>/types.ts`，UI 层复用同一套类型、不另建视图模型；
+类型定义落在各服务 `src/api/<服务>/types/<域>Types.ts`（2026-10-20 晚目录化：各服务下 requests/types/mocks 三目录按域分文件、文件名不变；服务公共壳在 `types/types.ts`，`config.ts` 与 `rolePolicyNameCollection.ts` 等服务级公共件留服务外层）；
+UI 层复用同一套类型、不另建视图模型；
 i18n 展示文案与传输基础设施（`ApiError` 等）不受此约束。
