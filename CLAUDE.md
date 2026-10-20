@@ -17,7 +17,7 @@ FvBaseDialog（全局基座：三区布局/拖动/开合动画/尺寸上限）
 - **`shared/dialog/FvBaseDialog.vue` 是基座基类**：只有「派生其他 Dialog 基类」时才可以直接继承它（现状仅两处：`FvModalDialogHost`、`FvInteractiveDialog`）。FvBaseDialog 不可作为成品弹窗直接使用，**业务弹窗不得直接导入 FvBaseDialog**。
 - **普通业务 Dialog 两个侧面，缺一不成体系**：
   - **实现时（写组件）**：继承 `shared/dialog/FvInteractiveDialog.vue`（FvInteractiveDialogHost 体系业务基类，纯透传基座能力）——业务弹窗**不得**直接导入 FvBaseDialog；
-  - **打开时（用组件）**：调 `openInteractiveDialog(组件, props)`，由 `FvInteractiveDialogHost`（App.vue 单例宿主）装载渲染：props 进 / resolve 出 / 排队——**禁止**业务弹窗在页面里 v-model 自挂载，**禁止**裸 `v-dialog`。
+  - **打开时（用组件）**：调 `openInteractiveDialog(组件, props)`，由 `FvInteractiveDialogHost`（App.vue 单例宿主）装载渲染：props 进 / resolve 出 / **层叠**（已有弹窗展示中再开=叠于其上，支持弹窗内开子弹窗，2026-10-20 由排队改层叠；Esc 多层让位见 FvBaseDialog）——**禁止**业务弹窗在页面里 v-model 自挂载，**禁止**裸 `v-dialog`。
   - 注意区分：**继承的是 FvInteractiveDialog（基类）**，**经 Host 打开的是 FvInteractiveDialogHost（宿主）**——两者不是一回事、不可合并（语义弹窗的 FvModalDialogHost 之所以宿主自带基座，是因为其内容是同构纯数据；业务弹窗是异构有状态组件，宿主只调度、不套壳）。
 - **`openInteractiveDialog` 只允许打开 FvInteractiveDialogHost 体系的弹窗**：运行时守卫已内置——打开后在组件 DOM 子树检测不到 `.vui-base-dialog` 即报错并自动关闭。
 - 语义弹窗（成功/错误/警告/信息/确认）一律 `useModalDialog()` 五件套；非关键提示一律 `useAlertToast()`。禁止各页面自建 `v-snackbar` / 裸 `v-dialog` / alert。
