@@ -23,6 +23,7 @@ import {
   fetchUsersPage,
   deleteUser,
 } from '@/api/security-management/requests/userRequest'
+import { BUILTIN_ROLE_ID } from '@/api/security-management/types/roleTypes'
 import { ensureRoleNames, ensurePolicyNames, roleNameOf, policyNameOf } from '@/api/security-management/rolePolicyNameCollection'
 import type { UserDto } from '@/api/security-management/types/userTypes'
 
@@ -46,17 +47,21 @@ const permission = usePermissionStore()
 const FEATURE_URL = '/security/users'
 const can = (id: string) => permission.hasControl(FEATURE_URL, id)
 
+/** 内置管理员用户（挂 ADMIN 内置角色，2026-10-21 定稿）：不能修改角色和策略、不能删除
+    ——口径同角色页内置守卫：菜单项逐行置灰 + 处理函数双保险 + Mock 服务端拒绝 */
+const isBuiltinAdmin = (row: unknown) => ((row as UserDto).roleIds ?? []).includes(BUILTIN_ROLE_ID)
+
 /** more 下拉菜单（2026-10-19 改造：删除从图标钮收进菜单）：角色和策略/重置密码受 edit 管控、
     删除用户受 delete 管控——受控项按权限过滤（口径同原图标钮显隐），全无权则菜单为空 */
 const moreMenu = computed<FvTableMenuItem[]>(() => {
   const out: FvTableMenuItem[] = []
   if (can('security.users.edit')) {
-    out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield' })
+    out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield', disabled: isBuiltinAdmin })
     out.push({ key: 'resetPwd', label: t('security.users.ctlResetPwd'), icon: 'fas fa-key' })
     out.push({ key: 'expire', label: t('security.users.ctlExpire'), icon: 'fas fa-calendar-plus' })
   }
   if (can('security.users.delete'))
-    out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error' })
+    out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error', disabled: isBuiltinAdmin })
   return out
 })
 
@@ -210,6 +215,7 @@ async function onInsertUser(): Promise<UserRow | null> {
 
 /** 角色和策略（More 菜单）：落库由弹窗内完成（成功才关窗），此处只 Toast + 重拉 */
 async function openRolesPolicy(user: UserDto) {
+  if (isBuiltinAdmin(user)) return // 内置管理员用户双保险（菜单项已置灰）
   const saved = await openInteractiveDialog<{ user: UserDto }, UserDto | undefined>(
     EditUserRolePolicyDialog,
     { user },
@@ -239,6 +245,7 @@ async function openExpire(user: UserDto) {
 
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页） */
 async function remove(user: UserDto) {
+  if (isBuiltinAdmin(user)) return // 内置管理员用户不可删除（双保险）
   if (!(await dialog.confirm(t('security.users.deleteConfirm', { name: user.userName })))) return
   try {
     await deleteUser(user.userId)

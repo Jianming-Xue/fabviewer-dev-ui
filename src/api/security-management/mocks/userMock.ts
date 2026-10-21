@@ -1,5 +1,7 @@
 import { registerMock } from '@/shared/api/mock'
 
+import { BUILTIN_ROLE_ID } from '../types/roleTypes'
+
 import type { PageDto, SecurityReplyDto } from '../types/types'
 import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserRo, UserStateRo } from '../types/userTypes'
 
@@ -153,6 +155,9 @@ registerMock('PUT', '/security-management/api/v1/users', ({ body }) => {
   const ro = body as unknown as UserRo
   const row = rows.find((r) => r.userId === ro?.userId)
   if (!row) return fail('用户不存在')
+  // 内置管理员用户（2026-10-21）：挂 ADMIN 角色者角色/策略不可改（档案三件套不受限）
+  if (row.roleIds.includes(BUILTIN_ROLE_ID) && (ro.roleIds !== undefined || ro.policyId !== undefined))
+    return fail('内置管理员用户的角色与策略不可修改')
   const uname = ro.userName?.trim()
   if (uname && uname !== row.userName && rows.some((r) => r.userName === uname && r.userId !== row.userId))
     return fail('该用户名已存在')
@@ -221,6 +226,7 @@ registerMock('DELETE', '/security-management/api/v1/users', ({ params }) => {
   const userId = String(params?.userId ?? '')
   const row = rows.find((r) => r.userId === userId)
   if (!row) return fail('用户不存在')
+  if (row.roleIds.includes(BUILTIN_ROLE_ID)) return fail('内置管理员用户不可删除')
   rows.splice(rows.indexOf(row), 1)
   return ok(null)
 })

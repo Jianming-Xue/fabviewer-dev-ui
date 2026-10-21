@@ -35,6 +35,16 @@ check('表内策略列显示名称（标准策略/强策略）', tb.includes('�
 check('表内无裸策略 ID（P001/P002 不出现）', !tb.includes('P001') && !tb.includes('P002'))
 check('有效期天数 -1 行显「不限」且无裸 -1 单元格', tb.includes('不限') && !/(^|[\t\n])-1([\t\n]|$)/.test(tb), tb.split('\n').find(function(r){return r.indexOf('admin')>=0})||'')
 
+// ===== 内置 ADMIN 用户保护（2026-10-21）：more 菜单 角色和策略/删除用户 置灰 =====
+const admMore = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('admin')>=0});var bs=Array.from(tr.querySelectorAll('td:last-child button'));var b=bs[bs.length-1];var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await clickPos(admMore.x, admMore.y)
+await sleep(1200)
+const disMap = await ev(`(function(){var els=Array.from(document.querySelectorAll('.v-overlay--active .v-list-item, .v-overlay .v-list-item')).filter(function(x){return x.getClientRects().length>0});var m={};els.forEach(function(x){var t=x.textContent.trim();if(t==='角色和策略'||t==='删除用户'||t==='重置密码')m[t]=(x.className.indexOf('disabled')>=0)||x.getAttribute('aria-disabled')==='true'});return JSON.stringify(m)})()`)
+const DM = JSON.parse(disMap)
+check('内置 ADMIN 用户行：角色和策略/删除用户置灰、重置密码可用', DM['角色和策略']===true && DM['删除用户']===true && DM['重置密码']===false, disMap)
+await clickPos(700, 300) // 点空白关菜单
+await sleep(700)
+
 // ===== More→角色和策略：chips 按 ID 显名、点开下拉数据源= name/list =====
 const morePos = await ev(`(function(){
   var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('zhang.xiaofeng')>=0});

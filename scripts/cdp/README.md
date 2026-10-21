@@ -28,7 +28,7 @@ node scripts/cdp/vui-policy-test.mjs  # 单套
 | 脚本 | 覆盖面 | 检查数 |
 |---|---|---|
 | vui-policy-test.mjs | 登录策略页全链（表列/搜索/单选样式/校验负例/气球徽标/增删改/字段规范） | 43 |
-| vui-names-test.mjs | 名称字典制（用户表 ID→Name 显名、弹窗回显、下拉字典、天数「不限」渲染） | 10 |
+| vui-names-test.mjs | 名称字典制（用户表 ID→Name 显名、弹窗回显、下拉字典、天数「不限」渲染、内置 ADMIN 用户菜单置灰） | 11 |
 | vui-timer-test.mjs | FvTimer 字段规范（msg 行废止、问号 tooltip、错误徽标、图标右距、盒高） | 7 |
 | vui-policy-link-test.mjs | LoginDto 嵌套登录链 + 策略联动改密（hint/负例/红字 tooltip） | 7 |
 | vui-profile-edit-test.mjs | 用户信息弹窗 → EditUserAttributeDialog 层叠编辑（回显/规则/取消/持久化） | 8 |
