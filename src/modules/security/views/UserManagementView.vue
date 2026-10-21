@@ -17,6 +17,7 @@ import EditUserDialog from '../dialogs/EditUserDialog.vue'
 import ChangeUserStateDialog from '../dialogs/ChangeUserStateDialog.vue'
 import EditUserRolePolicyDialog from '../dialogs/EditUserRolePolicyDialog.vue'
 import ResetPasswordDialog from '../dialogs/ResetPasswordDialog.vue'
+import ChangeAccountDateDialog from '../dialogs/ChangeAccountDateDialog.vue'
 import UserViewDialog from '../dialogs/UserViewDialog.vue'
 import {
   fetchUsersPage,
@@ -52,6 +53,7 @@ const moreMenu = computed<FvTableMenuItem[]>(() => {
   if (can('security.users.edit')) {
     out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield' })
     out.push({ key: 'resetPwd', label: t('security.users.ctlResetPwd'), icon: 'fas fa-key' })
+    out.push({ key: 'expire', label: t('security.users.ctlExpire'), icon: 'fas fa-calendar-plus' })
   }
   if (can('security.users.delete'))
     out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error' })
@@ -70,6 +72,7 @@ const rowActions = computed<Array<'view' | 'edit' | 'more'>>(() => {
 function onMoreSelect({ item, key }: { item: UserDto; key: string }) {
   if (key === 'rolesPolicy') void openRolesPolicy(item)
   else if (key === 'resetPwd') void openResetPwd(item)
+  else if (key === 'expire') void openExpire(item)
   else if (key === 'delete') void remove(item)
 }
 
@@ -224,6 +227,14 @@ async function openResetPwd(user: UserDto) {
   )
   if (!done) return
   toast.success(t('security.users.passwordReset'))
+}
+
+/** 账户延期（More 菜单，2026-10-21）：ChangeAccountDateDialog 落库收口弹窗内，此处只 Toast+重拉 */
+async function openExpire(user: UserDto) {
+  const done = await openInteractiveDialog<{ user: UserDto }, boolean | undefined>(ChangeAccountDateDialog, { user })
+  if (!done) return
+  toast.success(t('security.users.expired'))
+  await loadPage()
 }
 
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页） */

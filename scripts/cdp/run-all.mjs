@@ -16,6 +16,7 @@ const suites = [
   'vui-expiry-test.mjs',
   'vui-rp-dialog-test.mjs',
   'vui-search-align.mjs',
+  'vui-expire-account-test.mjs',
 ]
 
 let failed = []

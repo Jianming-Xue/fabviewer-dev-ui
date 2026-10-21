@@ -111,6 +111,16 @@ export interface UserAttributeRo {
   attValue: string
 }
 
+/** 账户延期入参（POST /users/expire，用户定稿 2026-10-21：more 菜单「账户延期」，
+ *  ChangeAccountDateDialog 按所选策略 accountValidDays 计算新到期后提交——
+ *  preAccountExpiresAt = 延期前到期串（'YYYY-MM-DD HH:mm:ss'，''=原永不过期）；
+ *  newAccountExpiresAt = 新到期日期 'YYYY-MM-DD'，''=永不过期（策略天数 -1） */
+export interface UserExpireRo {
+  userId: string
+  preAccountExpiresAt: string
+  newAccountExpiresAt: string
+}
+
 /** 变更启用状态入参（2026-10-19 改造：开关点击不再即时提交，
  *  经 ChangeUserStateDialog 录入备注后整体提交；enabled 严格 0/1 服务口径不变） */
 export interface UserStateRo {

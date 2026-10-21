@@ -1,7 +1,7 @@
 import { securityRequest } from './request'
 
 import type { PageDto } from '../types/types'
-import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserPageRo, UserRo, UserStateRo } from '../types/userTypes'
+import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserPageRo, UserRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口（security-management 服务，前缀 /api/v1/users，2026-10-18 首版，文件分类同角色口径）：
@@ -51,4 +51,10 @@ export function setUserEnabled(ro: UserStateRo): Promise<null> {
  *    入参 UserAttributeRo{userId=登录用户名, attName, attValue}，同改密接口显式带身份口径） */
 export function updateUserAttribute(ro: UserAttributeRo): Promise<null> {
   return securityRequest<null>('updateUserAttribute', 'POST', '/api/v1/users/attribute', { body: ro, loading: true })
+}
+
+/** 7 · 账户延期（POST /users/expire，用户定稿 2026-10-21：userId + 延期前到期串 +
+ *    新到期日期（前端按策略账户天数计算，''=永不过期），成功后页面重拉刷新到期列） */
+export function extendUserExpire(ro: UserExpireRo): Promise<null> {
+  return securityRequest<null>('extendUserExpire', 'POST', '/api/v1/users/expire', { body: ro, loading: true })
 }

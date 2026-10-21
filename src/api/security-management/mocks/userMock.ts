@@ -1,7 +1,7 @@
 import { registerMock } from '@/shared/api/mock'
 
 import type { PageDto, SecurityReplyDto } from '../types/types'
-import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserRo, UserStateRo } from '../types/userTypes'
+import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口 Mock（2026-10-18，壳/分页/URL query 口径同角色）：
@@ -82,7 +82,7 @@ const rows: UserDto[] = [
   },
   {
     userId: 'U0009', userName: 'zhou.yajing', nickName: '周雅静', email: '', phoneNumber: '',
-    avatar: '', enabled: 1, roleIds: [], policyId: '',
+    avatar: '', enabled: 1, roleIds: [], policyId: 'P003',
     createdAt: '2026-10-15 15:20:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-10-15 15:20:00', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
@@ -192,6 +192,21 @@ registerMock('POST', '/security-management/api/v1/users/attribute', ({ body }) =
   if (ro.attName === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return fail('邮箱格式不正确')
   if (ro.attName === 'phoneNumber' && value && !/^[\d-]*$/.test(value)) return fail('电话仅允许数字与连字符')
   rows[rows.indexOf(row)] = { ...row, [ro.attName]: value }
+  return ok(null)
+})
+
+/** 账户延期（2026-10-21）：新到期存 dayEnd（含当天，口径同创建）；''=永不过期；
+ *  账户有效天数按「今日→新到期日」重算落库（永不过期记 -1） */
+registerMock('POST', '/security-management/api/v1/users/expire', ({ body }) => {
+  const ro = body as unknown as UserExpireRo
+  const row = rows.find((r) => r.userId === ro?.userId)
+  if (!row) return fail('用户不存在')
+  const d = String(ro.newAccountExpiresAt ?? '').trim()
+  if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return fail('到期日期格式应为 YYYY-MM-DD')
+  const days = d
+    ? Math.max(0, Math.round((new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000))
+    : -1
+  rows[rows.indexOf(row)] = { ...row, accountExpiresAt: dayEnd(d), accountValidDays: days }
   return ok(null)
 })
 
