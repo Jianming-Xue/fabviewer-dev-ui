@@ -105,6 +105,8 @@ function onPolicyOpen() {
    detail 拉取失败保持当前到期值不动（带过期响应守卫，防快速切换策略错值）。 */
 const DEFAULT_ACCOUNT_VALID_DAYS = 365
 const policyAccountDays = ref<number | null>(null)
+/** 所选策略的密码有效天数（null=未选/未取到）：驱动密码框 Hint 图标显隐与文案 */
+const policyPasswdDays = ref<number | null>(null)
 
 function recalcExpires() {
   if (!form.accountActiveAt) return
@@ -120,6 +122,7 @@ watch(
   (id) => {
     if (!id) {
       policyAccountDays.value = null
+      policyPasswdDays.value = null
       recalcExpires()
       return
     }
@@ -127,6 +130,7 @@ watch(
       (p) => {
         if (form.policyId !== id) return // 过期响应丢弃
         policyAccountDays.value = p.accountValidDays
+        policyPasswdDays.value = p.passwdValidDays
         recalcExpires()
       },
       () => {
@@ -153,6 +157,22 @@ const expiresErrors = computed(() => {
   if (expiresCap.value && form.accountExpiresAt > expiresCap.value)
     return [t('security.users.form.expiresOverPolicy', { n: policyAccountDays.value, cap: expiresCap.value })]
   return []
+})
+
+/* ===== 策略联动 Hint（用户定稿 2026-10-20 深夜）=====
+   密码框：取到策略详情才显示问号图标——密码有效天数 N 天 / -1 永不过期；清空策略自动隐藏。
+   到期框：取到账户有效天数后 hint 换为策略口径文案（-1 永不过期 / N 天数），未取到沿用通用约束提示。 */
+const pwdHint = computed(() => {
+  if (policyPasswdDays.value === null) return ''
+  return policyPasswdDays.value === -1
+    ? t('security.users.form.policyPwdNever')
+    : t('security.users.form.policyPwdDays', { n: policyPasswdDays.value })
+})
+const expiresHint = computed(() => {
+  if (policyAccountDays.value === null) return t('security.users.form.expiresAtPolicyHint')
+  return policyAccountDays.value === -1
+    ? t('security.users.form.policyAcctNever')
+    : t('security.users.form.policyAcctDays', { n: policyAccountDays.value })
 })
 
 /* FvTextSelect model 为联合类型（单/多选共用），表单窄化包装 */
@@ -240,6 +260,8 @@ async function save() {
         type="password"
         :label="t('security.users.form.password')"
         :rules="[rules.required]"
+        :hint="pwdHint"
+        :show-hint="policyPasswdDays !== null"
         required
         autocomplete="new-password"
         class="vui-user-form--span"
@@ -290,7 +312,7 @@ async function save() {
         v-model="form.accountExpiresAt"
         mode="date"
         :label="t('security.users.form.expiresAt')"
-        :hint="t('security.users.form.expiresAtPolicyHint')"
+        :hint="expiresHint"
         :error-messages="expiresErrors"
         show-hint
       />
