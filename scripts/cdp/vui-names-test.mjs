@@ -33,6 +33,7 @@ check('表内角色列显示名称（系统管理员/运维工程师）', tb.inc
 check('表内无裸角色 ID 泄漏（ADMIN/OPR-ENGINEER 不出现在行里）', !tb.includes('OPR-ENGINEER') && !/\bADMIN\b/.test(tb))
 check('表内策略列显示名称（标准策略/强策略）', tb.includes('标准策略') && tb.includes('强策略'))
 check('表内无裸策略 ID（P001/P002 不出现）', !tb.includes('P001') && !tb.includes('P002'))
+check('有效期天数 -1 行显「不限」且无裸 -1 单元格', tb.includes('不限') && !/(^|[\t\n])-1([\t\n]|$)/.test(tb), tb.split('\n').find(function(r){return r.indexOf('admin')>=0})||'')
 
 // ===== More→角色和策略：chips 按 ID 显名、点开下拉数据源= name/list =====
 const morePos = await ev(`(function(){

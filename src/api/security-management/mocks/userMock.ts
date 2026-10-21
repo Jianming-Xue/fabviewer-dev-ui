@@ -13,6 +13,11 @@ import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpir
  */
 const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
+/** 有效期天数规范：只有正整数合法，其余（未传保持现值判断同理由调用侧给）→ -1 = 不限（用户定稿 2026-10-21） */
+const normDays = (v: number | undefined, cur: number): number => {
+  if (v === undefined) return cur > 0 ? cur : -1
+  return v > 0 ? v : -1
+}
 const p2 = (n: number) => String(n).padStart(2, '0')
 const fmtTime = (d: Date) =>
   `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
@@ -161,8 +166,9 @@ registerMock('PUT', '/security-management/api/v1/users', ({ body }) => {
     ...(ro.roleIds !== undefined ? { roleIds: [...ro.roleIds] } : {}),
     ...(ro.policyId !== undefined ? { policyId: ro.policyId } : {}),
     ...(ro.accountExpiresAt !== undefined ? { accountExpiresAt: dayEnd(ro.accountExpiresAt) } : {}),
-    passwordValidDays: ro.passwordValidDays ?? row.passwordValidDays,
-    accountValidDays: ro.accountValidDays ?? row.accountValidDays,
+    // 有效期天数规范（2026-10-21）：非正值（空/0/负）一律落 -1 = 不限
+    passwordValidDays: normDays(ro.passwordValidDays, row.passwordValidDays),
+    accountValidDays: normDays(ro.accountValidDays, row.accountValidDays),
   }
   rows[rows.indexOf(row)] = updated
   return ok({ ...updated })
