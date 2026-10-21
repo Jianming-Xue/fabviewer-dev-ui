@@ -97,7 +97,7 @@ npm run type-check / lint / build   # 全绿
   - **EditUserRolePolicyDialog 补全（2026-10-20 深夜）**：角色/登录策略下拉加 `required` 红星；两有效期天数规则与策略弹窗同口径 **1~999**（本弹窗留空=不限放行，超限出徽标 tooltip「须为 1~999 的整数」，新键 daysRange/daysRangeHint）
   - **新增用户到期日期策略驱动（2026-10-20 深夜定稿）**：初始仍=激活+365 缺省；**选定策略 → fetchPolicyDetail 取 accountValidDays → -1 清空到期 / N=激活+N 天**，激活日期或策略任一变动即重算（过期响应丢弃、detail 失败保持现值）；**手动改到期双约束**：恒须晚于激活日期；策略天数≠-1 时不得大于激活+策略天数（上限日期入文案）——走 FvTimer errorMessages 外部通道徽标呈现并拦截提交（新键 expiresAfterActive/expiresOverPolicy/expiresAtPolicyHint）
   - **Checkbox/搜索栏改版（同夜）**：FvCheckbox 全局件（见 §三/§五）；三页搜索框与按钮底边对齐局部修
-  - 实测 ✅（CDP 九套脚本：策略页 43/名称字典 9/字段规范 7/改密联动 7/档案编辑 8/Checkbox 5/到期策略驱动 8/角色策略弹窗 4/搜索对齐 3 页 Δ0）
+  - 实测 ✅（CDP 九套脚本，已收编 `scripts/cdp/`：策略页 43/名称字典 9/字段规范 7/改密联动 7/档案编辑 8/Checkbox 5/到期策略驱动 8/角色策略弹窗 4/搜索对齐 3 页 Δ0）
 - **Rule Searching**：条件联动、即时校验、拦截非法提交、分页、列设置记忆、本地存储恢复、Rule Log 弹窗、Export(xlsx)、Full Log(zip)、水波纹统一浅灰 ✅；**时间字段已迁 FvTimer**（2026-10-19：`modules/rule-searching/components/DateTimeField.vue` 删除；start/end = `<FvTimer mode="datetime" precision="minute">`，model 'YYYY-MM-DD HH:mm' 与 store `MINUTE_FORMAT`/`toApiTime` 口径无缝；跨字段校验经 `error-messages` 通道即时标红、end 的 hint 经 `hint` 通道；两字段不启用清除钮（用户定稿，旧「清空自动补 ±1h」联动随 DateTimeField 移除）；默认值不变：End=now、Start=now−1h（`stores/search` `nowMinute()/minutesAgo(60)`））；**检索区控件统一化**（2026-10-19）：8 个 `v-text-field`→`FvTextInput`（透传 label/error-messages/hint/persistent-hint/inputmode/disabled，clear 属性化）、Desc Time `v-switch`→`FvSwitch`；v-select 不动
 
 ## 五、UI 定稿速查（全量详见 tokens.css / 各组件）
@@ -150,4 +150,4 @@ npm run type-check / lint / build   # 全绿
 - **弹窗内表单防残留**（FvBaseDialog 的 `@closed` 契约）：表单状态放进弹窗插槽内则随卡片卸载自动重置；放父作用域则在 `@closed` 里一行清空（取消/Esc/成功任一路径都会触发）。
 - **新增弹窗的正确姿势**（层级定稿 2026-10-16，规则全文在项目根 CLAUDE.md，每会话自动加载）：业务弹窗**继承 FvInteractiveDialog**（不是组合 FvBaseDialog——基座只允许被 Dialog 基类派生继承）做成独立组件，文件放该级 `dialogs/` 目录（app/dialogs 或 modules/<模块>/dialogs），经 `openInteractiveDialog(组件, props)` 编程式打开、FvInteractiveDialogHost 承载；传参走 props、结果经组件 `emit('resolve', payload)` 在关闭时回传到 await 的 Promise；禁止页面 v-model 自挂载、禁止裸 v-dialog。
 - **重命名/删除 shared 组件文件后必须重启 dev server**（2026-10-16 实测：HMR 对文件增删易进脏状态，表现为元素消失/旧模块仍在）。
-- 验证 UI 行为用 CDP 驱动无头 Chrome（`/tmp/vui-*.mjs` 为模式参考），注意 requestSubmit 延迟与 §六.2 三坑；**点击/选择类交互一律用 `Input.dispatchMouseEvent` 真实事件验证**（合成 click 不算数）。
+- 验证 UI 行为用 CDP 驱动无头 Chrome——**九套验收脚本已收编 `scripts/cdp/`**（清单/前置/跑批见其 README：`node scripts/cdp/run-all.mjs`），注意 requestSubmit 延迟与 §六.2 三坑；**点击/选择类交互一律用 `Input.dispatchMouseEvent` 真实事件验证**（合成 click 不算数）。新增验收面优先扩充该目录而非写临时脚本。
