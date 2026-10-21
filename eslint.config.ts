@@ -15,7 +15,8 @@ export default defineConfigWithVueTs(
     files: ['**/*.{vue,ts,mts,tsx}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
+  // scripts/cdp = CDP 验收脚本（自包含 node 工具，宽松风格刻意不受应用代码规矩约束）
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'scripts/**']),
 
   ...pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

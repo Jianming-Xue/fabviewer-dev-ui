@@ -68,5 +68,30 @@ check('选 P003（-1 永不过期）到期自动清空', T[1]==='---'||/^-*$/.te
 await pickPolicy('强策略')
 T=JSON.parse(await readTimers())
 check('换回强策略到期重算=+180', T[1]===dayjs.add(180), JSON.stringify(T))
+
+// ===== 策略联动 Hint（2026-10-21 定稿）=====
+async function pwIcon(){return ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var lbl=Array.from(d.querySelectorAll('label')).find(function(l){return l.htmlFor&&l.textContent.replace(/[*\\s]/g,'')==='密码'});return lbl?(lbl.closest('.v-input').querySelectorAll('.fv-field__hint-icon').length):-1})()`)}
+async function hoverTip(which){
+  const p=await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var ic;
+   if(${JSON.stringify(which)}==='pwd'){var lbl=Array.from(d.querySelectorAll('label')).find(function(l){return l.htmlFor&&l.textContent.replace(/[*\\s]/g,'')==='密码'});ic=lbl.closest('.v-input').querySelector('.fv-field__hint-icon')}
+   else{ic=d.querySelectorAll('.fv-timer')[1].querySelector('.fv-field__hint-icon')}
+   if(!ic)return null;var r=ic.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+  if(!p) return 'NOICON'
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});await sleep(1000)
+  const txt=await ev(`(function(){var ts=Array.from(document.querySelectorAll('.vui-table-tip')).filter(function(x){return x.getClientRects().length>0});return ts.map(function(t){return t.textContent}).join('|')})()`)
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y-160});await sleep(500)
+  return txt
+}
+check('选强策略后密码框出现问号 Hint 图标', (await pwIcon())>0, 'icons='+await pwIcon())  // >0：Vuetify label 双份（基础+浮动副本）各含一枚
+const pt=await hoverTip('pwd'); check('密码 Hint=「密码有效天数 60 天」（P002）', pt.indexOf('密码有效天数 60 天')>=0, pt.slice(0,80))
+const et=await hoverTip('expiry'); check('到期 Hint=「策略要求账户有效期天数为 180」', et.indexOf('策略要求账户有效期天数为 180')>=0, et.slice(0,80))
+await pickPolicy('合规审计策略'); await sleep(600)
+const et2=await hoverTip('expiry'); check('P003(-1) 到期 Hint=「策略要求账户永不过期」', et2.indexOf('策略要求账户永不过期')>=0, et2.slice(0,80))
+const pt2=await hoverTip('pwd'); check('P003 密码 Hint=「密码有效天数 30 天」', pt2.indexOf('密码有效天数 30 天')>=0, pt2.slice(0,80))
+async function clearPolicy(){const p=await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var lbl=Array.from(d.querySelectorAll('label')).find(function(l){return l.textContent.replace(/[*\\s]/g,'').indexOf('登录策略')>=0&&l.htmlFor});var c=lbl.closest('.v-input').querySelector('.v-field__clearable');if(!c)return null;var r=c.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);if(!p)throw new Error('clear icon not found');await clickPos(p.x,p.y)}
+await clearPolicy(); await sleep(800) // clearable × 清空策略
+check('清空策略后密码 Hint 图标隐藏', (await pwIcon())===0, 'icons='+await pwIcon())
+const et3=await hoverTip('expiry'); check('清空后到期 Hint 回退通用约束文案', et3.indexOf('须晚于激活日期')>=0, et3.slice(0,80))
+
 console.log(`\n通过 ${results.filter(Boolean).length}/${results.length}`)
 process.exitCode=results.includes(false)?1:0;ws.close()
