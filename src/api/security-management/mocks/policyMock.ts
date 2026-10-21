@@ -28,6 +28,7 @@ export const policies: PolicyDto[] = [
     passwdSpecials: [],
     passwdValidDays: 90,
     accountValidDays: 365,
+    idleLogoutMinutes: 30,
   },
   {
     policyId: 'P002',
@@ -42,6 +43,7 @@ export const policies: PolicyDto[] = [
     passwdSpecials: ['!', '@', '#', '$', '%', '&', '*', '~'],
     passwdValidDays: 60,
     accountValidDays: 180,
+    idleLogoutMinutes: 15,
   },
   {
     policyId: 'P003',
@@ -56,6 +58,7 @@ export const policies: PolicyDto[] = [
     passwdSpecials: ['!', '@', '#', '$', '%', '&', '*', '?', '-', '_', '+', '=', '~'],
     passwdValidDays: 30,
     accountValidDays: -1,
+    idleLogoutMinutes: -1,
   },
 ]
 

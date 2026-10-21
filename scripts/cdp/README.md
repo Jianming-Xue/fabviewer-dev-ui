@@ -1,4 +1,4 @@
-# CDP 验证脚本集（十套）
+# CDP 验证脚本集（十一套）
 
 无头 Chrome + Chrome DevTools Protocol 驱动真实浏览器验证 UI 行为（项目验收口径：
 点击/悬停类交互一律 `Input.dispatchMouseEvent` 真实事件，合成 click 不算数）。
@@ -16,7 +16,7 @@ npm run dev   # :5173，VITE_MOCK=true
 ## 运行
 
 ```bash
-node scripts/cdp/run-all.mjs          # 全量十套（套件间 2.5s 缓冲）
+node scripts/cdp/run-all.mjs          # 全量十一套（套件间 2.5s 缓冲）
 node scripts/cdp/vui-policy-test.mjs  # 单套
 ```
 
@@ -27,7 +27,7 @@ node scripts/cdp/vui-policy-test.mjs  # 单套
 
 | 脚本 | 覆盖面 | 检查数 |
 |---|---|---|
-| vui-policy-test.mjs | 登录策略页全链（表列/搜索/单选样式/校验负例/气球徽标/增删改/字段规范） | 43 |
+| vui-policy-test.mjs | 登录策略页全链（表列/搜索/单选样式/校验负例/气球徽标/白名单多选下拉与同行布局/增删改/字段规范） | 44 |
 | vui-names-test.mjs | 名称字典制（用户表 ID→Name 显名、弹窗回显、下拉字典、天数「不限」渲染、内置 ADMIN 用户菜单置灰） | 11 |
 | vui-timer-test.mjs | FvTimer 字段规范（msg 行废止、问号 tooltip、错误徽标、图标右距、盒高） | 7 |
 | vui-policy-link-test.mjs | LoginDto 嵌套登录链 + 策略联动改密（hint/负例/红字 tooltip） | 7 |
@@ -37,6 +37,7 @@ node scripts/cdp/vui-policy-test.mjs  # 单套
 | vui-rp-dialog-test.mjs | 角色和策略弹窗（下拉红星必填拦截、天数移除、激活/到期只读、仅 Hint 随策略） | 11 |
 | vui-search-align.mjs | 角色/用户/策略三页搜索框与钮底边对齐（Δ≤1px） | 3 |
 | vui-expire-account-test.mjs | 账户延期弹窗（起点计算 当前到期/今天、策略 -1 永不过期提交、无策略 Confirm 禁用、到期列回显） | 9 |
+| vui-idle-logout-test.mjs | 未活动登出（策略 idleLogoutMinutes 下发/配置、0 值拦截、过期账户守卫登出、1 分钟静置真机自动登出） | 6 |
 
 ## 已知坑（详见 docs/HANDOVER.md §六.2）
 

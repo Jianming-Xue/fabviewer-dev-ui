@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
@@ -14,6 +14,7 @@ import ChangePasswordDialog from '@/app/dialogs/ChangePasswordDialog.vue'
 import UserProfileDialog from '@/app/dialogs/UserProfileDialog.vue'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
+import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { useThemeMode } from '@/app/composables/useThemeMode'
 import type { AppLocale } from '@/app/i18n'
 
@@ -123,6 +124,7 @@ const themeIcon = computed(() => (isDark.value ? 'fas fa-sun' : 'fas fa-moon'))
 // ===== 用户菜单：修改密码 / 登出 =====
 const userMenu = ref(false)
 const dialog = useModalDialog()
+const toast = useAlertToast()
 
 /** 头像兜底缩写：昵称/用户名首字符大写（登录档案无 base64 头像时显示，2026-10-18） */
 const userInitials = computed(() => {
@@ -142,6 +144,55 @@ function onShowProfile() {
 }
 
 /** 登出：公共确认 Dialog（2026-10-14 迁移自自建 v-dialog），确认后清会话回登录页 */
+/* ===== 未活动自动登出看门狗（2026-10-21 用户定稿）=====
+   阈值 = 登录下发的策略 idleLogoutMinutes 分钟（-1/缺 → 不启用）；
+   活动侦测 = 窗口 pointerdown/keydown/wheel/scroll（捕获期，冒泡被组件截断亦可见），
+   10s 节流记戳；15s 巡检超时 → 登出 + 警告 Toast + 回登录页（reason=idle 提示条）。 */
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'scroll'] as const
+const TOUCH_THROTTLE_MS = 10_000
+const TICK_MS = 15_000
+let lastActivityAt = Date.now()
+let lastTouchAt = 0
+let idleTicker: ReturnType<typeof setInterval> | null = null
+
+function onTouch() {
+  const now = Date.now()
+  if (now - lastTouchAt < TOUCH_THROTTLE_MS) return
+  lastTouchAt = now
+  lastActivityAt = now
+}
+
+async function idleLogoutNow() {
+  stopIdleWatch()
+  await auth.logout()
+  toast.warning(t('login.idleLogout'))
+  router.replace({ path: '/login', query: { reason: 'idle' } })
+}
+
+function tickIdle() {
+  const limit = auth.idleLogoutMinutes
+  if (limit <= 0) return
+  if (Date.now() - lastActivityAt >= limit * 60_000) void idleLogoutNow()
+}
+
+function startIdleWatch() {
+  if (idleTicker !== null) return
+  for (const e of ACTIVITY_EVENTS) window.addEventListener(e, onTouch, { passive: true, capture: true })
+  lastActivityAt = Date.now()
+  idleTicker = setInterval(tickIdle, TICK_MS)
+}
+
+function stopIdleWatch() {
+  if (idleTicker !== null) {
+    clearInterval(idleTicker)
+    idleTicker = null
+  }
+  for (const e of ACTIVITY_EVENTS) window.removeEventListener(e, onTouch, { capture: true })
+}
+
+onMounted(startIdleWatch)
+onBeforeUnmount(stopIdleWatch)
+
 async function onLogout() {
   userMenu.value = false
   if (!(await dialog.confirm(t('topbar.logoutConfirm')))) return

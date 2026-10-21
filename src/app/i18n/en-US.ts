@@ -60,6 +60,7 @@ export default {
     failAccountLocked: 'Account locked, please contact your administrator',
     failPasswordExpired: 'Password expired, please change your password',
     expired: 'Session expired, please sign in again',
+    idleLogout: 'Signed out automatically due to inactivity',
   },
   home: {
     welcome: 'FAB Viewer Console',

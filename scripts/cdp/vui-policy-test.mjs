@@ -96,14 +96,53 @@ const inputVal = (label) => evalJs(`(function(){
     .find(function(l){ return l.textContent.indexOf(${JSON.stringify(label)}) >= 0 && l.htmlFor && document.getElementById(l.htmlFor); });
   return lbl ? document.getElementById(lbl.htmlFor).value : null;
 })()`)
-// FvTextInput 禁用态=readonly 模拟（原生 disabled 禁复制，组件定稿 2026-10-16）——断言 readonly/aria-disabled
+// FvTextInput 禁用态=readonly 模拟（原生 disabled 禁复制，组件定稿 2026-10-16）——断言 readonly/aria-disabled；
+// FvTextSelect 禁用态=原生 disabled（select 输入恒 readonly，须走 disabled 分支）
 const inputDisabled = (label) => evalJs(`(function(){
   var lbl = Array.from(document.querySelectorAll('.vui-base-dialog label'))
     .find(function(l){ return l.textContent.indexOf(${JSON.stringify(label)}) >= 0 && l.htmlFor && document.getElementById(l.htmlFor); });
   if (!lbl) return null;
   var inp = document.getElementById(lbl.htmlFor);
-  return inp.readOnly === true && !!inp.closest('.fv-text-input--disabled');
+  return (inp.readOnly === true && !!inp.closest('.fv-text-input--disabled')) || inp.disabled === true;
 })()`)
+/** 取字段（下拉）当前 chips 文本，逗号连接 */
+const chipsOf = (label) => evalJs(`(function(){
+  var lbl=Array.from(document.querySelectorAll('.vui-base-dialog label')).find(function(l){return l.htmlFor && l.textContent.indexOf(${JSON.stringify(label)})>=0});
+  return Array.from(lbl.closest('.v-input').querySelectorAll('.v-chip')).map(function(c){return c.textContent.trim()}).join(',');
+})()`)
+/** 特殊字符白名单多选下拉：开菜单→逐枚点选→点标题区收拢。
+ *  每枚前确认菜单可见（chip 增列会引发布局移动/菜单收起），坐标即时重查 + 一次重试。 */
+async function pickSpecials(chars) {
+  const fieldPos = async () => evalJs(`(function(){
+    var lbl=Array.from(document.querySelectorAll('.vui-base-dialog label')).find(function(l){return l.textContent.indexOf('特殊字符集合')>=0&&l.htmlFor});
+    var vf=lbl.closest('.v-input').querySelector('.v-field').getBoundingClientRect();
+    return{x:Math.round(vf.right-14),y:Math.round(vf.top+vf.height/2)}; // 右缘箭头区，避开 chips
+  })()`)
+  const menuReady = () => evalJs(`!!Array.from(document.querySelectorAll('.v-select__content')).find(function(x){return x.getClientRects().length>0})`)
+  const clickChar = async (ch) => evalJs(`(function(){var c=Array.from(document.querySelectorAll('.v-select__content')).find(function(x){return x.getClientRects().length>0});if(!c)return null;var it=Array.from(c.querySelectorAll('.v-list-item')).find(function(x){return x.textContent.trim()===${JSON.stringify(ch)}});if(!it)return null;var r=it.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+  const isCharSelected = (ch) => evalJs(`(function(){var c=Array.from(document.querySelectorAll('.v-select__content')).find(function(x){return x.getClientRects().length>0});if(!c)return false;var it=Array.from(c.querySelectorAll('.v-list-item')).find(function(x){return x.textContent.trim()===${JSON.stringify(ch)}});return !!it&&(it.className.includes('v-list-item--active')||it.getAttribute('aria-selected')==='true')})()`)
+  /** 逐枚闭环：确认菜单开→点选→以选中态校验，未中就重试（最多 3 次，防布局位移假命中） */
+  const ensureChar = async (ch) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (!(await menuReady()) && !(await isCharSelected(ch))) { const fp = await fieldPos(); await clickPos(fp.x, fp.y); await sleep(1200) }
+      if (await isCharSelected(ch)) return true
+      const ip = await clickChar(ch)
+      if (!ip) { await sleep(600); continue }
+      await clickPos(ip.x, ip.y)
+      await sleep(600)
+      if (await isCharSelected(ch)) return true
+    }
+    return false
+  }
+  for (const ch of chars) {
+    if (!(await ensureChar(ch))) {
+      const dump = await evalJs(`(function(){var c=Array.from(document.querySelectorAll('.v-select__content')).find(function(x){return x.getClientRects().length>0});return c?Array.from(c.querySelectorAll('.v-list-item')).map(function(x){return x.textContent.trim()}).join('|'):'NO MENU'})()`)
+      throw new Error(`special char ${ch} select failed [${dump}]`)
+    }
+  }
+  await clickPos(700, 240) // 标题区点空白收拢菜单
+  await sleep(600)
+}
 /** 点开关（行内 span 文本定位）并返回切换后的 checked */
 async function toggleSwitchByText(txt) {
   const pos = await evalJs(`(function(){
@@ -336,15 +375,19 @@ await sleep(300)
 await clickBtn('button', '确认', '.vui-base-dialog')
 await sleep(700)
 await errTipAt('特殊字符集合', '须至少填写一个特殊字符', '负例④ 集合空 → 必填拦截')
-await setByLabel('特殊字符集合', '#,(')
+// ⑤ 2026-10-21 改版：特殊字符=白名单多选下拉（非法字符无从输入），布局 [登出时间|特殊字符] 同行居天数上方
+const rowGeom = await evalJs(`(function(){
+  function box(label){var lbl=Array.from(document.querySelectorAll('.vui-base-dialog label')).find(function(l){return l.htmlFor && l.textContent.indexOf(label)>=0});var vf=lbl.closest('.v-input').querySelector('.v-field').getBoundingClientRect();return{top:Math.round(vf.top),left:Math.round(vf.left)}}
+  return JSON.stringify({idle:box('未活动登出'),sp:box('特殊字符集合'),pdays:box('密码有效天数')})
+})()`)
+const RG = JSON.parse(rowGeom)
+check('⑤a 登出时间(左)/特殊字符(右)同行两列', Math.abs(RG.idle.top - RG.sp.top) <= 4 && RG.idle.left < RG.sp.left - 100, rowGeom)
+check('⑤b 该行位于两有效期天数之上', RG.sp.top < RG.pdays.top - 10, JSON.stringify({ sp: RG.sp.top, pdays: RG.pdays.top }))
+await pickSpecials(['#', '%', '&'])
 await sleep(300)
-await clickBtn('button', '确认', '.vui-base-dialog')
-await sleep(700)
-const R5 = await errTipAt('特殊字符集合', '仅可设定以下特殊字符', '负例⑤ 非白名单字符「(」拦截')
-if (R5 && !R5.noBadge) check('⑤ tooltip 含完整白名单字符集', R5.TP && R5.TP.txt.includes('-_+=!@#$%&*~?'), R5.TP ? R5.TP.txt.slice(0, 40) : '')
+const spChips = await chipsOf('特殊字符集合')
+check('⑤c 下拉点选 # % & 成三枚 chips', spChips === '#,%,&', spChips)
 await shot('/tmp/vui-policy-dialog.png')
-await setByLabel('特殊字符集合', '#,%,&')
-await sleep(400)
 await clickBtn('button', '确认', '.vui-base-dialog')
 await waitFor(`document.body.innerText.indexOf('策略已创建')>=0`, 'create toast')
 await sleep(500)
@@ -362,8 +405,8 @@ await clickPos(editPos.x, editPos.y)
 await waitFor(`document.querySelector('.vui-base-dialog') && document.querySelector('.vui-base-dialog').innerText.indexOf('编辑策略')>=0`, 'edit dialog')
 await sleep(1200)
 check('编辑态 ID 只读', (await inputDisabled('策略 ID')) === true)
-check('编辑回显（名称/天数/集合）',
-  (await inputVal('策略名称')) === '验证策略' && (await inputVal('密码有效天数')) === '-1' && (await inputVal('特殊字符集合')) === '#,%,&')
+check('编辑回显（名称/天数/集合 chips）',
+  (await inputVal('策略名称')) === '验证策略' && (await inputVal('密码有效天数')) === '-1' && (await chipsOf('特殊字符集合')) === '#,%,&')
 await setByLabel('策略名称', '验证策略改名')
 const sw2 = await toggleSwitchByText('须含特殊字符')
 check('开关切回关', sw2 === false)

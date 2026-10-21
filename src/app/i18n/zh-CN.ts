@@ -60,6 +60,7 @@ export default {
     failAccountLocked: '账户已锁定，请联系管理员处理',
     failPasswordExpired: '密码已过期，请立即修改密码',
     expired: '登录已失效，请重新登录',
+    idleLogout: '长时间未操作，已自动登出',
   },
   home: {
     welcome: 'FAB Viewer 控台',

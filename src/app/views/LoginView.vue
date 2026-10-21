@@ -176,8 +176,14 @@ async function onChangePassword() {
   }
 }
 
-/** 守卫因登录失效跳转而来时提示 */
-const expired = route.query.reason === 'expired'
+/** 守卫/看门狗跳转而来时的失效原因提示（2026-10-21）：expired=会话或到期卡点，idle=未活动自动登出 */
+const logoutReason = computed(() =>
+  route.query.reason === 'expired'
+    ? t('login.expired')
+    : route.query.reason === 'idle'
+      ? t('login.idleLogout')
+      : '',
+)
 </script>
 
 <template>
@@ -214,12 +220,12 @@ const expired = route.query.reason === 'expired'
       </div>
 
       <v-alert
-        v-if="expired"
+        v-if="logoutReason"
         type="info"
         variant="tonal"
         density="compact"
         class="mb-4"
-        :text="t('login.expired')"
+        :text="logoutReason"
       />
 
       <!-- 登录模式 -->

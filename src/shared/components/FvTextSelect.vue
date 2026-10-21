@@ -36,6 +36,9 @@ const props = withDefaults(
     showHint?: boolean
     /** 必填标志（rules 含必填的字段由调用点标注）：label 前红星 */
     required?: boolean
+    /** 多选模式框内最多展示的真实 chip 数，其余并入「[+剩余数]」（用户定稿 2026-10-21）；
+     *  缺省 1 维持历史观感，调用方可调（如策略特殊字符集合用 4） */
+    maxVisibleChips?: number
   }>(),
   {
     items: () => [],
@@ -47,6 +50,7 @@ const props = withDefaults(
     hint: undefined,
     showHint: false,
     required: false,
+    maxVisibleChips: 1,
   },
 )
 
@@ -197,8 +201,9 @@ function onSelect(v: string | string[] | null | undefined) {
     </template>
     <!-- 多选 chip 定制：首项显真实标签（关闭行为经 chip props 透传），第二位显 [+剩余数]，其余不渲染 -->
     <template v-if="isMulti" #chip="{ item, index, props: chipProps }">
-      <v-chip v-if="index === 0" v-bind="chipProps" closable size="small" :text="item.title" />
-      <span v-else-if="index === 1 && multiCount > 1" class="fv-text-select__overflow">[+{{ multiCount - 1 }}]</span>
+      <!-- 前 maxVisibleChips 枚显真实 chip，恰在下一位显 [+剩余数]（默认 1+1 与历史一致） -->
+      <v-chip v-if="index < props.maxVisibleChips" v-bind="chipProps" closable size="small" :text="item.title" />
+      <span v-else-if="index === props.maxVisibleChips && multiCount > props.maxVisibleChips" class="fv-text-select__overflow">[+{{ multiCount - props.maxVisibleChips }}]</span>
     </template>
   </v-select>
 </template>

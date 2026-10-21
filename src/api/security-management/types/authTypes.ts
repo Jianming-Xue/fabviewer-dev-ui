@@ -28,6 +28,9 @@ export interface LoginRo {
  *  取 PolicyDto 存 auth store 供修改密码按策略限制；为空或拉取失败 = 修改密码只保留基础限制 */
 export interface LoginDto {
   token: string
+  /** 未活动登出分钟数（用户定稿 2026-10-21）：后端按用户所挂策略解析下发，
+   *  未挂策略取默认 30；-1=不开启——前端壳层看门狗据此侦测无操作自动登出 */
+  idleLogoutMinutes: number
   /** 用户档案全量（含头像、登录足迹与挂载策略 policyId） */
   user: UserDto
 }

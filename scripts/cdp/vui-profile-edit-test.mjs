@@ -100,7 +100,7 @@ check('电话纯数字规则拦截', (await topBadgeCount()) >= 1)
 await clickDlgBtn('取消')
 await waitFor(`(function(){return Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).length===1})()`, 'phone cancelled')
 await sleep(500)
-const phoneKept = await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0})[0];return d.innerText.indexOf('138-0000-1234')>=0})()`)
+const phoneKept = await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0})[0];return d.innerText.indexOf('138-0000-0001')>=0})()`)
 check('Cancel 弃改动，原值保留', phoneKept === true)
 
 // 持久化

@@ -16,6 +16,23 @@ const STORAGE_KEY = 'vui.auth'
  *  后续有效期口径并入登录策略统一后再改为策略驱动） */
 const TOKEN_TTL_MS = 8 * 3600 * 1000
 
+const DEFAULT_IDLE_LOGOUT_MINUTES = 30
+
+/** 'YYYY-MM-DD HH:mm:ss' → epoch ms；''/非法 → null */
+function toDateTs(s: string): number | null {
+  if (!s) return null
+  const t = new Date(s.replace(' ', 'T')).getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+/** 账户/密码到期卡点（用户定稿 2026-10-21，路由守卫叠加）：档案到期时刻早于当前即失效 */
+function dateExpired(u: UserDto): boolean {
+  const now = Date.now()
+  const a = toDateTs(u.accountExpiresAt)
+  const p = toDateTs(u.passwordExpiresAt)
+  return (a !== null && a < now) || (p !== null && p < now)
+}
+
 /** 空档案（初始/旧持久化格式兜底；旧版本存的是扁平档案，读不出的字段一律补默认） */
 const EMPTY_USER: UserDto = {
   userId: '',
@@ -42,6 +59,8 @@ interface StoredAuth {
   token: string
   /** 过期时刻（epoch ms） */
   expiresAt: number
+  /** 未活动登出分钟（登录下发，-1=不开启；旧持久化缺省回 30，2026-10-21） */
+  idleLogoutMinutes: number
   /** 用户档案（LoginDto 嵌套改版 2026-10-20：整包 UserDto 入库，头像/足迹随档案） */
   user: UserDto
 }
@@ -57,7 +76,12 @@ function load(): StoredAuth | null {
     const parsed = JSON.parse(raw) as StoredAuth
     if (!parsed?.token || !parsed?.expiresAt) return null
     // 过期与否交给 expireIfNeeded 判定（守卫需要区分「从未登录」与「登录失效」）；user 归一兼容旧格式
-    return { token: parsed.token, expiresAt: parsed.expiresAt, user: normalizeUser(parsed.user) }
+    return {
+      token: parsed.token,
+      expiresAt: parsed.expiresAt,
+      idleLogoutMinutes: Number.isFinite(parsed.idleLogoutMinutes) ? parsed.idleLogoutMinutes : 30,
+      user: normalizeUser(parsed.user),
+    }
   } catch {
     return null
   }
@@ -77,6 +101,11 @@ export const useAuthStore = defineStore('auth', () => {
    *  null = 无策略或拉取失败（不阻塞登录）——修改密码退化为基础长度限制（6~18）；
    *  仅存内存不持久化：刷新后按新会话登录重新拉取 */
   const loginPolicy = ref<PolicyDto | null>(null)
+  /** 未活动登出分钟数（FvShell 看门狗消费；未登录/非法值 → 0 = 不启用） */
+  const idleLogoutMinutes = computed(() => {
+    const v = auth.value?.idleLogoutMinutes
+    return auth.value && Number.isFinite(v) && (v as number) > 0 ? (v as number) : 0
+  })
 
   const isLoggedIn = computed(() => auth.value !== null && auth.value.expiresAt > Date.now())
   const userName = computed(() => auth.value?.user.userName ?? '')
@@ -98,6 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
     auth.value = {
       token: res.token,
       expiresAt: Date.now() + TOKEN_TTL_MS,
+      idleLogoutMinutes: Number.isFinite(res.idleLogoutMinutes) ? res.idleLogoutMinutes : DEFAULT_IDLE_LOGOUT_MINUTES,
       user: normalizeUser(res.user),
     }
     justExpired = false
@@ -140,9 +170,10 @@ export const useAuthStore = defineStore('auth', () => {
     persist(auth.value)
   }
 
-  /** 校验过期（路由守卫每次导航调用）：返回 true = 登录失效（从未登录不算） */
+  /** 校验过期（路由守卫每次导航调用）：返回 true = 登录失效（从未登录不算）。
+   *  2026-10-21 叠加日期卡点：token 时刻过期 或 账户/密码到期时间早于当前 → 清会话 */
   function expireIfNeeded(): boolean {
-    if (auth.value && auth.value.expiresAt <= Date.now()) {
+    if (auth.value && (auth.value.expiresAt <= Date.now() || dateExpired(auth.value.user))) {
       auth.value = null
       loginPolicy.value = null
       persist(null)
@@ -152,5 +183,5 @@ export const useAuthStore = defineStore('auth', () => {
     return justExpired
   }
 
-  return { isLoggedIn, userName, user, profile, loginPolicy, login, logout, patchUser, expireIfNeeded }
+  return { isLoggedIn, userName, user, profile, loginPolicy, idleLogoutMinutes, login, logout, patchUser, expireIfNeeded }
 })

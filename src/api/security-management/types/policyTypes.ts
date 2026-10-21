@@ -31,6 +31,9 @@ export interface PolicyDto {
   passwdValidDays: number
   /** 账户有效天数；-1=永不过期 */
   accountValidDays: number
+  /** 未活动登出时间（分钟）：登录后页面持续无操作达该时长自动登出；
+   *  -1=不开启，默认 30（用户定稿 2026-10-21，登录时经 LoginDto 下发） */
+  idleLogoutMinutes: number
 }
 
 /** 名称字典项（GET /login_policy/name/list 出参，用户定稿 2026-10-20）：
@@ -58,4 +61,6 @@ export interface PolicyRo {
   passwdValidDays: number
   /** 账户有效天数；-1=永不过期 */
   accountValidDays: number
+  /** 未活动登出时间（分钟）；-1=不开启 */
+  idleLogoutMinutes: number
 }

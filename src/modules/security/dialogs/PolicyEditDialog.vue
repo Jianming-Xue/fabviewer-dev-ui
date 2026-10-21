@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvSwitch from '@/shared/components/FvSwitch.vue'
+import FvTextSelect from '@/shared/components/FvTextSelect.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
 import {
@@ -18,11 +19,11 @@ import type {
 /**
  * 登录策略弹窗（新增/编辑二合一，经 openInteractiveDialog 打开，2026-10-20 随策略管理页定稿；
  * 提交收口模式同 RoleEditDialog）：标题随进入方式切换；policyId 编辑时只读。
- * 两列栅格（12 字段，宽 600 同 CreateUserDialog，走 tokens.css 共用类 .vui-user-form-grid）：
+ * 两列栅格（宽 600 同 CreateUserDialog，走 tokens.css 共用类 .vui-user-form-grid）：
  * ID+名称 / 描述跨两列 / 密码长度上下限 / 四类字符要求开关一行（两两分列，2026-10-20 定稿）/
- * 特殊字符集合跨两列 / 密码+账户有效天数（-1=永不过期）。
- * 布尔表单态用布尔、提交换算 1/0（后端口径）；特殊字符集合 UI=逗号分隔文本、传输=string[]
- * （勾选须含时必填、未勾选提交空数组）。
+ * 未活动登出+特殊字符集合（多选下拉 max-visible-chips 4）同行 / 密码+账户有效天数（-1=永不过期）。
+ * 布尔表单态用布尔、提交换算 1/0（后端口径）；特殊字符集合 UI=白名单多选下拉（选项即
+ * SPECIAL_CHARS 逐字符）、传输=string[]（勾选须含时必填、未勾选提交空数组）。
  * 表单规则（用户定稿 2026-10-20 晚）：ID/名称 ≤20 字符、描述 ≤255（不限字符类型）、
  * 长度 6≤min<max≤18（双向交叉报）、天数 -1 或 1–999、特殊字符仅可设定 SPECIAL_CHARS 集合；
  * 非空校验归 UI 调用前，接口层不设守卫。
@@ -55,6 +56,8 @@ const form = reactive({
   passwdSpecials: (props.policy?.passwdSpecials ?? []).join(','),
   passwdValidDays: String(props.policy?.passwdValidDays ?? 90),
   accountValidDays: String(props.policy?.accountValidDays ?? 365),
+  /** 未活动登出分钟（用户定稿 2026-10-21）；-1=不开启，缺省 30 */
+  idleLogoutMinutes: String(props.policy?.idleLogoutMinutes ?? 30),
 })
 
 /* ===== 校验口径常量（用户定稿 2026-10-20 晚，单一真源） ===== */
@@ -67,6 +70,8 @@ const PASSWD_MIN_FLOOR = 6
 const PASSWD_MAX_CEIL = 18
 /** 有效天数上限（-1=永不过期 之外的最大天数） */
 const VALID_DAYS_MAX = 999
+/** 未活动登出分钟上限（用户定稿 2026-10-21，-1=不开启） */
+const IDLE_MAX = 9999
 /** 可设定的特殊字符集合（勾选须含后仅允许这些字符；文案经 {chars} 命名插值下发、
  *  不入词典原文——@/% 为 vue-i18n 保留语法字符） */
 const SPECIAL_CHARS = '-_+=!@#$%&*~?'
@@ -76,6 +81,16 @@ const POS_INT_PATTERN = /^\d+$/
 const isPosInt = (v: string) => POS_INT_PATTERN.test(v.trim()) && Number(v) >= 1
 /** 天数：-1（永不过期）或 1–999 */
 const isDays = (v: string) => v.trim() === '-1' || (isPosInt(v) && Number(v) <= VALID_DAYS_MAX)
+
+/** 特殊字符候选（白名单逐字符，多选下拉 items，2026-10-21 改版） */
+const specialCharOptions = SPECIAL_CHARS.split('').map((ch) => ({ title: ch, value: ch }))
+/** 集合模型窄化：表单态仍为逗号分隔串（save/回显零改动），下拉按数组读写 */
+const specialsModel = computed({
+  get: () => form.passwdSpecials.split(',').map((t0) => t0.trim()).filter(Boolean),
+  set: (v: string | string[] | undefined) => {
+    form.passwdSpecials = Array.isArray(v) ? v.join(',') : v ? String(v) : ''
+  },
+})
 
 const rules = {
   required: (v: string) => !!v.trim() || t('validation.required'),
@@ -94,13 +109,16 @@ const rules = {
     (!isPosInt(v) || !isPosInt(form.passwdMinLength) || Number(v) > Number(form.passwdMinLength)) ||
     t('security.loginPolicy.form.maxLtMinInvalid'),
   days: (v: string) => isDays(v) || t('security.loginPolicy.form.daysInvalid'),
-  /** 特殊字符集合：仅勾选时校验——必填、逐项单字符、限 SPECIAL_CHARS */
-  specials: (v: string) => {
+  /** 未活动登出：-1（不开启）或 1~9999 分钟 */
+  idle: (v: string) =>
+    v.trim() === '-1' ||
+    (isPosInt(v) && Number(v) <= IDLE_MAX) ||
+    t('security.loginPolicy.form.idleInvalid'),
+  /** 特殊字符集合：仅勾选时校验必填（白名单由下拉 options 天然保证；模型为数组，
+   *  判定统一走 form.passwdSpecials 逗号串，见 specialsModel） */
+  specials: () => {
     if (!form.requireSpecialChar) return true
-    const toks = v.split(',').map((s) => s.trim()).filter(Boolean)
-    if (toks.length === 0) return t('security.loginPolicy.form.specialsRequired')
-    const legal = toks.every((tk) => tk.length === 1 && SPECIAL_CHARS.includes(tk))
-    return legal || t('security.loginPolicy.form.specialsInvalid', { chars: SPECIAL_CHARS })
+    return form.passwdSpecials.split(',').some((tk) => !!tk.trim()) || t('security.loginPolicy.form.specialsRequired')
   },
 }
 
@@ -122,6 +140,7 @@ async function save() {
       : [],
     passwdValidDays: Number(form.passwdValidDays.trim()),
     accountValidDays: Number(form.accountValidDays.trim()),
+    idleLogoutMinutes: Number(form.idleLogoutMinutes.trim()),
   }
   saving.value = true
   try {
@@ -211,15 +230,27 @@ async function save() {
           <span class="text-body-2">{{ t('security.loginPolicy.form.reqSpecialChar') }}</span>
         </div>
       </div>
-      <!-- 特殊字符集合：跨两列；仅在勾选须含特殊字符时可编辑（勾选后必填，见 rules.specials） -->
       <FvTextInput
-        v-model="form.passwdSpecials"
+        v-model="form.idleLogoutMinutes"
+        :label="t('security.loginPolicy.form.idleLabel')"
+        :rules="[rules.required, rules.idle]"
+        :hint="t('security.loginPolicy.form.idleHint')"
+        show-hint
+        required
+        inputmode="numeric"
+      />
+      <!-- 特殊字符集合：多选下拉至多显 4 枚 chip，右列与登出时间同行；
+           整行置于两有效期天数之上（用户定稿 2026-10-21） -->
+      <FvTextSelect
+        v-model="specialsModel"
+        mode="multiple"
+        :items="specialCharOptions"
+        :max-visible-chips="4"
         :label="t('security.loginPolicy.form.passwdSpecials')"
         :rules="[rules.specials]"
         :hint="t('security.loginPolicy.form.specialsHint', { chars: SPECIAL_CHARS })"
         show-hint
         :disabled="!form.requireSpecialChar"
-        class="vui-user-form--span"
       />
       <FvTextInput
         v-model="form.passwdValidDays"

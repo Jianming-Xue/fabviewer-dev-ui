@@ -1,5 +1,8 @@
 import { registerMock } from '@/shared/api/mock'
 
+import { policies } from './policyMock'
+import { rows as userRows } from './userMock'
+
 import type { ChangePasswordRo, LoginDto, LoginFailCode, LoginRo } from '../types/authTypes'
 import type { SecurityReplyDto } from '../types/types'
 import type { UserDto } from '../types/userTypes'
@@ -51,7 +54,7 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
   // 演示口径（2026-10-20 嵌套改版）：admin 挂标准策略 P001、test 挂强策略 P002、其余不挂——
   // user.policyId 非空时前端登录成功后拉策略详情（改密按策略限制），为空/拉取失败走基础限制
   const policyId = username === 'admin' ? 'P001' : username === 'test' ? 'P002' : ''
-  const user: UserDto = {
+  const fallbackUser: UserDto = {
     userId: username === 'admin' ? 'U0001' : username === 'test' ? 'U0003' : 'U9000',
     userName: username,
     nickName: username === 'admin' ? '系统管理员' : username === 'test' ? '测试工程师' : `${username}（演示）`,
@@ -71,8 +74,18 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
     passwordValidDays: 90,
     accountValidDays: -1,
   }
+  // 种子用户真实档案合并（2026-10-21）：到期/角色/策略取用户表真行，守卫日期卡点方可演示
+  const seed = userRows.find((r) => r.userName.toLowerCase() === username.toLowerCase())
+  const user: UserDto = { ...fallbackUser, ...(seed ? {
+    userId: seed.userId, nickName: seed.nickName, email: seed.email, phoneNumber: seed.phoneNumber,
+    roleIds: [...seed.roleIds], policyId: seed.policyId, accountExpiresAt: seed.accountExpiresAt,
+    passwordExpiresAt: seed.passwordExpiresAt, passwordValidDays: seed.passwordValidDays,
+    accountValidDays: seed.accountValidDays,
+  } : {}) }
   const contents: LoginDto = {
     token: `mock-token-${Date.now().toString(36)}`,
+    // 未活动登出分钟：按所挂策略解析（未挂/查不到 → 默认 30，用户定稿 2026-10-21）
+    idleLogoutMinutes: policies.find((p) => p.policyId === user.policyId)?.idleLogoutMinutes ?? 30,
     user,
   }
   return ok(contents)

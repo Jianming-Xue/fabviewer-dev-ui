@@ -38,10 +38,10 @@ const dayEnd = (d: string) => (d ? `${d} 23:59:59` : '')
 
 
 /** 内存态用户集（业务命名真实，10 条 = pageSize 10 下两页；含永不过期/已过期/停用/未登录等演示形态） */
-const rows: UserDto[] = [
+export const rows: UserDto[] = [
   {
     userId: 'U0001', userName: 'admin', nickName: '系统管理员', email: 'admin@fabcorp.example', phoneNumber: '138-0000-0001',
-    avatar: '', enabled: 1, roleIds: ['ADMIN'], policyId: '',
+    avatar: '', enabled: 1, roleIds: ['ADMIN'], policyId: 'P001',
     createdAt: '2025-01-15 09:00:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-08-01 10:00:00', passwordExpiresAt: '',
     lastLoginTime: '2026-10-17 08:55:12', lastLoginIp: '10.20.33.101', passwordValidDays: -1, accountValidDays: -1,
   },
