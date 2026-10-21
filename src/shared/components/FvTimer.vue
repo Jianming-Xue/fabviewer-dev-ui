@@ -57,6 +57,9 @@ const props = withDefaults(
     hint?: string
     /** 带提示词开关：true 且 hint 非空时 label 后显示问号图标，否则隐藏 */
     showHint?: boolean
+    /** 日期段被清空时，焦点离开控件框 → 该段自动填当天值并提交（2026-10-21 用户定稿，
+     *  新增用户激活日期专用；默认关闭不影响 MES 检索等既有用法） */
+    fillOnEmptyBlur?: boolean
     /** 显示清除钮（有内容时）；点击清空全部段并触发 clear 事件供父级联动默认值 */
     clearable?: boolean
   }>(),
@@ -71,6 +74,7 @@ const props = withDefaults(
     errorMessages: undefined,
     hint: '',
     showHint: false,
+    fillOnEmptyBlur: false,
     clearable: false,
   },
 )
@@ -247,6 +251,30 @@ function leaveSeg(k: SegKey) {
 
 function fixAllSegments() {
   for (const def of activeSegs.value) leaveSeg(def.key)
+}
+
+/** 框级失焦：focused 复位；fillOnEmptyBlur 开启时，日期段为空的自动填当天（用户定稿 2026-10-21）。
+ *  焦点仍在框内段间移动不触发（relatedTarget ∈ box）；有值段不动、不清零。 */
+function onBoxFocusOut(e: FocusEvent) {
+  focused.value = false
+  if (!props.fillOnEmptyBlur || !wantDate.value) return
+  const next = e.relatedTarget as HTMLElement | null
+  if (next && boxEl.value?.contains(next)) return
+  const now = new Date()
+  let filled = false
+  if ((segs.y ?? '') === '') {
+    segs.y = String(now.getFullYear())
+    filled = true
+  }
+  if ((segs.mo ?? '') === '') {
+    segs.mo = pad(now.getMonth() + 1)
+    filled = true
+  }
+  if ((segs.d ?? '') === '') {
+    segs.d = pad(now.getDate())
+    filled = true
+  }
+  if (filled) commit()
 }
 
 function onSegFocus(k: SegKey) {
@@ -548,7 +576,7 @@ watch(menu, (open) => {
         :class="{ 'fv-timer__box--focus': focused, 'fv-timer__box--error': !!shownError }"
         @click="onBoxClick"
         @focusin="focused = true"
-        @focusout="focused = false"
+        @focusout="onBoxFocusOut"
       >
         <template v-for="(it, i) in items" :key="i">
           <span v-if="it.type === 'sep'" class="fv-timer__sep">{{ it.text }}</span>

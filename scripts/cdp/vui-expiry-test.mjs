@@ -29,7 +29,7 @@ await waitFor(`(function(){var ds=Array.from(document.querySelectorAll('.vui-bas
 await sleep(1200)
 const readTimers=()=>ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();return JSON.stringify(Array.from(d.querySelectorAll('.fv-timer')).map(function(t){return Array.from(t.querySelectorAll('.fv-timer__seg')).map(function(s){return s.value}).join('-')}))})()`)
 let T=JSON.parse(await readTimers())
-check('初始：激活=今天、到期=今天+365（未选策略缺省）', T[0]===dayjs.today && T[1]===dayjs.add(365), JSON.stringify(T)+' today='+dayjs.today)
+check('初始：激活=今天、到期为空（纯策略驱动，365 自动填充已删）', T[0]===dayjs.today && /^-*$/.test(T[1].replace(/-/g,'')) && T[1]==='--', JSON.stringify(T))
 // 选强策略 P002（acct 180）
 async function pickPolicy(name){
   const sp=await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var lbl=Array.from(d.querySelectorAll('label')).find(function(l){return l.textContent.indexOf('登录策略')>=0&&l.htmlFor});var inp=document.getElementById(lbl.htmlFor);var r=inp.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
@@ -92,6 +92,19 @@ async function clearPolicy(){const p=await ev(`(function(){var d=Array.from(docu
 await clearPolicy(); await sleep(800) // clearable × 清空策略
 check('清空策略后密码 Hint 图标隐藏', (await pwIcon())===0, 'icons='+await pwIcon())
 const et3=await hoverTip('expiry'); check('清空后到期 Hint 回退通用约束文案', et3.indexOf('须晚于激活日期')>=0, et3.slice(0,80))
+
+
+// ===== 激活日期段清空→失焦回填当天（fillOnEmptyBlur，2026-10-21）=====
+await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var yseg=d.querySelectorAll('.fv-timer')[0].querySelector('.fv-timer__seg');var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;yseg.focus();s.call(yseg,'');yseg.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
+await sleep(400)
+const other=await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).pop();var seg=d.querySelectorAll('.fv-timer')[1].querySelector('.fv-timer__seg');var r=seg.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await clickPos(other.x,other.y) // 焦点移出激活框 → 触发回填
+await sleep(700)
+T=JSON.parse(await readTimers())
+check('激活日期年段清空后失焦自动回填当年', T[0]===dayjs.today, JSON.stringify(T))
+await pickPolicy('强策略')
+T=JSON.parse(await readTimers())
+check('回填后再选策略到期=激活+180（联动链完整）', T[1]===dayjs.add(180), JSON.stringify(T))
 
 console.log(`\n通过 ${results.filter(Boolean).length}/${results.length}`)
 process.exitCode=results.includes(false)?1:0;ws.close()

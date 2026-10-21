@@ -30,8 +30,9 @@ import type {
  * 行分配=用户名+昵称 / 密码跨两列 / 邮箱+电话 / 角色+策略 / 激活日期+到期日期（激活在前）/
  * 启用开关跨行；长度限制（用户定稿）：用户名 ≤30 且仅数字/大小写字母/下划线，昵称 ≤30 不限字符类型，
  * 初始密码不做任何限制（仅必填）。
- * 日期默认值：激活=当天；到期初始=激活+365，选定登录策略后由策略账户有效期驱动
- * （-1 清空 / N=激活+N 天；激活或策略变动即重算，2026-10-20 晚定稿）。
+ * 日期默认值（2026-10-21 改版）：激活=当天（段被清空失焦自动回填当天值，fillOnEmptyBlur）；
+ * 到期初始为空，仅选定登录策略后由策略账户有效期驱动（-1 清空 / N=激活+N，激活或策略变动即重算；
+ * 原「激活+365 自动填充」已删）。
  * 启用开关联动：激活日期>今天 → 关闭且禁用；≤今天（含清空）→ 打开且解除禁用。
  * 提交收口本组件（同 RoleEditDialog 模式）：成功 → emit('resolve', UserDto)+关窗；
  * 失败（用户名重复等）→ showOpError，弹窗保留可改可重试。
@@ -56,8 +57,8 @@ const form = reactive({
   policyId: '',
   /** 账户激活日期：默认当天（用户定稿 2026-10-19） */
   accountActiveAt: dayjs().format(DAY_FORMAT),
-  /** 账户到期日期：初始默认=激活日期+365 天；空 = 永不过期 */
-  accountExpiresAt: dayjs().add(365, 'day').format(DAY_FORMAT),
+  /** 账户到期日期：初始为空（2026-10-21 删「激活+365 自动填充」，到期仅由所选策略账户有效期驱动）；空 = 永不过期 */
+  accountExpiresAt: '',
   enabled: true,
 })
 
@@ -103,18 +104,16 @@ function onPolicyOpen() {
    -1 = 永不过期 → 清空到期日期；N>0 → 到期日期 = 激活日期 + N 天；
    激活日期或策略任一变动都重算；未选策略时沿用 365 天缺省；
    detail 拉取失败保持当前到期值不动（带过期响应守卫，防快速切换策略错值）。 */
-const DEFAULT_ACCOUNT_VALID_DAYS = 365
 const policyAccountDays = ref<number | null>(null)
 /** 所选策略的密码有效天数（null=未选/未取到）：驱动密码框 Hint 图标显隐与文案 */
 const policyPasswdDays = ref<number | null>(null)
 
 function recalcExpires() {
-  if (!form.accountActiveAt) return
-  const days = policyAccountDays.value ?? DEFAULT_ACCOUNT_VALID_DAYS
+  // 2026-10-21 改版：未选/未取到策略不动到期（原「激活+365」自动填充已删）；仅策略驱动重算
+  const days = policyAccountDays.value
+  if (days === null || !form.accountActiveAt) return
   form.accountExpiresAt =
-    days === -1
-      ? ''
-      : dayjs(form.accountActiveAt, 'YYYY-MM-DD').add(days, 'day').format('YYYY-MM-DD')
+    days === -1 ? '' : dayjs(form.accountActiveAt, 'YYYY-MM-DD').add(days, 'day').format('YYYY-MM-DD')
 }
 
 watch(
@@ -306,6 +305,7 @@ async function save() {
         :label="t('security.users.form.activeAt')"
         :hint="t('security.users.form.activeAtHint')"
         show-hint
+        fill-on-empty-blur
         :error-messages="activeAtErrors"
       />
       <FvTimer
