@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
@@ -26,9 +25,10 @@ import type {
 /**
  * 角色和策略弹窗（经 openInteractiveDialog 打开，2026-10-19 自 EditUserDialog 二次拆分而来，
  * 用户表格 More 菜单「角色和策略」入口）：
- * 在管字段 = 角色/登录策略/账户到期日期（2026-10-21 改版：两有效期天数移除，
- * 天数改由所选策略驱动——切换策略取 detail 后 到期=激活日期+策略账户有效天数，-1 清空）；
- * 激活日期只读展示（accountActiveAt，空回落 createdAt 当日），居到期日期之上。
+ * 在管字段 = 角色/登录策略/账户到期日期（2026-10-21 改版：两有效期天数移除；
+ * 激活日期与到期日期均只读展示——本弹窗【不做】策略↔到期值联动（用户定稿，
+ * 与新增用户弹窗不同），策略详情仅驱动到期日期 Hint 文案；到期值改动走用户表列编辑路径）；
+ * 激活日期基准 = accountActiveAt（空回落 createdAt 当日）。
  * 提交走 UserRo 稀疏语义（只传在管字段，昵称/邮箱/电话/两天数/enabled 一概不经手）。
  * 必填（2026-10-21 修复）：角色与登录策略均带 required 规则——策略清空不得提交
  * （原「策略空=默认策略」口径作废）。到期日期空=永不过期。
@@ -67,18 +67,10 @@ const rules = {
     (Array.isArray(v) ? v.length > 0 : !!String(v ?? '').trim()) || t('validation.required'),
 }
 
-/* ===== 策略账户有效期联动（2026-10-21）=====
-   policyId 变动（含清空）→ fetchPolicyDetail 取 accountValidDays：
-   - 切换（新值非空）→ 到期日期 = 激活日期 + N 天；-1 → 清空到期；
-   - 进页携带策略只取详情更新 Hint，不覆盖用户现存到期值（watch 初始不触发，onMounted 单独拉）。 */
+/* ===== 策略详情 → 仅驱动到期 Hint（2026-10-21 用户定稿：本弹窗不改到期值）=====
+   policyId 变动或进页携带策略 → fetchPolicyDetail 取 accountValidDays 更新 expiresHint；
+   到期日期控件禁用，值保持库内现值提交；详情失败/清空策略 → Hint 回落通用口径。 */
 const policyAccountDays = ref<number | null>(null)
-
-function recalcExpires() {
-  const days = policyAccountDays.value
-  if (days === null || !baseActiveAt.value) return
-  form.accountExpiresAt =
-    days === -1 ? '' : dayjs(baseActiveAt.value, 'YYYY-MM-DD').add(days, 'day').format('YYYY-MM-DD')
-}
 
 watch(
   () => form.policyId,
@@ -91,10 +83,9 @@ watch(
       (p) => {
         if (form.policyId !== id) return // 过期响应丢弃
         policyAccountDays.value = p.accountValidDays
-        recalcExpires()
       },
       () => {
-        /* 详情失败：Hint 保持通用、到期不动 */
+        /* 详情失败：Hint 保持通用 */
       },
     )
   },
@@ -218,11 +209,13 @@ async function save() {
         :label="t('security.users.form.activeAt')"
         disabled
       />
+      <!-- 到期日期禁用（用户定稿 2026-10-21：本弹窗不改到期值，仅 Hint 随策略） -->
       <FvTimer
         v-model="form.accountExpiresAt"
         mode="date"
         :label="t('security.users.form.expiresAt')"
         :hint="expiresHint"
+        disabled
         show-hint
       />
     </v-form>

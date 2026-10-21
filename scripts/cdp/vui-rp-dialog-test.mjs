@@ -1,4 +1,4 @@
-/* EditUserRolePolicyDialog 2026-10-21 改版验证：天数移除+激活只读+必填拦截+策略联动到期/Hint */
+/* EditUserRolePolicyDialog 2026-10-21 定稿验证：天数移除+激活/到期只读+必填拦截+仅 Hint 联动 */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function tp() { for (let i = 0; i < 8; i++) { try { const r = await fetch('http://127.0.0.1:9333/json/new?about:blank', { method: 'PUT' }); const j = await r.json(); if (j.webSocketDebuggerUrl) return j } catch {} await sleep(500) } throw new Error('no') }
 let ws, mid = 0; const pn = new Map()
@@ -68,19 +68,20 @@ await sleep(1400)
 const txt = await dlgText()
 check('两有效期天数字段已移除', txt.indexOf('密码有效期天数') < 0 && txt.indexOf('账户有效期天数') < 0)
 check('激活日期只读在场', await ev(`(function(){var d=${DLG};var t0=d.querySelectorAll('.fv-timer')[0];return t0.classList.contains('fv-timer--disabled')&&t0.querySelector('input').disabled})()`))
+check('到期日期已禁用', await ev(`(function(){var d=${DLG};var t1=d.querySelectorAll('.fv-timer')[1];return t1.classList.contains('fv-timer--disabled')&&t1.querySelector('input').disabled})()`))
 let T = JSON.parse(await timers())
 check('激活=createdAt 兜底(2025-06-03)，到期回显 2027-06-02', T[0] === '2025-06-03' && T[1] === '2027-06-02', JSON.stringify(T))
 // 2) 进页携带策略 P001 → 到期 Hint=365（且不覆盖到期值——上面已验 2027-06-02 未动）
 check('进页 Hint=「策略要求账户有效期天数为 365」', (await hoverExpiryHint()).indexOf('策略要求账户有效期天数为 365') >= 0)
-// 3) 切换强策略 → 到期 = 2025-06-03+180 = 2025-11-30；Hint 更新 180
+// 3) 切换强策略 → 到期值不动（2026-10-21 定稿：本弹窗无值联动）；Hint 更新 180
 await pickPolicy('强策略')
 T = JSON.parse(await timers())
-check('切换强策略到期重算=激活+180', T[1] === '2025-11-30', JSON.stringify(T))
+check('切换强策略到期值保持 2027-06-02（不联动）', T[1] === '2027-06-02', JSON.stringify(T))
 check('切换后 Hint=「策略要求账户有效期天数为 180」', (await hoverExpiryHint()).indexOf('180') >= 0)
 // 4) P003(-1) → 到期清空 + Hint 永不过期
 await pickPolicy('合规审计策略')
 T = JSON.parse(await timers())
-check('P003(-1) 到期清空、Hint=永不过期', T[1] === '--' && (await hoverExpiryHint()).indexOf('策略要求账户永不过期') >= 0, JSON.stringify(T))
+check('P003(-1) 到期值仍不动、Hint=永不过期', T[1] === '2027-06-02' && (await hoverExpiryHint()).indexOf('策略要求账户永不过期') >= 0, JSON.stringify(T))
 // 5) 清空策略 → Confirm 被必填拦截（窗不退、策略徽标）
 await clearPolicy()
 await clickBtn('确认')
@@ -90,7 +91,7 @@ check('策略清空后 Confirm 拦截（必填规则修复）', stillOpen === tr
 // 6) 重选标准策略 → 到期 = 2025-06-03+365 = 2026-06-03；Cancel 关窗不提交
 await pickPolicy('标准策略')
 T = JSON.parse(await timers())
-check('重选标准策略到期=激活+365', T[1] === '2026-06-03', JSON.stringify(T))
+check('重选标准策略到期值仍保持、Hint=365', T[1] === '2027-06-02' && (await hoverExpiryHint()).indexOf('365') >= 0, JSON.stringify(T))
 await clickBtn('取消')
 await waitFor(`(function(){return Array.from(document.querySelectorAll('.vui-base-dialog')).filter(function(x){return x.getClientRects().length>0}).length===0})()`, 'closed')
 check('取消关窗（不提交）', true)
