@@ -105,7 +105,8 @@ export interface ResetPasswordRo {
  *  userId = 登录用户名（与 /auth/change_password 同口径显式带身份，不走请求头）；
  *  可编辑白名单：nickName / email / phoneNumber / avatar（2026-10-22 头像并入：
  *  avatar 存 JSON 配置 {"mode":"username","bg":"","fg":""} / {"mode":"emoji","emoji":"🚀"}
- *  （空串=默认主题色/系统字色），兼容图片 URL/dataURL；''=缺省字母退化；账号字段不在此列） */
+ *  （空串=默认主题色/系统字色）/ {"mode":"img","base64":""}（图片裁剪结果 dataURL，base64 无=默认头像），
+ *  兼容旧口径图片 URL/dataURL 直存与 ''（缺省字母退化）；账号字段不在此列） */
 export interface UserAttributeRo {
   /** 登录用户名 */
   userId: string
