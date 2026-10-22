@@ -7,6 +7,7 @@ import { getNavModules } from '@/modules/registry'
 import type { FvFeature } from '@/shared/module'
 import FvLogo from '@/app/images/FvLogo.vue'
 import FvNavItem from '@/shared/components/FvNavItem.vue'
+import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
 import { useLocale } from '@/app/composables/useLocale'
 import { useAuthStore } from '@/app/stores/auth'
 import { usePermissionStore } from '@/app/stores/permission'
@@ -125,12 +126,6 @@ const themeIcon = computed(() => (isDark.value ? 'fas fa-sun' : 'fas fa-moon'))
 const userMenu = ref(false)
 const dialog = useModalDialog()
 const toast = useAlertToast()
-
-/** 头像兜底缩写：昵称/用户名首字符大写（登录档案无 base64 头像时显示，2026-10-18） */
-const userInitials = computed(() => {
-  const src = auth.profile.nickName || auth.profile.name
-  return src ? src.slice(0, 1).toUpperCase() : '?'
-})
 
 /** 修改密码：经 openInteractiveDialog 编程式打开（业务弹窗继承 FvInteractiveDialog 基类，跨界面传参由此组织） */
 function onChangePassword() {
@@ -302,10 +297,13 @@ async function onLogout() {
         <v-menu v-model="userMenu" location="bottom end">
           <template #activator="{ props: menuProps }">
             <v-btn v-bind="menuProps" icon variant="text" size="small" :aria-label="t('topbar.user')">
-              <v-avatar size="24" color="primary" variant="tonal">
-                <img v-if="auth.profile.avatar" :src="auth.profile.avatar" :alt="auth.profile.name" />
-                <span v-else class="text-caption font-weight-bold">{{ userInitials }}</span>
-              </v-avatar>
+              <!-- 头像统一渲染（2026-10-22）：JSON 配置（字母/表情）或图片，空=退化首字母 -->
+              <FvUserAvatar
+                :avatar="auth.profile.avatar"
+                :user-name="auth.user.userName"
+                :fallback-name="auth.profile.nickName || auth.profile.name"
+                :size="24"
+              />
             </v-btn>
           </template>
           <v-list density="compact" class="py-1" min-width="180">

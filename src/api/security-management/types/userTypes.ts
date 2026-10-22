@@ -103,11 +103,13 @@ export interface ResetPasswordRo {
 
 /** 单属性修改入参（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑）：
  *  userId = 登录用户名（与 /auth/change_password 同口径显式带身份，不走请求头）；
- *  可编辑白名单：nickName / email / phoneNumber（头像与账号字段不在此列） */
+ *  可编辑白名单：nickName / email / phoneNumber / avatar（2026-10-22 头像并入：
+ *  avatar 存 JSON 配置 {"mode":"username","bg":"","fg":""} / {"mode":"emoji","emoji":"🚀"}
+ *  （空串=默认主题色/系统字色），兼容图片 URL/dataURL；''=缺省字母退化；账号字段不在此列） */
 export interface UserAttributeRo {
   /** 登录用户名 */
   userId: string
-  attName: 'nickName' | 'email' | 'phoneNumber'
+  attName: 'nickName' | 'email' | 'phoneNumber' | 'avatar'
   attValue: string
 }
 

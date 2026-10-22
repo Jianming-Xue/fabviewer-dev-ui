@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
+import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
+import ChangeUserAvatarDialog from './ChangeUserAvatarDialog.vue'
 import EditUserAttributeDialog from './EditUserAttributeDialog.vue'
 import { useAuthStore } from '@/app/stores/auth'
 
@@ -18,6 +20,8 @@ import type { UserAttributeRo } from '@/api/security-management/types/userTypes'
  * 编辑（2026-10-20 二次定稿，替代短暂尝试的行内编辑）：昵称/邮箱/电话三行行尾编辑钮（pen）
  * → 经 openInteractiveDialog 弹 EditUserAttributeDialog（宿主层叠机制置于本弹窗之上），
  * Confirm 提交成功后结果回显到原行（auth.patchUser + Toast）；Cancel 取消无改动。
+ * 头像编辑（2026-10-22 二次定稿，替代短暂存在的下缘弧带修改钮）：点击头像整体
+ * → 层叠弹 ChangeUserAvatarDialog，Confirm 提交成功后回写 auth.patchUser({ avatar })（顶栏头像随 store 响应式更新）。
  */
 const open = defineModel<boolean>({ required: true })
 
@@ -57,6 +61,17 @@ async function editRow(att: UserAttributeRo['attName']) {
   auth.patchUser({ [att]: saved })
   toast.success(t('topbar.profileUpdated'))
 }
+
+/** 头像编辑：弹 ChangeUserAvatarDialog（层叠于本弹窗之上）；Confirm 回传新头像 dataURL
+ *  → 回写会话档案（auth.profile.avatar，用户信息弹窗与主界面右上角头像随 store 响应式更新） */
+async function editAvatar() {
+  const saved = await openInteractiveDialog<{ current: string }, string | undefined>(ChangeUserAvatarDialog, {
+    current: auth.profile.avatar,
+  })
+  if (saved === undefined) return // Cancel/直接关闭：无改动
+  auth.patchUser({ avatar: saved })
+  toast.success(t('topbar.profileUpdated'))
+}
 </script>
 
 <template>
@@ -64,12 +79,16 @@ async function editRow(att: UserAttributeRo['attName']) {
     <div class="vui-profile">
       <!-- 档案头：头像 + 昵称（无头像退化为首字符） -->
       <div class="vui-profile__head">
-        <v-avatar size="64" color="primary" variant="tonal">
-          <img v-if="auth.profile.avatar" :src="auth.profile.avatar" :alt="auth.profile.name" />
-          <span v-else class="text-h5 font-weight-bold">
-            {{ (auth.profile.nickName || auth.profile.name).slice(0, 1).toUpperCase() }}
-          </span>
-        </v-avatar>
+        <!-- 头像（2026-10-22 二次定稿）：点击头像整体弹 ChangeUserAvatarDialog -->
+        <FvUserAvatar
+          class="vui-profile__avatar"
+          :avatar="auth.profile.avatar"
+          :user-name="auth.user.userName"
+          :fallback-name="auth.profile.nickName || auth.profile.name"
+          :size="64"
+          :title="t('topbar.avatarEdit')"
+          @click="editAvatar"
+        />
         <div class="text-body-1 font-weight-medium mt-2">{{ auth.profile.nickName || auth.profile.name }}</div>
       </div>
       <!-- 信息列表：左图标 + 标签，右值 + 可编辑行行尾编辑钮 -->
@@ -110,6 +129,11 @@ async function editRow(att: UserAttributeRo['attName']) {
   flex-direction: column;
   align-items: center;
   padding: 6px 0 14px;
+}
+
+/* 头像即入口（2026-10-22）：点击弹修改弹窗 */
+.vui-profile__avatar {
+  cursor: pointer;
 }
 
 .vui-profile__row :deep(.v-list-item__append) {

@@ -190,14 +190,14 @@ registerMock('PUT', '/security-management/api/v1/users/password', ({ body }) => 
   return ok(null)
 })
 
-/** 单属性修改（2026-10-20 用户信息弹窗行内编辑）：白名单 attName 三选，
+/** 单属性修改（2026-10-20 用户信息弹窗行内编辑）：白名单 attName 四选（含 avatar，2026-10-22），
  *  按 body.userId（登录用户名）定位当前用户（显式入参口径，同 change_password） */
 registerMock('POST', '/security-management/api/v1/users/attribute', ({ body }) => {
   const ro = body as unknown as UserAttributeRo
   const userName = String(ro?.userId ?? '').trim()
   const row = rows.find((r) => r.userName.toLowerCase() === userName.toLowerCase())
   if (!row) return fail('用户不存在')
-  if (ro?.attName !== 'nickName' && ro?.attName !== 'email' && ro?.attName !== 'phoneNumber')
+  if (!['nickName', 'email', 'phoneNumber', 'avatar'].includes(String(ro?.attName)))
     return fail('不支持的属性名')
   const value = String(ro.attValue ?? '').trim()
   if (ro.attName === 'nickName' && value.length > 30) return fail('昵称不超过 30 个字符')

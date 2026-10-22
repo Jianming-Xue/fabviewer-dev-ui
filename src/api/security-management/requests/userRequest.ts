@@ -47,7 +47,7 @@ export function setUserEnabled(ro: UserStateRo): Promise<null> {
   return securityRequest<null>('setUserEnabled', 'POST', '/api/v1/users/enabled', { body: ro, loading: true })
 }
 
-/** 6 · 单属性修改（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑昵称/邮箱/电话；
+/** 6 · 单属性修改（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑昵称/邮箱/电话；头像并入 avatar 2026-10-22；
  *    入参 UserAttributeRo{userId=登录用户名, attName, attValue}，同改密接口显式带身份口径） */
 export function updateUserAttribute(ro: UserAttributeRo): Promise<null> {
   return securityRequest<null>('updateUserAttribute', 'POST', '/api/v1/users/attribute', { body: ro, loading: true })
