@@ -227,15 +227,21 @@ await send('Page.navigate', { url: 'http://localhost:5173/security/login-policy'
 await waitFor(`Array.from(document.querySelectorAll('th')).some(function(t){return t.textContent.indexOf('策略 ID')>=0})`, 'policy headers')
 await sleep(1200)
 const headers = await evalJs(`Array.from(document.querySelectorAll('thead th')).map(function(t){return t.textContent.trim()}).filter(Boolean)`)
-const expectCols = ['策略 ID','策略名称','描述','密码最小长度','密码最大长度','密码须含数字','密码须含小写字母','密码须含大写字母','密码须含特殊字符','密码有效天数','账户有效天数','操作']
-check('11 数据列+操作列', expectCols.every((c) => headers.includes(c)), headers.join(' | '))
+const expectCols = ['策略 ID','策略名称','描述','密码最小长度','密码最大长度','密码须含数字','密码须含小写字母','密码须含大写字母','密码须含特殊字符','密码有效天数','未活动登出','账户有效天数','操作']
+check('12 数据列+操作列', expectCols.every((c) => headers.includes(c)), headers.join(' | '))
+check('密码组收拢：未活动登出紧随密码有效天数、账户天数殿后（连续三列）',
+  headers.indexOf('未活动登出') === headers.indexOf('密码有效天数') + 1 && headers.indexOf('账户有效天数') === headers.indexOf('未活动登出') + 1,
+  headers.slice(8, 13).join(' | '))
 const tbody = () => evalJs(`document.querySelector('tbody').innerText`)
 const tb1 = await tbody()
 check('种子 3 行（P001/P002/P003）', ['P001','P002','P003'].every((id) => tb1.includes(id)))
 check('P003 账户永不过期显示', tb1.includes('永不过期'))
-check('布尔列是/否显示', tb1.includes('是') && tb1.includes('否'))
-check('P002 特殊字符集合显示（连写 !@#$%&*~）', tb1.includes('!@#$%&*~'), tb1.split('\n').filter((l) => l.includes('!@')).join('').slice(0, 60))
-check('P001 不要求特殊字符显示「否」', tb1.includes('否'))
+check('未活动登出列显示（N 分钟 / 不开启）', tb1.includes('分钟') && tb1.includes('不开启'), tb1.split('\n').filter((l) => l.includes('分钟') || l.includes('不开启')).length + ' 处')
+// 特殊字符列改 FvMultiValueCell（2026-10-22）：P002 集合 8 字符=首值标签 ! + [+7]；P003 13 字符=[+12]；P001 开关关=空白（无计数标记）
+const p001line = tb1.split('\n').find((l) => l.includes('P001')) || ''
+check('特殊字符 multiValue：P002=[! +7]、P003=[! +12]', tb1.includes('[+7]') && tb1.includes('[+12]'), 'P002/P003 计数')
+check('开关关=整格空白（P001 行无 [+] 标记，旧「否」文本废止）', !p001line.includes('[+'), p001line.slice(0, 80))
+check('布尔列显示是（特殊字符列的「否」已由 multiValue 空白替代）', tb1.includes('是'))
 check('New 按钮存在（控件通配授予 admin）', await evalJs(`!!Array.from(document.querySelectorAll('button')).find(function(b){return (b.getAttribute('aria-label')||'').indexOf('新增')>=0})`))
 check('无「reactive object」警告（markRaw 生效）', !consoleMsgs.some((m) => m.includes('made a reactive object')))
 await shot('/tmp/vui-policy-table.png')
@@ -392,8 +398,10 @@ await clickBtn('button', '确认', '.vui-base-dialog')
 await waitFor(`document.body.innerText.indexOf('策略已创建')>=0`, 'create toast')
 await sleep(500)
 tb = await tbody()
-check('新增落库回显（P-TEST/验证策略/集合连写 #%&/永不过期）',
-  tb.includes('P-TEST') && tb.includes('验证策略') && tb.includes('#%&') && tb.includes('永不过期'))
+// multiValue 后集合显示=首值标签+[+剩余]（P-TEST 3 字符：# + [+2]），不再连写
+check('新增落库回显（P-TEST/验证策略/首值#+[+2]/永不过期）',
+  tb.includes('P-TEST') && tb.includes('验证策略') && tb.includes('[+2]') && tb.includes('永不过期'),
+  'P=' + tb.includes('P-TEST') + ' N=' + tb.includes('验证策略') + ' C=' + tb.includes('[+2]') + ' E=' + tb.includes('永不过期') + '|' + tb.split('\n').filter((l) => l.includes('P-TEST')).join('').slice(0, 150))
 await waitFor(`!document.querySelector('.vui-base-dialog')`, 'dialog close')
 
 // ===== 5. 编辑：回显 + ID 只读 + 关开关清空集合 =====

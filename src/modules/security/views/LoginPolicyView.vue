@@ -24,10 +24,12 @@ import type { PolicyDto } from '@/api/security-management/types/policyTypes'
  * policyId/policyName/description（大小写不敏感，同角色后端口径）；
  * FvTable 不传 pageContent（隐藏分页条）、select-mode=single、insert=New、操作列=编辑+删除，
  * 皆按 security.login-policy.* 控件权限显隐。
- * 列（用户定稿 11 列）：Policy ID / Policy Name / Description / Passwd Min Len / Passwd Max Len /
- * Passwd Req Digit / Req Lower Char / Req Upper Char / Req Specials / Passwd Valid Days / Account Valid Days；
- * 布尔 1/0 显示为是/否、天数 -1 显示为永不过期、须含特殊字符显示字符集合连写
- * （text 列原样渲染数值，此六列走 custom）。
+ * 列（初版 11 列；2026-10-21 增补为 12 列、密码组收拢）：Policy ID / Policy Name / Description /
+ * Passwd Min Len / Passwd Max Len / Passwd Req Digit / Req Lower Char / Req Upper Char /
+ * Req Specials / Passwd Valid Days / Idle Logout / Account Valid Days（密码相关字段连续排布，
+ * 未活动登出紧随密码组后、账户天数殿后）；
+ * 布尔列显示是/否、-1 天显永不过期、登出 -1 显不开启、须含特殊字符列走 multiValue
+ * （集合逐字符标签、开关关=空白，2026-10-22 改版；text 列原样渲染数值，其余多列 custom）
  */
 const { t } = useI18n()
 const dialog = useModalDialog()
@@ -53,14 +55,20 @@ const keyword = ref('')
 const allPolicies = ref<PolicyDto[]>([])
 const loading = ref(false)
 /** 行选中（单选）：当前操作对象 */
-const selectedPolicy = ref<PolicyDto | PolicyDto[] | null>(null)
+const selectedPolicy = ref<PolicyRow | PolicyRow[] | null>(null)
 
-const rows = computed(() => {
+/** 行展示模型：特殊字符集合走 multiValue（开关开=逐字符多值标签、关=空数组=整格空白，
+ *  用户定稿 2026-10-22）；其余字段透传 PolicyDto */
+type PolicyRow = PolicyDto & { specialsShow: string[] }
+
+const rows = computed<PolicyRow[]>(() => {
   const kw = keyword.value.trim().toLowerCase()
-  if (!kw) return allPolicies.value
-  return allPolicies.value.filter((p) =>
-    [p.policyId, p.policyName, p.description].some((v) => v.toLowerCase().includes(kw)),
-  )
+  const list = !kw
+    ? allPolicies.value
+    : allPolicies.value.filter((p) =>
+        [p.policyId, p.policyName, p.description].some((v) => v.toLowerCase().includes(kw)),
+      )
+  return list.map((p) => ({ ...p, specialsShow: p.passwdRequireSpecialChar === 1 ? p.passwdSpecials : [] }))
 })
 
 async function load() {
@@ -80,13 +88,10 @@ onMounted(load)
 
 /** 布尔 1/0 → 是/否（表格显示口径，编辑走弹窗） */
 const reqText = (v: number) => t(v === 1 ? 'security.loginPolicy.yes' : 'security.loginPolicy.no')
-/** Passwd Req Specials 列（用户定稿 2026-10-20）：须含时显示字符集合连写，否/空集合显示否 */
-const specialsText = (p: PolicyDto) =>
-  p.passwdRequireSpecialChar === 1 && p.passwdSpecials.length > 0
-    ? p.passwdSpecials.join('')
-    : t('security.loginPolicy.no')
 /** 有效天数 → 数字或永不过期（-1） */
 const daysText = (v: number) => (v === -1 ? t('security.loginPolicy.neverExpire') : String(v))
+/** 未活动登出 → 不开启（-1）或 N 分钟 */
+const idleText = (v: number) => (v === -1 ? t('security.loginPolicy.idleOff') : t('security.loginPolicy.idleMinutes', { n: v }))
 
 /** 编辑：落库由弹窗内完成（成功才关窗、失败留窗重试），此处只 Toast + 重拉 */
 async function openEditor(policy: PolicyDto) {
@@ -173,14 +178,18 @@ async function remove(policy: PolicyDto) {
               <span class="text-body-2">{{ reqText((item as PolicyDto).passwdRequireUpperChar) }}</span>
             </template>
           </FvTableHeader>
-          <FvTableHeader :title="t('security.loginPolicy.col.reqSpecialChar')" data-key="passwdRequireSpecialChar" header-type="custom" align="center">
-            <template #default="{ item }">
-              <span class="text-body-2">{{ specialsText(item as PolicyDto) }}</span>
-            </template>
-          </FvTableHeader>
+          <!-- 须含特殊字符列（2026-10-22 改版）：FvMultiValueCell——开关开=集合逐字符
+               （首值主题色标签+[+剩余]，悬停全展）；开关关=空值=整格空白 -->
+          <FvTableHeader :title="t('security.loginPolicy.col.reqSpecialChar')" data-key="specialsShow" header-type="multiValue" align="center" />
           <FvTableHeader :title="t('security.loginPolicy.col.passwdValidDays')" data-key="passwdValidDays" header-type="custom" align="center">
             <template #default="{ item }">
               <span class="text-body-2">{{ daysText((item as PolicyDto).passwdValidDays) }}</span>
+            </template>
+          </FvTableHeader>
+          <!-- 未活动登出时间（用户定稿 2026-10-21）：密码组字段收拢后紧随其后、账户天数殿前 -->
+          <FvTableHeader :title="t('security.loginPolicy.col.idleLogout')" data-key="idleLogoutMinutes" header-type="custom" align="center">
+            <template #default="{ item }">
+              <span class="text-body-2">{{ idleText((item as PolicyDto).idleLogoutMinutes) }}</span>
             </template>
           </FvTableHeader>
           <FvTableHeader :title="t('security.loginPolicy.col.accountValidDays')" data-key="accountValidDays" header-type="custom" align="center">

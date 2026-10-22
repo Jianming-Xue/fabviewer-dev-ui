@@ -367,6 +367,10 @@ html.vui-light .v-application {
   pointer-events: none;
 }
 
+/* （2026-10-22 已撤除）历史上此处曾有两条兜底（.v-menu 激活态强制可见 / label 可见性），
+   皆为自造 Esc 菜单关闭路径（合成点击+掐断）引入的状态泄漏遮羞布；该路径已整体拆除，
+   菜单 Esc 归 Vuetify 原生（VOverlay globalTop），兜底不再需要 */
+
 /* 字段内图标（前缀/后缀/清除）统一缩小到 15px（用户定稿 2026-10-14；
    2026-10-16 补 v4 改名后的清除类 .v-field__clearable——原 .v-field__clear 是 v3 类名，规则一直未命中） */
 .v-field .v-field__prepend-inner > .v-icon,

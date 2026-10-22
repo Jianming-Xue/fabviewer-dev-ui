@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* CDP 验证全量跑批：依序执行本目录九套脚本，任一失败退出码非 0。
+/* CDP 验证全量跑批：依序执行本目录十三套脚本，任一失败退出码非 0。
    前置见 README（dev :5173 + headless Chrome :9333）。 */
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +18,8 @@ const suites = [
   'vui-search-align.mjs',
   'vui-expire-account-test.mjs',
   'vui-idle-logout-test.mjs',
+  'vui-bars-test.mjs',
+  'vui-esc-stack.mjs',
 ]
 
 let failed = []

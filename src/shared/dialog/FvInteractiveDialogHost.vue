@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 
 import { useInteractiveDialogLauncher } from './openInteractiveDialog'
 
@@ -52,6 +52,37 @@ watch(
     }
   },
 )
+
+/* ===== 全局 Esc 仲裁器（2026-10-22 落地定稿）=====
+   闪烁正源（VOverlay.js:317 源码考据）：persistent 弹窗收到 Escape，Vuetify 原生不关窗、
+   只跑 animateClick()——卡片 scale(1.03) 脉冲 150ms=那一下"闪"。治法不掐事件，改用
+   Vuetify 官方开关 no-click-animation（:318 命中即 return）令原生对 Escape 彻底无操作，
+   传导全程归还。历史弯路勿再引入：stopImmediatePropagation（治标且误伤菜单原生关闭，
+   引发关不掉/幻影点击/底层僵尸吞键连锁）、合成点击代关、CSS 强制可见。
+   规则：
+   ① 有 v-menu 激活（下拉/日期面板/顶栏菜单——原生 Esc 关闭本来就是对的）→ 不碰；
+   ② 语义弹窗盖顶（非本宿主装载）→ 不碰（其基座自听处理）；
+   ③ 业务弹窗栈自尾取最后一个 open 置 false——与取消按钮同一模型通路同一动画，逐层关；
+      leave ~180ms 内连按不吞键（跳过未出栈僵尸取下一 open 者）。
+   v-tooltip 不参与任何让位判定（悬停被动层不响应 Esc，让它挡道=问号上悬停时永远关不掉）。 */
+function onEscArbitrate(e: KeyboardEvent) {
+  if (e.key !== 'Escape' || e.type !== 'keydown') return
+  if (document.querySelector('.v-menu.v-overlay--active')) return
+  const stack = state.stack
+  if (stack.length) {
+    // 语义弹窗（非本宿主装载、persistent 同源但走自听兜底）盖在业务栈之上时让位
+    if (document.querySelector('.v-dialog.v-overlay--active:not(.fv-stack-dialog)')) return
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const it = stack[i]
+      if (it?.open) {
+        it.open = false
+        break
+      }
+    }
+  }
+}
+onMounted(() => window.addEventListener('keydown', onEscArbitrate, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onEscArbitrate, true))
 </script>
 
 <template>
@@ -60,7 +91,8 @@ watch(
     v-for="item in state.stack"
     :key="item.id"
     :ref="bindInstance(item)"
-    v-bind="item.props"
+    class="fv-stack-dialog"
+    v-bind="{ ...item.props, escHandledByHost: true }"
     v-model="item.open"
     @resolve="item.result = $event"
     @closed="instances.delete(item.id); finish(item)"

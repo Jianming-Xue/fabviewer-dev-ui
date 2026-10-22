@@ -55,8 +55,12 @@ const props = withDefaults(
     /** 整卡最大高度（CSS 长度，2026-10-20 增）：缺省 = scoped 类规则 80vh（定稿默认档，其余弹窗零影响）；
         传入则内联覆写——字段多的表单弹窗放大自适应范围用，滚动兜底逻辑（超高时正文内滚）不变 */
     maxHeight?: string
+    /** Esc 由宿主栈仲裁器独占（2026-10-22 定稿）：FvInteractiveDialogHost 装载的业务弹窗
+        一律 true——基座不自挂 window 监听，杜绝「仲裁器+实例监听」双头决策产生的
+        一次 Esc 连穿多层/栈底僵尸吞按键；语义五件套与独立基座不传，走自听兜底 */
+    escHandledByHost?: boolean
   }>(),
-  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined },
+  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined, escHandledByHost: false },
 )
 
 const visible = defineModel<boolean>({ required: true })
@@ -134,10 +138,11 @@ watch(
       phase.value = 'enter'
       open.value = true
     } else if (prev) {
-      resetDrag() // 关闭即归位
       phase.value = 'leave'
       leaveTimer = setTimeout(() => {
         leaveTimer = null
+        resetDrag() // 归位挪到动画完成后（2026-10-22 修）：若在收起瞬间归零位移，
+                    // 拖动过的卡片会先跳回中心再收拢——用户所见即"关一下又开"的闪烁
         open.value = false
         phase.value = 'idle'
         emit('closed')
@@ -180,23 +185,60 @@ onUnmounted(() => {
 })
 
 /** Esc 关闭（内置 persistent 挡掉了 Vuetify 原生 Esc，此处补回）；
- *  上层还有其他激活弹窗/菜单时让给它，避免一次 Esc 连关多层。
- *  只数 .v-overlay--active：已关闭的菜单会在容器里留惰性 DOM，不能计入 */
+ *  层叠语义修正（2026-10-22）：旧「active overlay 总数>1 即让位」在排队时代成立，
+ *  栈式层叠后**栈顶之下全是 active**，栈顶自己也数出 >1 → 全体让位 Esc 全灭。
+ *  判据（多层=激活 overlay 的堆叠序）：v-dialog 互比 z-index（Vuetify 全局计数器单调
+ *  递增，实测 2010→2020→…；同值兜底文档序后来者高）；本卡子树内的附着浮层
+ *  （v-select/日期面板等 v-menu）视觉恒在卡上→让位；v-tooltip 不让（被动悬停层不响应
+ *  Esc，让位=卡永远关不掉）。
+ *  闪烁治理（2026-10-22 落地定稿）：曾以「命中关闭即 stopImmediatePropagation」压住原生
+ *  animateClick 脉冲，副作用链过长已撤——改由 v-dialog 官方 no-click-animation 在源头
+ *  令原生对 persistent+Escape 彻底无操作，本监听只负责关自己（让位判据如上），不掐任何事件。
+ *  业务栈弹窗不走本监听（escHandledByHost，宿主仲裁器单脑决策）；语义/独立基座由此兜底。 */
+const cardRef = ref<{ $el?: HTMLElement } | HTMLElement>()
+function ownOverlay(): Element | null {
+  const el = (cardRef.value as { $el?: HTMLElement } | undefined)?.$el ?? (cardRef.value as HTMLElement | undefined)
+  return el?.closest?.('.v-overlay') ?? null
+}
+function zNum(el: Element): number | null {
+  const n = Number.parseInt(getComputedStyle(el).zIndex, 10)
+  return Number.isNaN(n) ? null : n
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key !== 'Escape' || !visible.value) return
-  if (document.querySelectorAll('.v-overlay--active').length > 1) return
+  const own = ownOverlay()
+  if (!own) {
+    visible.value = false
+    return
+  }
+  const ownZ = zNum(own)
+  const after = (o: Element) => (own.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  const above = Array.from(document.querySelectorAll('.v-overlay--active')).some((o) => {
+    if (o === own) return false
+    // tooltip 是悬停被动层、不响应 Esc，且 z 高于弹窗——一律不让位，否则鼠标停在
+    // 问号上时弹窗永远关不掉（2026-10-22 问题③）
+    if (o.classList.contains('v-tooltip')) return false
+    if (own.contains(o)) return o.classList.contains('v-menu') // 附着下拉/日期面板在其上
+    const oz = zNum(o)
+    if (oz != null && ownZ != null) return oz > ownZ || (oz === ownZ && after(o))
+    return after(o)
+  })
+  if (above) return
   visible.value = false
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onMounted(() => { if (!props.escHandledByHost) window.addEventListener('keydown', onKeydown, true) })
+onUnmounted(() => { if (!props.escHandledByHost) window.removeEventListener('keydown', onKeydown, true) })
 
 defineExpose({ resetDrag })
 </script>
 
 <template>
   <!-- persistent 内置（用户定稿 2026-10-14）：点击遮罩不关闭，仅 Esc 或调用方退出按钮可关；
-       Vuetify persistent 连 Esc 一起禁掉，Esc 由脚本侧 onKeydown 补回。
+       Vuetify persistent 连 Esc 一起禁掉，Esc 由脚本侧 onKeydown/宿主仲裁器补回；
+       no-click-animation（2026-10-22 定稿）：掐灭 persistent 收 Escape 时的原生
+       animateClick 卡片脉冲（scale 1.03 弹一下=用户所见"闪"），关闭动画恒与按钮路径同源；
        transition=none：关闭 v-dialog 自带的居中缩放动画——开合动效由卡片自身状态机负责
        （展开原点必须相对点击点，wrapper 动画会叠一层中心缩放干扰它）。
        :model-value 绑 open（物理渲染）而非 visible（逻辑开关）——关闭时留住 overlay 播完淡出 -->
@@ -207,9 +249,10 @@ defineExpose({ resetDrag })
     :opacity="scrimOpacity"
     transition="none"
     persistent
+    no-click-animation
     @update:model-value="visible = $event"
   >
-    <v-card v-if="open" :class="cardClass" :style="cardStyle" @animationend="onAnimationEnd">
+    <v-card v-if="open" ref="cardRef" :class="cardClass" :style="cardStyle" @animationend="onAnimationEnd">
       <div
         class="vui-base-dialog__title"
         :class="{ 'vui-base-dialog__title--center': centerTitle }"

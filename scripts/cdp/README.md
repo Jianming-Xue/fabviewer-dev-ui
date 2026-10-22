@@ -1,4 +1,4 @@
-# CDP 验证脚本集（十一套）
+# CDP 验证脚本集（十三套）
 
 无头 Chrome + Chrome DevTools Protocol 驱动真实浏览器验证 UI 行为（项目验收口径：
 点击/悬停类交互一律 `Input.dispatchMouseEvent` 真实事件，合成 click 不算数）。
@@ -16,7 +16,7 @@ npm run dev   # :5173，VITE_MOCK=true
 ## 运行
 
 ```bash
-node scripts/cdp/run-all.mjs          # 全量十一套（套件间 2.5s 缓冲）
+node scripts/cdp/run-all.mjs          # 全量十三套（套件间 2.5s 缓冲）
 node scripts/cdp/vui-policy-test.mjs  # 单套
 ```
 
@@ -38,6 +38,8 @@ node scripts/cdp/vui-policy-test.mjs  # 单套
 | vui-search-align.mjs | 角色/用户/策略三页搜索框与钮底边对齐（Δ≤1px） | 3 |
 | vui-expire-account-test.mjs | 账户延期弹窗（起点计算 当前到期/今天、策略 -1 永不过期提交、无策略 Confirm 禁用、到期列回显） | 9 |
 | vui-idle-logout-test.mjs | 未活动登出（策略 idleLogoutMinutes 下发/配置、0 值拦截、过期账户守卫登出、1 分钟静置真机自动登出） | 6 |
+| vui-bars-test.mjs | FvTable 浮动双轨（横轨贴底/止于操作列/4·6px 悬浮·滑动加宽停 3s 回落/纵轨贴右起于表头下底缘恒贴/停滚 3s 淡出复显/末行边框静态/操作格底色随横滚重叠联动/滚动同步/拇指拖拽） | 17 |
+| vui-esc-stack.mjs | 弹窗 Esc 逐层关闭（单层/两层栈顶先关/下拉不误伤弹窗/四层连按全出栈/菜单复开——B、C 段 headless 残留见 HANDOVER §六.11） | 11 |
 
 ## 已知坑（详见 docs/HANDOVER.md §六.2）
 

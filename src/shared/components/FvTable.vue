@@ -249,29 +249,41 @@ const sizeOptions = computed(() =>
   props.pageSizeOptions.map((n) => ({ value: n, title: t('common.perPage', { n }) })),
 )
 
-/* ===== 表格区滚动监听：末行贴底判定 + 滚动条 5s 自动隐藏（用户定稿 2026-10-16） ===== */
+/* ===== 表格区滚动监听（2026-10-21 浮动双轨改版）：滚动即同步两条自绘浮轨几何。
+   原「滚动中开原生竖轨 5s 自动隐藏」与「贴底摘末行边框」两类布局副作用机制全部废除
+   （前者占列宽、后者 scrollHeight±1px 振荡=跳动根因）；边界回弹由 overscroll-behavior:none 抑制 ===== */
 const rootRef = ref<HTMLElement>()
 let wrapperEl: HTMLElement | null = null
-let scrollHideTimer: number | undefined
 
-/** 滚动中及停滚 5s 内挂 fv-table--scroll-active（滚动条可见），超时摘除（隐藏但保留 gutter） */
+let lastScrollLeft = 0
 function onWrapperScroll() {
-  syncAtBottom()
+  syncWrapperRef()
   syncXBar()
-  const root = rootRef.value
-  if (!root) return
-  root.classList.add('fv-table--scroll-active')
-  window.clearTimeout(scrollHideTimer)
-  scrollHideTimer = window.setTimeout(() => root.classList.remove('fv-table--scroll-active'), 5000)
+  syncYBar()
+  // 仅横向位移变化才加宽横轨（纯纵滚不误触）
+  if (wrapperEl && wrapperEl.scrollLeft !== lastScrollLeft) {
+    lastScrollLeft = wrapperEl.scrollLeft
+    armXBarWide()
+  }
 }
 
 /* ===== 自绘横向滚动条（2026-10-18 定稿）：原生横轨画在滚动容器边缘，横向滚动时从 sticky 右缘
    操作列下方穿过、观感"切进"操作列；改为自绘一条：溢出时常驻，**右端按操作列宽度让位**
    （滚动条永不出现在操作列下），拇指拖拽与 wrapper.scrollLeft 双向同步，轨点击跳位。
-   原生横轨收槽（::-webkit-scrollbar height:0），竖轨 5s 闲置机制不变 */
+   原生横轨收槽（::-webkit-scrollbar height:0）；竖轨亦自绘常驻，闲置淡出机制见纵轨节 */
 const xBar = reactive({ visible: false, inset: 0, thumbW: 0, left: 0 })
 const xbarTrack = ref<HTMLElement>()
 let xResizeObs: ResizeObserver | undefined
+
+/* 横轨加宽（用户定稿 2026-10-21）：拇指默认厚 4px；悬浮或横滚进行中加宽到 6px，
+   停止滚动 3s 自动回落（纵轨不受此影响，维持 6px + 停滚 3s 淡出） */
+const xBarWide = ref(false)
+let xBarWideTimer: number | undefined
+function armXBarWide() {
+  xBarWide.value = true
+  window.clearTimeout(xBarWideTimer)
+  xBarWideTimer = window.setTimeout(() => { xBarWide.value = false }, 3000)
+}
 
 function syncXBar() {
   const w = wrapperEl ?? (rootRef.value?.querySelector('.v-table__wrapper') as HTMLElement | null)
@@ -299,12 +311,14 @@ function scrollByThumbLeft(left: number) {
 }
 
 function onXTrackDown(e: PointerEvent) {
+  armXBarWide()
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   scrollByThumbLeft(e.clientX - rect.left - xBar.thumbW / 2)
 }
 
 function onXThumbDown(e: PointerEvent) {
   e.stopPropagation()
+  armXBarWide()
   const startX = e.clientX
   const startLeft = xBar.left
   const move = (ev: PointerEvent) => scrollByThumbLeft(startLeft + ev.clientX - startX)
@@ -316,7 +330,70 @@ function onXThumbDown(e: PointerEvent) {
   window.addEventListener('pointerup', up)
 }
 
-function syncAtBottom() {
+/* ===== 自绘纵向浮轨（2026-10-21 浮动改版）：原生竖轨永久收槽（含旧"滚动中开 8px"机制——
+   占列宽致抖动），改自绘悬浮条：贴容器右缘、起于表头之下（top=thead 高+2，不压表头区），
+   底端恒贴容器底缘 2px（横轨右缘止于 right:8+让位、纵轨占 right:2..8——相邻不相交，无需让位；
+   旧 xBar.visible 时让 14px 致用户页纵轨短一截，2026-10-21 废）；
+   拇指与 wrapper.scrollTop 双向同步，轨点击跳位。
+   闲置淡出（用户定稿 2026-10-21）：任何滚动即复显并重置计时，停止滚动 3s 后淡出并关闭命中 ===== */
+const yBar = reactive({ visible: false, top: 2, thumbH: 0, offset: 0 })
+const ybarTrack = ref<HTMLElement>()
+const ybarIdle = ref(false)
+let ybarHideTimer: number | undefined
+
+/** 复显纵轨并重置 3s 闲置淡出计时 */
+function armYbarIdle() {
+  ybarIdle.value = false
+  window.clearTimeout(ybarHideTimer)
+  ybarHideTimer = window.setTimeout(() => { ybarIdle.value = true }, 3000)
+}
+
+function syncYBar() {
+  const w = wrapperEl ?? (rootRef.value?.querySelector('.v-table__wrapper') as HTMLElement | null)
+  if (!w) return
+  const max = w.scrollHeight - w.clientHeight
+  yBar.visible = max > 1
+  if (!yBar.visible) return
+  const thead = w.querySelector('thead') as HTMLElement | null
+  yBar.top = (thead?.offsetHeight ?? 0) + 2
+  // v-show 首帧轨未展开 → 以视口高兜底（底缘恒 2px，与 CSS bottom 对齐）
+  const trackH = ybarTrack.value?.clientHeight || Math.max(w.clientHeight - yBar.top - 2, 24)
+  yBar.thumbH = Math.max(28, Math.round(trackH * Math.min(1, w.clientHeight / w.scrollHeight)))
+  yBar.offset = Math.round((w.scrollTop / max) * Math.max(trackH - yBar.thumbH, 0))
+  // 凡几何同步（滚动/尺寸变化/数据刷新）皆复显并重置淡出计时——滚动条"活动即现身"
+  armYbarIdle()
+}
+
+/** 拇指上缘 → scrollTop（含夹取） */
+function scrollByThumbTop(offset: number) {
+  const w = wrapperEl
+  const trackH = ybarTrack.value?.clientHeight ?? 0
+  if (!w || trackH <= 0) return
+  const range = Math.max(trackH - yBar.thumbH, 1)
+  w.scrollTop = (Math.min(Math.max(offset, 0), range) / range) * (w.scrollHeight - w.clientHeight)
+}
+
+function onYTrackDown(e: PointerEvent) {
+  armYbarIdle()
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  scrollByThumbTop(e.clientY - rect.top - yBar.thumbH / 2)
+}
+
+function onYThumbDown(e: PointerEvent) {
+  e.stopPropagation()
+  armYbarIdle()
+  const startY = e.clientY
+  const startOffset = yBar.offset
+  const move = (ev: PointerEvent) => scrollByThumbTop(startOffset + ev.clientY - startY)
+  const up = () => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+
+function syncWrapperRef() {
   const root = rootRef.value
   if (!root) return
   const w = root.querySelector('.v-table__wrapper') as HTMLElement | null
@@ -325,42 +402,51 @@ function syncAtBottom() {
     wrapperEl = w
     w?.addEventListener('scroll', onWrapperScroll, { passive: true })
   }
-  if (!w) return
-  const overflow = w.scrollHeight > w.clientHeight + 1
-  root.classList.toggle('fv-table--at-bottom', overflow && w.scrollHeight - w.clientHeight - w.scrollTop < 2)
 }
 
 onMounted(() => {
-  syncAtBottom()
+  syncWrapperRef()
   syncXBar()
+  syncYBar()
   if (wrapperEl) {
-    // 容器宽度变化（窗口缩放等）→ 重算横轨几何
-    xResizeObs = new ResizeObserver(() => syncXBar())
+    // 容器尺寸变化（窗口缩放等）→ 重算双浮轨几何
+    xResizeObs = new ResizeObserver(() => {
+      syncXBar()
+      syncYBar()
+    })
     xResizeObs.observe(wrapperEl)
   }
 })
 watch([() => props.data, pageIndex, pageSize], () =>
   void nextTick(() => {
-    syncAtBottom()
+    syncWrapperRef()
     syncXBar()
+    syncYBar()
   }),
 )
-// actions 增减会改变固定列宽 → 让位宽度重算
-watch(columns, () => void nextTick(syncXBar))
+// actions 增减会改变固定列宽 → 让位宽度重算；表头高度入纵轨 top 亦需重测
+watch(columns, () => void nextTick(() => {
+  syncXBar()
+  syncYBar()
+}))
 onBeforeUnmount(() => {
   wrapperEl?.removeEventListener('scroll', onWrapperScroll)
   xResizeObs?.disconnect()
-  window.clearTimeout(scrollHideTimer)
+  window.clearTimeout(ybarHideTimer)
+  window.clearTimeout(xBarWideTimer)
 })
 </script>
 
 <template>
-  <div ref="rootRef" class="fv-table" :class="{ 'fv-table--has-actions': hasActionsColumn }">
+  <div ref="rootRef" class="fv-table" :class="{ 'fv-table--has-actions': hasActionsColumn, 'fv-table--x-overflow': xBar.visible }">
     <!-- insert 回调存在 → 右上角 FvNewButton -->
     <div v-if="insert" class="fv-table__toolbar">
       <FvNewButton :label="t('common.add')" @click="onInsert" />
     </div>
 
+    <!-- 浮动滚动轨层（2026-10-21）：横/纵自绘条以绝对定位悬浮于滚动区之上，
+         不再侵占布局（旧横轨占 10px+8 边距在流内、原生竖轨滚动中开 8px 挤列宽一并废除） -->
+    <div class="fv-table__scroll">
     <v-data-table
       :headers="tableHeaders"
       :items="display"
@@ -368,7 +454,7 @@ onBeforeUnmount(() => {
       :items-per-page="-1"
       hide-default-footer
       density="comfortable"
-      class="vui-table--comfortable"
+      class="vui-table--comfortable fv-table__vp"
       no-data-text=""
       :show-select="selectMode === 'multiple'"
       sort-asc-icon="fas fa-chevron-up"
@@ -477,12 +563,14 @@ onBeforeUnmount(() => {
       </template>
     </v-data-table>
 
-    <!-- 自绘横向滚动条：溢出常驻，右端按固定操作列宽让位（永不穿过操作列下方） -->
+    <!-- 自绘横轨：悬浮贴滚动区底缘（left 8 / bottom 2），右端按操作列宽让位——
+         行至操作列左缘即止（用户定稿：横向到操作列就结束） -->
     <div
       v-show="xBar.visible"
       ref="xbarTrack"
       class="fv-table__xbar"
-      :style="{ marginRight: 8 + xBar.inset + 'px' }"
+      :class="{ 'fv-table__xbar--wide': xBarWide }"
+      :style="{ right: 8 + xBar.inset + 'px' }"
       @pointerdown="onXTrackDown"
     >
       <div
@@ -490,6 +578,24 @@ onBeforeUnmount(() => {
         :style="{ width: xBar.thumbW + 'px', transform: `translateX(${xBar.left}px)` }"
         @pointerdown="onXThumbDown"
       />
+    </div>
+
+    <!-- 自绘纵轨：悬浮贴容器右缘，起于表头之下（不占用表头区域），底端给横轨让位；
+         停滚 3s 挂 --idle 淡出并关闭命中 -->
+    <div
+      v-show="yBar.visible"
+      ref="ybarTrack"
+      class="fv-table__ybar"
+      :class="{ 'fv-table__ybar--idle': ybarIdle }"
+      :style="{ top: yBar.top + 'px' }"
+      @pointerdown="onYTrackDown"
+    >
+      <div
+        class="fv-table__ybar-thumb"
+        :style="{ height: yBar.thumbH + 'px', transform: `translateY(${yBar.offset}px)` }"
+        @pointerdown="onYThumbDown"
+      />
+    </div>
     </div>
 
     <!-- 分页条：左=总数，右=大小选项 + 首页/上一页/页码/下一页/末页（紧凑单行） -->
@@ -619,14 +725,12 @@ onBeforeUnmount(() => {
 }
 
 /* 行下边框（用户定稿 2026-10-16）：与外框同令牌。
-   末行边框仅在「表格区可滚动且已滚到底」时去除（此时末行与分页条分割线相邻，防叠双线）；
-   末页行不满等不贴底场景保留末行边框（at-bottom 类由滚动监听维护） */
+   末行底边恒定**保留**（2026-10-21 定稿）：原由 at-bottom 类在贴底时动态摘除——贴边瞬间
+   scrollHeight±1px 振荡正是"滚到底跳动回位"根因；修复取"规则静态化"而非"恒去除"
+   （恒去除会把末行分隔线一并抹掉，用户报策略页无线=矫枉过正）；贴边回弹另由
+   overscroll-behavior:none 抑制 */
 .fv-table :deep(tbody tr td) {
   border-bottom: 1px solid var(--vui-border);
-}
-
-.fv-table--at-bottom :deep(tbody tr:last-child td) {
-  border-bottom: 0;
 }
 
 /* 排序箭头：chevron 上/下，12px 小图标（用户调优 2026-10-15）；
@@ -639,7 +743,9 @@ onBeforeUnmount(() => {
 }
 
 /* 操作列（固定末列，2026-10-16 重做）：
-   - 突出：左侧阴影分界（1px 分隔线 + 8px 柔和外投影，--vui-text 投射双主题自适应）+ 微异底色
+   - 突出：左侧阴影分界（1px 分隔线 + 8px 柔和外投影，--vui-text 投射双主题自适应）
+   - 底色（2026-10-21 定稿）：无内容从操作列下方穿过（无横滚溢出）时**恒透明**——与行底完全
+     一致、随行选中态连片；出现下方穿越（fv-table--x-overflow）时恢复原遮挡底（text 3% 配方）
    - 固定：sticky 贴右缘（表头交叉时 z-index 压层）
    - 列宽随 action 数量自适应：width:1% + nowrap 触发 table-layout:auto 的 shrink-to-fit——
      按钮不压缩、不多留白，增减 actions 列宽自动跟变（此前固定 padding 下 2 钮会被挤压变形）
@@ -658,11 +764,24 @@ onBeforeUnmount(() => {
   width: 1%;
   white-space: nowrap;
   padding-inline: 8px; /* 图标钮列收紧（默认 16px 两侧留白过宽） */
-  background: color-mix(in srgb, var(--vui-text) 3%, var(--vui-bg-container));
   border-left: 0; /* 分隔线并入阴影层 */
   box-shadow:
     -1px 0 0 0 color-mix(in srgb, var(--vui-text) 14%, transparent),
     -8px 0 10px -6px color-mix(in srgb, var(--vui-text) 20%, transparent);
+}
+
+/* 横向重叠遮挡底（2026-10-21 定稿）：仅当有内容自操作列下方滚过（xBar.visible→根挂类）时染
+   原 3% 不透明遮挡底；th 交叉格一并染（压过表头 14% 配方） */
+.fv-table--x-overflow :deep(.v-data-table-column--fixed-end),
+.fv-table--x-overflow.fv-table--has-actions :deep(.v-table__wrapper > table > thead > tr > th:last-child),
+.fv-table--x-overflow.fv-table--has-actions :deep(.v-table__wrapper > table > tbody > tr:not(.v-data-table-rows-no-data):not(.v-data-table-rows-loading):not(.v-data-table__tr--mobile) > td:last-child) {
+  background: color-mix(in srgb, var(--vui-text) 3%, var(--vui-bg-container));
+}
+
+/* 无横滚重叠：Vuetify 给 tbody td 自带不透明 surface——一并显式清零，
+   使操作格真透明（同表底、选中带整行连续无断缝；th 不受影响仍走表头 14% 配方） */
+.fv-table:not(.fv-table--x-overflow) :deep(.v-table__wrapper > table > tbody > tr:not(.v-data-table-rows-no-data):not(.v-data-table-rows-loading):not(.v-data-table__tr--mobile) > td:last-child) {
+  background: transparent;
 }
 
 /* 右上角交叉单元（表头吸顶 × 操作列贴右）：压过表头(2)与普通固定列(1) */
@@ -712,6 +831,24 @@ onBeforeUnmount(() => {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  /* 2026-10-21 浮动双轨后内容贴边，边界橡皮筋回弹可见度大增致"跳动"——
+     禁自身弹性回弹与向祖先的链式滚动（页面级本就零滚动） */
+  overscroll-behavior: none;
+}
+
+/* 浮动轨容器：相对定位锚（滚动区全高度）；v-data-table 拉伸填满 */
+.fv-table__scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fv-table__vp {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 .fv-table :deep(th),
@@ -735,27 +872,62 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-.fv-table--scroll-active :deep(.v-table__wrapper)::-webkit-scrollbar {
-  width: 8px; /* 竖轨：滚动中开启 */
-  height: 0;
-}
-
-/* 自绘横向滚动条：轨=可拖/可点区（右缘 marginRight 让出操作列宽，横轨永不穿到操作列下方）；
+/* 自绘横轨（2026-10-21 浮动化）：绝对定位悬浮滚动区底缘（left:8/bottom:2，right 由内联
+   让出操作列宽——横轨到操作列左缘即止），不再占流内高度；
    光标一律默认箭头（用户定稿 2026-10-18：不改为手势），拖拽功能靠 pointer 事件而非 cursor 提示 */
 .fv-table__xbar {
-  position: relative;
-  flex: 0 0 auto;
+  position: absolute;
+  left: 8px;
+  bottom: 2px;
   height: 10px;
-  margin: 2px 8px 6px;
+  z-index: 5;
 }
 
+/* 自绘纵轨：贴容器右缘悬浮（right:2/宽 6），top 由内联（表头之下）、底缘恒贴容器底 2px
+   （与横轨右缘相邻不相交，不让位）；停滚 3s --idle 淡出（pointer-events 关闭，不拦点击） */
+.fv-table__ybar {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  z-index: 5;
+  transition: opacity 0.4s ease;
+}
+
+.fv-table__ybar--idle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fv-table__ybar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--vui-text) 30%, transparent);
+}
+
+.fv-table__ybar-thumb:hover {
+  background: color-mix(in srgb, var(--vui-text) 45%, transparent);
+}
+
+/* 横轨拇指（用户定稿 2026-10-21）：默认厚 4px；悬浮/滑动中 6px（--wide 类），停滚 3s 回落；
+   轨 10px 高恒为命中区，厚度变化在轨内垂直居中（top 3/2） */
 .fv-table__xbar-thumb {
   position: absolute;
-  top: 1px;
+  top: 3px;
   left: 0;
-  height: 8px;
-  border-radius: 4px;
+  height: 4px;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--vui-text) 30%, transparent);
+  transition: height 0.18s ease, top 0.18s ease;
+}
+
+.fv-table__xbar:hover .fv-table__xbar-thumb,
+.fv-table__xbar--wide .fv-table__xbar-thumb {
+  height: 6px;
+  top: 2px;
 }
 
 .fv-table__xbar-thumb:hover {
@@ -773,7 +945,8 @@ onBeforeUnmount(() => {
 /* 单选选中行（2026-10-20 改版，同日与侧栏菜单统一）：整行淡主题色底——与菜单选中同配方
    primary 10% 透明叠于容器底（明暗双主题自适应）；文字回归常规主题令牌色（随深浅联动，
    不再强制主题绿）；首格保留 5px 主题色竖条；悬停不变底色（见 main.css 全局段）；
-   操作列=sticky 末列，自带不透明微异底色，天然不随行底色染色（用户定稿：action 列底色不变） */
+   操作列随行态染色/遮挡依横滚重叠而定（2026-10-21 定稿，见操作列节）：无重叠随选中色，
+   有重叠染不透明遮挡底（选中色天然被盖） */
 .fv-table :deep(tr.fv-row--selected) {
   background: color-mix(in srgb, var(--vui-primary) 10%, transparent);
 }

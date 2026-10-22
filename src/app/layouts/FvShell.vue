@@ -190,6 +190,9 @@ function stopIdleWatch() {
   for (const e of ACTIVITY_EVENTS) window.removeEventListener(e, onTouch, { capture: true })
 }
 
+/* Esc 协调已上收至 FvInteractiveDialogHost 全局仲裁器（2026-10-22，见该文件注释）：
+   有 v-menu 在场时代之以外点关闭、业务栈顶走模型通路关——本壳层不再自听 keydown。
+   看门狗 ACTIVITY_EVENTS 的 keydown 捕获仍保留（活动计时与关闭无关）。 */
 onMounted(startIdleWatch)
 onBeforeUnmount(stopIdleWatch)
 
