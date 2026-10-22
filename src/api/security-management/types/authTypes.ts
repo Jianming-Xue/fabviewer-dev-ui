@@ -7,9 +7,9 @@ import type { UserDto } from './userTypes'
  * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 CLAUDE.md）。
  * 公用对象（PageRo / PageDto / SecurityReplyDto）在 ./types。
  *
- * 登录壳的特殊口径（2026-10-17 后端定）：success = 0 且 errMsg 非空 = 登录业务失败，
- * errMsg 携带 LoginFailCode 机器码（展示文案由 UI 层按码映射 i18n）；
- * 常规壳规则（success ≠ 0 = 失败）同样成立——拆解逻辑见 ./authRequest 的 loginRequest。
+ * 登录壳的特殊口径（2026-10-22 随新壳对齐）：登录业务失败 = success 0（新壳常规判据）
+ * 且 errMsg 携带 LoginFailCode 机器码（展示文案由 UI 层按码映射 i18n）；
+ * success=1 但 errMsg 非空仍防御性按失败处理——拆解逻辑见 ./authRequest 的 loginRequest。
  */
 
 export interface LoginRo {
@@ -73,7 +73,7 @@ export interface ChangePasswordRo {
   newPassword: string
 }
 
-/** 登出（POST /auth/logout）：无业务入参，空对象体；出参 contents 恒 null——不建 Ro/Dto */
+/** 登出（POST /auth/logout）：无业务入参，空对象体；出参 data 恒 null——不建 Ro/Dto */
 
-/** 权限清单（GET /auth/permissions?username=…）：contents = 字符串数组，
+/** 权限清单（GET /auth/permissions?username=…）：data = 字符串数组，
  *  格式约定（Function:/Control: 前缀）见 app/stores/permission.ts——非对象，不建 Dto */

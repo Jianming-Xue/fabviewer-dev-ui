@@ -11,16 +11,16 @@ import type { UserDto } from '../types/userTypes'
  * 认证/权限 Mock（security-management 服务出参壳口径，2026-10-16 自 app/api 迁入，
  * 2026-10-17 类型归口 ./authTypes + 登录特殊壳/新 Dto）：
  * - 登录成功：返回 token + 用户档案 + 登录足迹（LoginDto 全字段）
- * - 登录失败特殊口径（success:0 + errMsg 机器码），密码输触发词演示：
+ * - 登录失败（新壳 success:0）+ errMsg 机器码特殊口径，密码输触发词演示：
  *   `fail`=AUTH_FAILED（密码错误）/ `invalid`=ACCOUNT_INVALID / `expired`=ACCOUNT_EXPIRED /
  *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED
- * - 修改密码：旧密码输 `fail` 常规壳失败（success:1 + 文案）
+ * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
  * - 权限清单：`admin` 全功能 / `test` 仅角色+Server Hang / 其他用户名空清单（fail-closed 演示）
  */
-const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
-const fail = <T>(errMsg: string): SecurityReplyDto<T> => ({ code: 200, success: 1, errMsg, contents: null as unknown as T })
-/** 登录特殊壳失败：success=0 + errMsg 携机器码（后端 2026-10-17 定稿口径） */
-const authFail = (code: LoginFailCode): SecurityReplyDto<null> => ({ code: 200, success: 0, errMsg: code, contents: null })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
+const fail = <T>(errMsg: string): SecurityReplyDto<T> => ({ code: 'FAIL', success: 0, errMsg, data: null as unknown as T, txId: '' })
+/** 登录失败：新壳 success=0 + errMsg 携机器码（特殊点仅在 errMsg 为码非文案，UI 按码映射 i18n） */
+const authFail = (code: LoginFailCode): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg: code, data: null, txId: '' })
 
 /** 密码触发词 → 登录失败码（演示各分支；键一律小写比较） */
 const LOGIN_FAIL_TRIGGERS: Record<string, LoginFailCode> = {
@@ -82,13 +82,13 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
     passwordExpiresAt: seed.passwordExpiresAt, passwordValidDays: seed.passwordValidDays,
     accountValidDays: seed.accountValidDays,
   } : {}) }
-  const contents: LoginDto = {
+  const login: LoginDto = {
     token: `mock-token-${Date.now().toString(36)}`,
     // 未活动登出分钟：按所挂策略解析（未挂/查不到 → 默认 30，用户定稿 2026-10-21）
     idleLogoutMinutes: policies.find((p) => p.policyId === user.policyId)?.idleLogoutMinutes ?? 30,
     user,
   }
-  return ok(contents)
+  return ok(login)
 })
 
 registerMock('POST', '/security-management/api/v1/auth/logout', () => ok(null))

@@ -73,9 +73,9 @@ async function loadPage() {
       pageSize: pageSize.value,
       keyword: keyword.value,
     })
-    // 后端口径（2026-10-17）：contents = { pageSize, pageIndex, totalSize, data }
+    // 后端口径（2026-10-22）：data = { pageSize, pageIndex, totalSize, totalPage, data }——totalPage 后端直发
     rows.value = res.data
-    const totalPage = Math.max(1, Math.ceil(res.totalSize / res.pageSize))
+    const totalPage = Math.max(1, res.totalPage)
     pageContent.value = { total: res.totalSize, totalPage, pageIndex: res.pageIndex, pageSize: res.pageSize }
     if (pageIndex.value > totalPage) pageIndex.value = totalPage
   } finally {

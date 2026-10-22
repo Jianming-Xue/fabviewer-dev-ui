@@ -9,10 +9,10 @@ import type { SecurityReplyDto } from '../types/types'
  * 口径对齐角色 Mock。种子备三条（标准策略/强策略/合规审计策略）；用户 Mock 只存 policyId
  * （2026-10-20 名称字典制，不再跨域换算，前端翻译见 ../rolePolicyNameCollection）。
  * policies 数组增删改一律**原地变更**（unshift/splice/整行替换），保字典接口活引用同步。
- * 布尔一律数字 1/0、天数 -1=永不过期；业务失败（ID 重复/未找到）以 success:1 + errMsg 返回。
+ * 布尔一律数字 1/0、天数 -1=永不过期；业务失败（ID 重复/未找到）以 success:0 + errMsg 返回（壳口径 2026-10-22 改版）。
  */
-const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
-const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
 /** 内存态策略集（种子描述与字段逐字对齐；P003 账户 -1 演示永不过期） */
 export const policies: PolicyDto[] = [
   {

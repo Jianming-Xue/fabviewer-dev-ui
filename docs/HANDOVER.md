@@ -50,7 +50,7 @@ npm run type-check / lint / build   # 全绿
 | `shared/components/FvTextSelect.vue` | 全局下拉选择（shared，2026-10-19 抽取）：与 FvTextInput 同族同规格（全局 outlined+compact 36px，组件内不逐实例传 variant/density）；`mode='single'|'multiple'`；**单选**右侧 clearable 图标清除=默认开启（用户定稿：下拉不加空白哨兵行，有清除钮即够）；**多选** chips 框内默认显 1 个真实标签+「[+剩余数]」弱色文本（删当前标签后下一个自动顶上）；**`maxVisibleChips` 可配展示数（2026-10-21）**——缺省 1 维持历史观感，调用方可调（策略特殊字符集合用 4），chip 关闭图标与框内前缀图标同 15px/currentColor；items 接受字符串数组或 `{title,value}`；**`pageLoader(pageIndex,pageSize)→{items,totalSize}` 分页滚动加载**（同日定稿：给出后 mount 拉第一页 `pageSize`（默认 10）笔，菜单**触底自动拉下一页**，已加载 ≥ totalSize 停拉，失败保已有页下次触底重试；浮层触底监听经 `.v-select__content` 捕获阶段 scroll——Vuetify 4 select 浮层内容常驻 DOM 关合仅隐藏、列表**虚拟化**（DOM 行数≠已加载数，CDP 断言勿数 DOM）；每页完成后 `loaded` 事件广播累计项——**busy 复位后才发**，监听者可安全同步调 expose 的 `loadAll()`；另 emit `open`（下拉被点开，供调用方刷新数据源，2026-10-20 加）；prependIcon 可选；label/rules/hint/error-messages 等经 attrs 透传 v-select；**2026-10-20 晚起用户弹窗角色/策略下拉改名称字典制**（见 §4.3，pageLoader 保留作通用件） |
 | `shared/components/FvTextInput.vue` + 字段规范 | 全局单行输入框（2026-10-16 抽取；type 三态 text/comment/password）。**2026-10-20 晚字段交互规范统一改版**（FvTextInput/FvTextSelect/FvTimer 三件套同口径，样式收口 tokens.css"字段间距规格/字段错误气泡"段）：① 底部 detail 行不展示 hint——`showHint` 开关开且 hint 非空 → label 后问号图标（`.fv-field__hint-icon`，悬停 tooltip 显提示词）；② `required` prop → label 前红星（rules 匿名函数无法静态判必填，由调用点显式标注）；③ 校验错误改**右上角圆形气球徽标**（`.fv-field__err-badge` 20×20、底=错误色 10% 混浮起、右下角贴 field 右上角、悬停 tooltip 红字 `vui-field-err-tip`；FvTextInput 走 `#message` 槽、FvTimer 自渲染同款、`errorMessages` 外部通道同入徽标）；④ 外边距统一 `margin: 3px 3px 7px`、盒内 padding 全 0（comment 形态 108px 豁免 padding）、盒高恒 36px |
 | `shared/utils/pwdPolicy.ts` | 新密码策略校验器（2026-10-20）：有登录策略 → 长度取策略上下限 + 四开关逐条强制（特殊字符按 passwdSpecials 命中）；无策略 → **基础限制 6~18**；顶栏改密弹窗与登录页改密卡共用 |
-| `api/<服务>/{requests,types,mocks}/` | 接口层目录化（2026-10-20 晚定稿）：各服务（security-management / log-service）下三目录按域分文件、**文件名不变**（如 `requests/userRequest.ts`）；服务外层留 `config.ts`（注册点：`import.meta.env.VITE_MOCK==='true'` 分支 await import mocks/*，生产包不含 mock 代码）+ 公共件 `rolePolicyNameCollection.ts`；`types/types.ts`=服务公共壳（PageRo/PageDto/SecurityReplyDto） |
+| `api/<服务>/{requests,types,mocks}/` | 接口层目录化（2026-10-20 晚定稿）：各服务（security-management / log-service）下三目录按域分文件、**文件名不变**（如 `requests/userRequest.ts`）；服务外层留 `config.ts`（注册点：`import.meta.env.VITE_MOCK==='true'` 分支 await import mocks/*，生产包不含 mock 代码）+ 公共件 `rolePolicyNameCollection.ts`；`types/types.ts`=服务公共壳（PageRo/PageDto/SecurityReplyDto）；**security-management 壳口径 2026-10-22 后端改版**：SecurityReplyDto = `{ code(字符串：成功恒 'OK'，失败默认 'FAIL'、可指定业务码), success(数字 1=成功/0=失败), errMsg(失败错误信息), data(业务出参), txId(请求头入参原封回显，Mock 无请求头上下文回空串) }`——业务成败 HTTP 码恒 200，非 200 才属非正常状态（shared/http 收口）；PageDto 增 `totalPage` 总页数（后端直发，前端不再推算，角色/用户分页两视图已消费） |
 | `shared/api/http.ts` | fetch 封装（统一响应壳、Mock 分流） |
 | `shared/api/mock/core.ts` | Mock 注册核心 |
 | `shared/toast/` | ★ 公共 Toast（4 类语义，`useAlertToast()` 全局调用；组件 `FvAlertToastHost.vue`（挂 App.vue）+ `FvAlertToastItem.vue`，2026-10-16 定稿 Fv 前缀） |
@@ -84,7 +84,7 @@ npm run type-check / lint / build   # 全绿
 - 切换动画：仅卡片翻转（页面背景静止） ✅
 - 修改密码成功 / 登录成功：全局成功 Toast（圆形实体图标前缀 + 成功色边框 + 20% 透明底 + 5s 自动消失，2026-10-14 由顶部 Alert 迁移） ✅
 - 登录失败 / 修改密码失败：全局失败 Dialog（错误图标标题 + 复制 + OK，正文优先取接口 errMsg，2026-10-14 由卡片内 v-alert 迁移） ✅
-- Mock 失败模拟：登录密码输 `fail` → 401；修改密码旧密码输 `fail` → 400（均带 errMsg，供失败 Dialog 演示） ✅
+- Mock 失败模拟：登录密码输触发词（`fail`/`invalid`/`expired`/`locked`/`pwdexpired`）→ 壳失败（success:0、errMsg 携 LoginFailCode 机器码）；修改密码旧密码输 `fail` → 壳失败（success:0 + 文案）——HTTP 恒 200（2026-10-22 壳口径，见 §三 api 行），供失败 Dialog 演示 ✅
 
 ### 4.3 业务模块
 - **Config**：分页列表、行选择、编辑回显、状态切换、增删改查全链路 ✅

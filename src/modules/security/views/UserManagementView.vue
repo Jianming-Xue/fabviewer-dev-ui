@@ -155,7 +155,8 @@ async function loadPage() {
       keyword: keyword.value,
     })
     users.value = res.data
-    const totalPage = Math.max(1, Math.ceil(res.totalSize / res.pageSize))
+    // 后端口径（2026-10-22）：totalPage 由服务端直发，前端不再按 totalSize/pageSize 推算
+    const totalPage = Math.max(1, res.totalPage)
     pageContent.value = {
       total: res.totalSize,
       totalPage,

@@ -6,13 +6,14 @@ import type { AssignRolePermissionRo, RoleDto, RoleNameDto, RoleRo } from '../ty
 import type { PageDto, SecurityReplyDto } from '../types/types'
 
 /**
- * security-management 服务 Mock（2026-10-17 后端口径）：出参统一壳
- * { code: 200, success: 0=成功/1=失败, errMsg, contents }；分页 contents = { pageSize, pageIndex, totalSize, data }。
+ * security-management 服务 Mock（2026-10-22 后端改版口径）：出参统一壳
+ * { code: 'OK'/失败 'FAIL'(字符串), success: 1=成功/0=失败, errMsg, data, txId }
+ * （txId 回显——Mock 无请求头上下文，一律空串）；分页 data = { pageSize, pageIndex, totalSize, totalPage, data }。
  * 角色布尔一律数字 1/0；删除与是否启用经 URL query 传参；内置角色按 roleId === BUILTIN_ROLE_ID 守卫。
- * 业务失败（内置角色保护/ID 重复/未找到）以 success:1 + errMsg 返回，演练前端失败分支。
+ * 业务失败（内置角色保护/ID 重复/未找到）以 success:0 + errMsg 返回，演练前端失败分支。
  */
-const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
-const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
 /** 内存态角色集（业务命名真实；权限串遵循 Function:/Control: 前端规则）。
  *  导出供名称字典接口活引用（rows 原地变更即时反映）；用户 Mock 只存 roleId，
  *  ID→Name 翻译在前端 ./rolePolicyNameCollection（2026-10-20 定稿） */
@@ -166,13 +167,14 @@ registerMock('GET', '/security-management/api/v1/roles/page', ({ params }) => {
     : [...rows]
   const sorted = filtered.sort((a, b) => a.roleId.localeCompare(b.roleId))
   const start = (pageIndex - 1) * pageSize
-  const contents: PageDto<RoleDto> = {
+  const page: PageDto<RoleDto> = {
     pageSize,
     pageIndex,
     totalSize: sorted.length,
+    totalPage: Math.max(1, Math.ceil(sorted.length / pageSize)),
     data: sorted.slice(start, start + pageSize).map((r) => ({ ...r, permissions: [...r.permissions] })),
   }
-  return ok(contents)
+  return ok(page)
 })
 
 /** 新建：入参 RoleRo；enabled/permissions 后端初始化（启用 + 空权限） */

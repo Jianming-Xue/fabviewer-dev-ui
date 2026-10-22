@@ -12,22 +12,22 @@ import type { ChangePasswordRo, LoginDto, LoginRo } from '../types/authTypes'
  * 登录 POST /login（LoginRo → LoginDto）；登出 POST /logout（空体，静默失败不阻塞本地清理）；
  * 修改密码 POST /change_password（ChangePasswordRo → null）；
  * 权限 GET /permissions（URL query username → 权限串清单）。
- * 走服务私有请求层 securityRequest（交易头 + SecurityReplyDto 出参壳）。
+ * 走服务私有请求层 securityRequest（交易头 + SecurityReplyDto 出参壳，2026-10-22 壳口径改版）。
  * 登录前调用时交易头 userName 为空串（尚未有登录态），属正常口径。
  * 函数保留 *Request 命名——stores/auth 已有局部 login/logout，避免同名遮蔽。
  */
 
-/** 1 · 登录（公共接口，不属于任何业务模块）——特殊壳口径（2026-10-17 后端定）：
- *  success=0 且 errMsg 非空 = 业务失败（errMsg 携 LoginFailCode 机器码）；
- *  其余壳失败仍走常规规则（success≠0）；非枚举的 errMsg 视为后端直发文案 */
+/** 1 · 登录（公共接口，不属于任何业务模块）——特殊壳口径（2026-10-22 随新壳对齐）：
+ *  登录业务失败 = success 0（新壳常规判据）且 errMsg 携 LoginFailCode 机器码；
+ *  success=1 但 errMsg 非空仍按失败防御处理；非枚举的 errMsg 视为后端直发文案 */
 export async function loginRequest(ro: LoginRo): Promise<LoginDto> {
   const env = await securityReply<LoginDto>('loginRequest', 'POST', '/api/v1/auth/login', { body: ro })
   const errMsg = env.errMsg?.trim() ?? ''
-  if (env.success !== 0 || errMsg) {
+  if (env.success !== 1 || errMsg) {
     if (isLoginFailCode(errMsg)) throw new LoginFailError(errMsg)
-    throw new ApiError(env.code || 500, errMsg || undefined)
+    throw new ApiError(200, errMsg || undefined)
   }
-  return env.contents
+  return env.data
 }
 
 /** 2 · 登出（失败不阻塞本地清理，silent 抑制全局错误 Dialog） */

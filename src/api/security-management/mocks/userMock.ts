@@ -13,8 +13,8 @@ import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpir
  * userId 由后端生成（Mock 以时间戳 36 进制模拟）；布尔一律 1/0，日期为 'YYYY-MM-DD HH:mm:ss' 串，
  * 空串 = 永不过期 / 未发生，-1 = 有效期不限。
  */
-const ok = <T>(contents: T): SecurityReplyDto<T> => ({ code: 200, success: 0, errMsg: '', contents })
-const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 200, success: 1, errMsg, contents: null })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
 /** 有效期天数规范：只有正整数合法，其余（未传保持现值判断同理由调用侧给）→ -1 = 不限（用户定稿 2026-10-21） */
 const normDays = (v: number | undefined, cur: number): number => {
   if (v === undefined) return cur > 0 ? cur : -1
@@ -110,13 +110,14 @@ registerMock('GET', '/security-management/api/v1/users/page', ({ params }) => {
     : [...rows]
   const sorted = filtered.sort((a, b) => a.userName.localeCompare(b.userName))
   const start = (pageIndex - 1) * pageSize
-  const contents: PageDto<UserDto> = {
+  const page: PageDto<UserDto> = {
     pageSize,
     pageIndex,
     totalSize: sorted.length,
+    totalPage: Math.max(1, Math.ceil(sorted.length / pageSize)),
     data: sorted.slice(start, start + pageSize),
   }
-  return ok(contents)
+  return ok(page)
 })
 
 registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
