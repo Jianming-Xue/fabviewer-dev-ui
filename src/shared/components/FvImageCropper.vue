@@ -143,15 +143,21 @@ function onUp() {
 function onZoomMove() {
   render()
 }
+
+/** ± 按钮缩放（2026-10-22 修：图标档不吃点击→改真实按钮），步进 0.25、端点夹取 */
+function nudge(delta: number) {
+  const next = Math.min(3, Math.max(1, zoom.value + delta))
+  if (next === zoom.value) return
+  zoom.value = next
+  render()
+  commit()
+}
 </script>
 
 <template>
-  <div class="fv-cropper">
+  <div class="fv-cropper" :style="{ width: boxStyle }">
     <!-- 框圆窗口：canvas 圆裁（border-radius 50% 裁剪）+ primary 圆环 -->
-    <div
-      class="fv-cropper__win"
-      :style="{ width: boxStyle, height: boxStyle }"
-    >
+    <div class="fv-cropper__win" :style="{ width: boxStyle, height: boxStyle }">
       <canvas
         ref="canvas"
         class="fv-cropper__canvas"
@@ -162,18 +168,26 @@ function onZoomMove() {
         @pointercancel="onUp"
       />
     </div>
-    <v-slider
-      v-model="zoom"
-      :min="1"
-      :max="3"
-      :step="0.05"
-      density="compact"
-      hide-details
-      prepend-icon="fas fa-minus"
-      append-icon="fas fa-plus"
-      @update:model-value="onZoomMove"
-      @end="commit"
-    />
+    <!-- 缩放行：真实 ± 小按钮贴两端但留边距（padding 12px），中缝滑杆 -->
+    <div class="fv-cropper__zoom">
+      <v-btn icon variant="text" size="x-small" :aria-label="'zoom -'" @click="nudge(-0.25)">
+        <v-icon size="12" icon="fas fa-minus" />
+      </v-btn>
+      <v-slider
+        v-model="zoom"
+        :min="1"
+        :max="3"
+        :step="0.05"
+        density="compact"
+        hide-details
+        class="fv-cropper__slider"
+        @update:model-value="onZoomMove"
+        @end="commit"
+      />
+      <v-btn icon variant="text" size="x-small" :aria-label="'zoom +'" @click="nudge(0.25)">
+        <v-icon size="12" icon="fas fa-plus" />
+      </v-btn>
+    </div>
   </div>
 </template>
 
@@ -183,6 +197,22 @@ function onZoomMove() {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+
+/* 缩放行：± 钮尽量贴两端（仅留 4px 呼吸位），与滑杆之间空 14px，中段整幅留给滑杆 */
+.fv-cropper__zoom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.fv-cropper__slider {
+  flex: 1;
+  min-width: 0;
 }
 
 /* 圆窗：裁圆 + 圆环=「框一个圆」；圆外面板底色透出 */

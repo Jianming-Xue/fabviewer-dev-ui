@@ -34,7 +34,6 @@ export default {
     avatarColorCustom: '自定义颜色',
     avatarPick: '选择图片',
     avatarPickAgain: '重新选择',
-    avatarImageReset: '恢复默认',
     avatarPickHint: 'PNG/JPEG 等图片，不超过 2MB',
     avatarNotImage: '请选择图片文件',
     avatarTooLarge: '图片不能超过 2MB',

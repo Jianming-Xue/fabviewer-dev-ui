@@ -34,7 +34,6 @@ export default {
     avatarColorCustom: 'Custom color',
     avatarPick: 'Choose image',
     avatarPickAgain: 'Change image',
-    avatarImageReset: 'Use default',
     avatarPickHint: 'PNG/JPEG etc., up to 2 MB',
     avatarNotImage: 'Please choose an image file',
     avatarTooLarge: 'Image must stay under 2 MB',

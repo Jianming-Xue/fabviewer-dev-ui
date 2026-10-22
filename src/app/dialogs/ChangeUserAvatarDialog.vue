@@ -24,7 +24,9 @@ import { useAuthStore } from '@/app/stores/auth'
  *  ② 表情：预设 emoji 中选一，底色默认主题色；提交 {"mode":"emoji","emoji":"🚀"}；
  *  ③ 图片（2026-10-22 裁剪定稿）：上传原图（仅 image/*、≤2MB 弹窗内拦截）→ FvImageCropper 框圆裁剪
  *    （圆内拖拽+缩放，自动压缩到 2KB 预算）→ 提交 {"mode":"img","base64":"<裁剪结果 dataURL>"}，
- *    base64 空=默认头像（「恢复默认」清图）；现有头像即图片时进入自动落位本 Tab 回填。
+ *    base64 空=默认头像；现有头像即图片时进入自动落位本 Tab 回填。
+ * 无恢复钮（2026-10-22 再定）：要弃稿直接 Cancel/关闭；切 Tab 不算改动、不动已呈现大头像，
+ * 呈现只随实际选择（点色/点表情/裁剪出图）联动。
  * Confirm 恒可提交「呈现出来的头像」（未动过=现有头像原样），POST /users/attribute attName=avatar；
  * Cancel/关闭 = 弃改动（无结果）。提交收口本组件（同 EditUserAttributeDialog 模式）：失败 showOpError、可重试。
  */
@@ -141,8 +143,12 @@ const modeTabs = computed<FvTabItem[]>(() => [
   { title: t('topbar.avatarModeImage'), value: 'image' },
 ])
 
+/** 真正做过选择才动大头像：呈现只认「最后一次实际改动」的模式，纯切 Tab 不改呈现 */
+const applied = ref<'username' | 'emoji' | 'image'>('username')
+
 function touch() {
   touched.value = true
+  applied.value = mode.value === 'emoji' || mode.value === 'image' ? mode.value : 'username'
 }
 
 function pickImage() {
@@ -177,19 +183,12 @@ function onCropped(d: string) {
   touch()
 }
 
-/** 恢复默认：清裁剪结果与原图，提交 base64 空档=默认字母头像 */
-function resetImage() {
-  sourceData.value = ''
-  imgData.value = ''
-  imgName.value = ''
-  touch()
-}
-
-/** 呈现即提交口径：字母/表情/图片均包 JSON（img={mode:'img',base64:裁剪结果}）；未动过则原样回传 current */
+/** 呈现即提交口径：字母/表情/图片均包 JSON（img={mode:'img',base64:裁剪结果}）；
+ *  未动过原样回传 current；按最后一次实际改动的模式呈现（纯切 Tab 不动大头像） */
 const shown = computed(() => {
   if (!touched.value) return props.current
-  if (mode.value === 'emoji') return JSON.stringify({ mode: 'emoji', emoji: emoji.value })
-  if (mode.value === 'image') return JSON.stringify({ mode: 'img', base64: imgData.value })
+  if (applied.value === 'emoji') return JSON.stringify({ mode: 'emoji', emoji: emoji.value })
+  if (applied.value === 'image') return JSON.stringify({ mode: 'img', base64: imgData.value })
   return JSON.stringify({ mode: 'username', bg: bg.value, fg: fg.value })
 })
 
@@ -219,7 +218,8 @@ async function save() {
         :size="96"
       />
       <div class="vui-avatar__side">
-        <FvTab v-model="mode" :items="modeTabs" @update:model-value="touch" />
+        <!-- 切 Tab 不算改动：只换编辑区，不动已呈现的大头像（2026-10-22 定稿） -->
+        <FvTab v-model="mode" :items="modeTabs" />
         <!-- 内容框：FvTable 档描边+圆角（--vui-border/--vui-radius-s），Tab 切换只换框内内容 -->
         <div class="vui-avatar__panel">
           <!-- 字母模式（2026-10-22 定稿）：底色/字色两区各占一半、正中纵向虚线切开，两区备选数一致（默认九色）；
@@ -305,15 +305,13 @@ async function save() {
           </div>
           <!-- 图片模式（2026-10-22 裁剪定稿）：选图进圆形裁剪编辑器（拖拽+缩放、自动压 2KB），
                裁剪结果即左侧大头像呈现、随 Confirm 以 {"mode":"img","base64":""} 提交；
-               未裁过图时呈现/提交沿用现有头像原样 -->
+               未裁过图时呈现/提交沿用现有头像原样；弃稿走 Cancel，无恢复钮 -->
           <div v-else class="vui-avatar__image">
             <input ref="fileInput" type="file" accept="image/*" hidden @change="onImageFile" />
             <template v-if="sourceData">
+              <!-- 重新选择钮居中、置圆窗上方（不压圆面、不碍拖拽选位）；恢复无需钮——Cancel 即弃稿 -->
+              <v-btn size="small" @click="pickImage">{{ t('topbar.avatarPickAgain') }}</v-btn>
               <FvImageCropper :src="sourceData" :max-bytes="2048" @cropped="onCropped" />
-              <div class="vui-avatar__image-btns">
-                <v-btn size="small" @click="pickImage">{{ t('topbar.avatarPickAgain') }}</v-btn>
-                <v-btn size="small" @click="resetImage">{{ t('topbar.avatarImageReset') }}</v-btn>
-              </div>
             </template>
             <template v-else>
               <v-btn size="small" @click="pickImage">
@@ -357,12 +355,13 @@ async function save() {
 /* 内容框（2026-10-22）：Tab 下方区域的 FvTable 档容器——描边同 --vui-border 令牌；
    上边框与 Tab 基线（滑块所在线）重合为一条线：-1px 叠压，滑块绘于其上不受遮；
    圆角只留下方两角（6px 同 radius-s 档），上沿取直与滑动线严丝合缝、不再角内塌缝；
-   固定高度 200px（=正方格 3 列×4 行 ≈176px + 内衬）：切 Tab（字母色板↔表情格）框高恒定、弹窗不跳 */
+   固定高度 208px（取三档内容最高者=图片模式 钮排+圆窗+缩放行 ≈182px + 内衬；字母正方格 3 列×4 行 ≈176px、
+   表情两行 ≈90px 均垂直居中）：切 Tab 框高恒定、弹窗不跳 */
 .vui-avatar__panel {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 200px;
+  height: 208px;
   overflow-y: auto;
   margin-top: -1px;
   padding: 12px;
@@ -445,10 +444,6 @@ async function save() {
   gap: 8px;
 }
 
-.vui-avatar__image-btns {
-  display: flex;
-  gap: 8px;
-}
 
 .vui-avatar__image-name {
   max-width: 100%;
