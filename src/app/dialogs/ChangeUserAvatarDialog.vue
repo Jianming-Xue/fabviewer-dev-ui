@@ -143,7 +143,7 @@ async function save() {
           <!-- 字母模式（2026-10-22 调版）：一行两组——左=底色、右=字体色，不带文字标签（空串=默认档；
                组尾自由色板钮点开 v-color-picker 任选） -->
           <div v-if="mode === 'username'" class="vui-avatar__colors">
-            <div class="vui-avatar__swatches">
+            <div class="vui-avatar__colors-half vui-avatar__colors-half--bg">
               <button
                 v-for="(c, i) in BG_COLORS"
                 :key="`bg-${i}`"
@@ -167,7 +167,7 @@ async function save() {
                 <v-color-picker v-model="bgPick" mode="hex" hide-inputs hide-mode-switch class="ma-2" />
               </v-menu>
             </div>
-            <div class="vui-avatar__swatches">
+            <div class="vui-avatar__colors-half vui-avatar__colors-half--fg">
               <button
                 v-for="(c, i) in FG_COLORS"
                 :key="`fg-${i}`"
@@ -252,17 +252,32 @@ async function save() {
   border-radius: 0 0 var(--vui-radius-s) var(--vui-radius-s);
 }
 
-/* 字母模式色板：一行两组，左=底色、右=字体色（2026-10-22 调版，无文字标签） */
+/* 字母模式色板：一行两组各占一半，正中纵向虚线分隔（2026-10-22 调版，无文字标签） */
 .vui-avatar__colors {
   display: flex;
   align-items: center;
-  gap: 14px;
 }
 
-.vui-avatar__swatches {
+.vui-avatar__colors-half {
+  flex: 1 1 50%;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+}
+
+.vui-avatar__colors-half--bg {
+  justify-content: flex-end;
+  padding-right: 14px;
+}
+
+/* 中缝虚线：骑在右半左缘，正好落在两半交界 */
+.vui-avatar__colors-half--fg {
+  justify-content: flex-start;
+  padding-left: 14px;
+  border-left: 1px dashed var(--vui-border);
+  align-self: stretch;
 }
 
 .vui-avatar__swatch {

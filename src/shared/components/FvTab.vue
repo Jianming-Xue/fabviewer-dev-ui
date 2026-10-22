@@ -18,7 +18,8 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
  * 内容框，由消费方包在下方内容区上（ChangeUserAvatarDialog 口径）。
  * 滑块三段式动画（2026-10-22 定稿）：切换时先从原 Tab 收缩为实心圆（左右半圆端合并），
  * 圆点滑至新 Tab 中心，再展开为新 Tab 宽度；几何由 JS 分阶段下发、CSS 过渡承接。
- * 首挂载/容器尺寸变化（ResizeObserver）瞬时落位不动画；快速连切自动接管（清旧时序、从当前形态续接）。
+ * 首挂载即在首个选中项**全展开**落位（offsetLeft/offsetWidth 量测，不吃弹框开合 scale 动画的亏）、
+ * 容器尺寸变化瞬时跟随不动画；快速连切自动接管（清旧时序、从当前形态续接）。
  */
 const props = defineProps<{ items: FvTabItem[] }>()
 
@@ -39,13 +40,13 @@ const itemEls = new Map<string, HTMLElement>()
 /** 滑块几何+当前段过渡参数：left/width 相对容器 padding-box；show=false 无当前选中项 */
 const bar = ref({ left: 0, width: 0, show: false, dur: '0ms', ease: EASE_OUT })
 
+/** 目标几何：走 offsetLeft/offsetWidth（布局系数值，不受弹框开合 scale 动画的视口变换干扰，
+ *  首挂载即按真实档宽展开落位；容器 position:relative 即选项的 offsetParent） */
 function target(): { left: number; width: number } | null {
   const el = itemEls.get(model.value)
   const boxEl = box.value
-  if (!el || !boxEl) return null
-  const r = el.getBoundingClientRect()
-  const o = boxEl.getBoundingClientRect()
-  return { left: r.left - o.left, width: r.width }
+  if (!el || !boxEl || el.offsetParent !== boxEl) return null
+  return { left: el.offsetLeft, width: el.offsetWidth }
 }
 
 /** 瞬时落位（首挂载/尺寸变化/无历史形态） */
