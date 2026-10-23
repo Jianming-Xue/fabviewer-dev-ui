@@ -8,6 +8,7 @@ import type { FvFeature } from '@/shared/module'
 import FvLogo from '@/app/images/FvLogo.vue'
 import FvNavItem from '@/shared/components/FvNavItem.vue'
 import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
+import FvSupportBot from '@/app/layouts/FvSupportBot.vue'
 import { useLocale } from '@/app/composables/useLocale'
 import { useAuthStore } from '@/app/stores/auth'
 import { usePermissionStore } from '@/app/stores/permission'
@@ -335,6 +336,9 @@ async function onLogout() {
     </v-main>
 
     <!-- 修改密码弹窗：独立组件 ChangePasswordDialog，经 openInteractiveDialog() 编程式打开（见 onChangePassword） -->
+
+    <!-- 全局客服悬浮球（2026-10-22 先行造型稿）：右下角机器人圆钮，沿下缘/右缘拖拽，hover 睁眼 -->
+    <FvSupportBot />
   </div>
 </template>
 

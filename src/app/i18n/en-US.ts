@@ -2,6 +2,7 @@
 export default {
   app: {
     title: 'FAB Viewer',
+    support: 'Live support',
   },
   nav: {
     home: 'Home',

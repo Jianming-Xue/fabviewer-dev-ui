@@ -2,6 +2,7 @@
 export default {
   app: {
     title: 'FAB Viewer',
+    support: '在线客服',
   },
   nav: {
     home: '主页',
