@@ -3,6 +3,7 @@ export default {
   app: {
     title: 'FAB Viewer',
     support: 'Live support',
+    unexpectedError: 'An unexpected error occurred',
   },
   nav: {
     home: 'Home',
@@ -80,5 +81,11 @@ export default {
     enter: 'Open',
     modulesTitle: 'Installed modules',
     noModules: 'No modules installed',
+  },
+  notFound: {
+    title: 'Page Not Found',
+    description: 'The address does not exist or has been removed. Check the link, or head back home',
+    backHome: 'Back to Home',
+    goBack: 'Go Back',
   },
 }

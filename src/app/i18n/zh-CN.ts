@@ -3,6 +3,7 @@ export default {
   app: {
     title: 'FAB Viewer',
     support: '在线客服',
+    unexpectedError: '页面出现异常',
   },
   nav: {
     home: '主页',
@@ -80,5 +81,11 @@ export default {
     enter: '进入',
     modulesTitle: '已安装模块',
     noModules: '尚未安装任何模块',
+  },
+  notFound: {
+    title: '页面走丢了',
+    description: '访问的地址不存在或已被移除，检查一下链接，或回首页继续',
+    backHome: '返回首页',
+    goBack: '返回上一页',
   },
 }

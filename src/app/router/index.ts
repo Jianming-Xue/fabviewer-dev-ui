@@ -5,13 +5,16 @@ import { setUiVersion } from '@/shared/utils/tx'
 
 import HomeView from '@/app/views/HomeView.vue'
 import LoginView from '@/app/views/LoginView.vue'
+import NotFoundView from '@/app/views/NotFoundView.vue'
 import FvMainLayout from '@/app/layouts/FvMainLayout.vue'
 import { getRoutes } from '@/modules/registry'
 import { useAuthStore } from '@/app/stores/auth'
 
 /**
- * 路由：登录页（公共，不在壳层内）+ 主界面（FvMainLayout 包裹，含模块路由）。
+ * 路由：登录页（公共，不在壳层内）+ 主界面（FvMainLayout 包裹，含模块路由）+ 404 兜底。
  * 守卫：未登录或登录失效 → 登录页（带 redirect 回跳）；已登录访问登录页 → 回首页。
+ * 404 catch-all（2026-10-27）：meta.public 让未登录也可见、meta.allowAuthed 豁免
+ * 「已登录访问 public 路由弹回首页」规则——错误地址对任何人都是就地呈现 404 页。
  */
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,6 +39,12 @@ const router = createRouter({
         ...getRoutes(),
       ],
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: NotFoundView,
+      meta: { public: true, allowAuthed: true },
+    },
   ],
 })
 
@@ -51,7 +60,8 @@ router.beforeEach((to) => {
   const expired = auth.expireIfNeeded() // 过期就地清理并记录
 
   if (to.meta.public) {
-    return auth.isLoggedIn ? { path: '/' } : true
+    // allowAuthed 路由（404）已登录不弹回首页，就地呈现
+    return auth.isLoggedIn && !to.meta.allowAuthed ? { path: '/' } : true
   }
   if (!auth.isLoggedIn) {
     return {

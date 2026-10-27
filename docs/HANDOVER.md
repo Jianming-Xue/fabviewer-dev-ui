@@ -36,7 +36,9 @@ npm run type-check / lint / build   # 全绿
 | `app/router/index.ts` | 路由 + 守卫（未登录跳 /login） |
 | `app/stores/auth.ts` | 认证（2026-10-20 晚改版）：**LoginDto 嵌套 `{token, user: UserDto}`**（avatar 迁 UserDto；expiresIn/loginTime 移除——TTL 临时固定 8h、后续并入登录策略）；登录成功拉权限 + `user.policyId` 非空时**异步拉策略详情**（fetchPolicyDetail，不阻塞跳转、失败静默）存 `loginPolicy`（登出/过期清，供改密限制）；`patchUser` 供档案行内编辑回写；localStorage `vui.auth` 持久化 |
 | `app/stores/permission.ts` | 权限（2026-10-15）：登录后拉取字符串清单（`Function:<URL>` / `Control:<URL>:<控件ID>`，后端不管格式），拆分功能 URL 集合与控件键集合；`isGranted(url)` 供导航过滤、`hasControl(url,id)` 供控件管控；localStorage `vui.permissions` 持久化、fail-closed；`fetchPermissions(username)` 按登录用户名拉取（2026-10-16 参数化）；Mock 口径：`admin` 全功能（三模块级 Function 串+控件通配）、`test` 仅角色+Server Hang 两功能、其他用户名空清单 |
-| `app/images/` | 图像类组件：`FvLogo.vue`（全局 logo，曾用名 AppLogo）+ `LoginArt*.vue`（登录页两幅内联 SVG 插画，防拷贝） |
+| `app/images/` | 图像类组件：`FvLogo.vue`（全局 logo，曾用名 AppLogo）+ `LoginArt*.vue`（登录页两幅内联 SVG 插画，防拷贝）+ `FvNotFoundArt.vue`（404 动效插画，2026-10-27） |
+| `app/views/NotFoundView.vue` | 404 页（2026-10-27）：壳层外全屏独立页，路由 catch-all `/:pathMatch(.*)*` 指向；meta.public + allowAuthed（登录与否都就地呈现，豁免「已登录访问 public 弹回首页」）；按钮=返回首页（outlined primary）/返回上一页（router.back） |
+| `shared/utils/globalError.ts` | 全局错误守卫（2026-10-27，main.ts 挂载）：Vue errorHandler / window error / unhandledrejection 三通道 → console 全量留痕 + 错误 Toast（5s 节流防风暴、可复制）；文案 app.unexpectedError 双语 |
 | `app/dialogs/ChangePasswordDialog.vue` | 顶栏修改密码弹窗（继承 FvInteractiveDialog，经 openInteractiveDialog 打开；表单/提交/清空全部内聚） |
 | `shared/components/FvSearchButton.vue` | 全局搜索按钮：主题色实底 + 搜索图标，type=submit（表单内 Enter 即触发 click），文案默认 common.search 可用 label/插槽覆盖（2026-10-15） |
 | `shared/components/FvNewButton.vue` | 全局新增按钮：主题色实底圆形 + 加号图标，32px（标准 2/3，2026-10-15 调优）+ 浅灰水波纹，border-radius 50% !important 覆盖全局 6px 圆角，aria-label 默认 common.add |
@@ -70,6 +72,7 @@ npm run type-check / lint / build   # 全绿
   **权限配置树**（2026-10-16 拆分：`shared/components/FvTree` 通用树外壳+递归 FvTreeList + `modules/security/components/PermissionTree` 适配器 + registry.getPermissionTree；原 FvPermissionTree/FvPermissionFeatureBranch/shared/permission/treeModel 已删，treeModel 仅存两函数并入适配器）：三态勾选（选中=对号/被动选中=框内小方块/不选=空框，主题色）——被动=被主动祖先覆盖；操作只影响本级及下级；祖先授权期取消落 `Deny:<URL>[:<控件ID>]` 排除串（store 做减法）；全选=全部主动选中；工具条（虚线下居中）全选/折叠两枚状态联动钮；Control 只存功能级——通配 `Control:<功能URL>`、精确 `Control:<功能URL>:<控件ID>`；演示入口 `app/dialogs/PermissionConfigDialog` 已删除（2026-10-16：孤儿文件且违反 Dialog 体系，备份 /tmp/PermissionConfigDialog.vue.bak）；权限编辑经 RolePermissionDialog（角色表格「权限」单元格） ✅；Home 为空白页（2026-10-15 内容清空）；Home 菜单不走 router-link（/ 是全部模块路由父记录，router-link 恒判 active）——点击导航 + `:active` 精确匹配 ✅
 - 顶栏修改密码：独立组件 `ChangePasswordDialog`（继承 FvInteractiveDialog，菜单点击经 `openInteractiveDialog()` 编程式打开）——无图标、标题居中、遮罩加深 scrimOpacity=0.5、取消=普通按钮/确认=主题色；表单按登录页形式——顶部居中 logo(64px)、用户名只读（取登录用户，fa-user 图标）、三个密码框带 fa-lock 前缀与 fa-eye/fa-eye-slash 明文切换；成功→emit('resolve', true)+关窗+成功 Toast+**清空登录态回登录页**（用新密码重登），失败→失败 Dialog（接口 errMsg）且弹窗保留可重试；`@closed` 统一清空表单（2026-10-14 迁移/完善） ✅
 - 菜单选中：底色主题色10%透明+文字变主题色，悬停不变底色 ✅
+- **404 兜底 + 全局错误守卫（2026-10-27）**：catch-all 路由与守卫见 §三 NotFoundView 行；动效插画 `app/images/FvNotFoundArt.vue`——「4🤖4」机器人（与 FvSupportBot 同族造型）七组 CSS keyframes（整机 6s 浮动与登录页同节奏/投影反相/天线球脉冲/5s 瞬眨/问号摆动/星光错拍/入场），颜色全走设计令牌双主题自适应，`prefers-reduced-motion` 全停；实测 ✅（未登录/登录态双路径就地呈现、双主题截图、错误 Toast 触发）
 - 侧栏底色随主题（浅色白/#090909） ✅
 - 登录页背景固定浅色渐变(#e1ebe7→#f9fafb)，不随主题切换 ✅
 - 全局浅色主题渐变背景（fixed 视口） ✅
@@ -128,7 +131,7 @@ npm run type-check / lint / build   # 全绿
 
 1. **HMR 偶发失效**：多次连续编辑后 dev server 可能进入脏状态（表现为页面元素缺失、样式丢失）。重启 `npm run dev` 即恢复。
 2. **CDP 测试脚本坑**：在同步代码块填值后立即 `requestSubmit` 会被 Vuetify 渲染批处理吞掉（提交"卡住"的假象）。**脚本中 requestSubmit 需延迟 ≥300ms**。另三坑（2026-10-18 实测）：① `el.click()`/`dispatchEvent` **绕过命中测试**——会出现"脚本能选中、真实用户点不中"的假象，验证点击类问题必须用 `Input.dispatchMouseEvent` 真实鼠标事件并以 `elementFromPoint` 断言命中的就是目标；② 菜单/弹层开合动画（scaleY）未结束时量几何得到 4px 高假值，**动画后等 ≥1s 再测**；③ `Runtime.evaluate` 表达式里 NodeList 无 `.map/.find`，先 `Array.from`。
-3. `src/assets/login_bk_*.svg` 原文件仍在（登录页已不引用，可删）。
+3. ~~`src/assets/login_bk_*.svg` 原文件仍在~~（**2026-10-27 已删**：全仓零引用核实后移除）。
 4. Chrome 版本升级（153→155）后 CDP `/json/new` 偶发无 `webSocketDebuggerUrl`，加 retry 即可。
 5. 未做单元测试。
 6. 后端对接：`shared/api/http.ts` 已留真实 fetch 分支，关 `VITE_MOCK` 即切换。

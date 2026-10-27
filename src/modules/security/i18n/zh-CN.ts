@@ -194,7 +194,6 @@ export default {
       ctlDelete: '删除策略',
     },
     control: {
-      searchKeyword: 'Role（Name / ID / Description 模糊匹配）',
       add: '新增角色',
       edit: '编辑',
       delete: '删除',
