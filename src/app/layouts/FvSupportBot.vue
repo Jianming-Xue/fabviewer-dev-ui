@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 
 /**
  * 全局客服悬浮球（FvSupportBot，2026-10-22 先行造型稿，聊天功能后补）：
- * 主界面右下角圆形浮钮（52px，当日由 64 收小），机器人图标=缺省闭眼、悬停睁眼、移开回闭眼（CSS 眼组透明度互换）；
+ * 主界面右下角圆形浮钮（52px，当日由 64 收小）；机器人图标（2026-10-27 用户提供 iconfont 造型定稿）=
+ * 实心剪影（底座+双耳+天线头壳），静止=闭眼眠弧（∩ 镂空带）、悬停=睁眼圆孔（iconfont 原 path），两全图 cross-fade；
  * 可拖拽沿视口下缘/右缘滑动——拖动时就近吸附到边距更近的那条边（另一边贴边），
  * 位置只有一维自由度，天然不会飘离边缘；未移动直接松手=点击（后续接客服会话开合）。
  * 贴边留 10px 呼吸位；resize 时钳回可视范围；弹窗/遮罩层级恒压其上（overlay z≈2400）。
@@ -95,33 +96,17 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
   >
-    <!-- 机器人头（自绘内联 SVG，currentColor 随钮前景）：闭眼=双弧线，睁眼=双圆点 -->
-    <svg
-      viewBox="0 0 24 24"
-      width="30"
-      height="30"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <rect x="3.5" y="7.5" width="17" height="12.5" rx="3.2" />
-      <line x1="12" y1="7.5" x2="12" y2="4.4" />
-      <circle cx="12" cy="3.3" r="1.1" fill="currentColor" stroke="none" />
-      <!-- 闭眼（缺省）：两条大眠弧 ∩，粗圆头描边 -->
-      <g class="fv-support-bot__eyes fv-support-bot__eyes-closed" stroke-width="2.2">
-        <path d="M5 13.6a3.4 3.4 0 0 1 6.8 0" />
-        <path d="M12.2 13.6a3.4 3.4 0 0 1 6.8 0" />
-      </g>
-      <!-- 睁眼（hover）：两只大白眼+主题色瞳仁（瞳色=钮底色，视觉上“镂空”） -->
-      <g class="fv-support-bot__eyes fv-support-bot__eyes-open" fill="currentColor" stroke="none">
-        <circle cx="8.4" cy="12.9" r="3.4" />
-        <circle cx="15.6" cy="12.9" r="3.4" />
-        <circle class="fv-support-bot__pupil" cx="8.4" cy="12.9" r="1.5" />
-        <circle class="fv-support-bot__pupil" cx="15.6" cy="12.9" r="1.5" />
-      </g>
-      <line x1="10.1" y1="16.9" x2="13.9" y2="16.9" />
+    <!-- 机器人（2026-10-27 定稿造型，currentColor 实心剪影）：镂空眼随 hover 互换——
+         静止=闭眼眠弧（∩ 镂空带，反向绕向成孔），悬停=睁眼圆孔（用户给定 iconfont 原 path） -->
+    <svg viewBox="0 0 1024 1024" width="30" height="30" fill="currentColor" aria-hidden="true">
+      <path
+        class="fv-support-bot__face fv-support-bot__face-wink"
+        d="M857.6 906.65H166.4c-25.6 0-42.65 17.1-42.65 42.7S140.8 992 166.4 992h691.2c25.6 0 42.65-17.05 42.65-42.65a42.752 42.752 0 0 0-42.65-42.7zM42.65 462.95C17.05 462.95 0 480 0 505.6v170.65c0 25.6 17.05 42.7 42.65 42.7s42.7-17.1 42.7-42.7V505.6c0-25.6-17.1-42.65-42.7-42.65zm938.7 0c-25.6 0-42.7 17.05-42.7 42.65v170.65c0 25.6 17.1 42.7 42.7 42.7s42.65-17.1 42.65-42.7V505.6c0-25.6-17.05-42.65-42.65-42.65zM640 309.35h-85.35V236.8a107.52 107.52 0 0 0 64-98.15A105.626 105.626 0 0 0 512 32c-59.75 0-106.65 51.2-106.65 106.65a107.52 107.52 0 0 0 64 98.15v72.55H384A277.35 277.35 0 1 0 384 864h256a277.35 277.35 0 1 0 0-554.65zM362.65 672A85.35 85.35 0 1 1 448 586.65c0 51.2-38.4 85.35-85.35 85.35zm298.7 0a85.35 85.35 0 1 1 85.3-85.35c0 51.2-38.4 85.35-85.3 85.35z"
+      />
+      <path
+        class="fv-support-bot__face fv-support-bot__face-rest"
+        d="M857.6 906.65H166.4c-25.6 0-42.65 17.1-42.65 42.7S140.8 992 166.4 992h691.2c25.6 0 42.65-17.05 42.65-42.65a42.752 42.752 0 0 0-42.65-42.7zM42.65 462.95C17.05 462.95 0 480 0 505.6v170.65c0 25.6 17.05 42.7 42.65 42.7s42.7-17.1 42.7-42.7V505.6c0-25.6-17.1-42.65-42.7-42.65zm938.7 0c-25.6 0-42.7 17.05-42.7 42.65v170.65c0 25.6 17.1 42.7 42.7 42.7s42.65-17.1 42.65-42.7V505.6c0-25.6-17.05-42.65-42.65-42.65zM640 309.35h-85.35V236.8a107.52 107.52 0 0 0 64-98.15A105.626 105.626 0 0 0 512 32c-59.75 0-106.65 51.2-106.65 106.65a107.52 107.52 0 0 0 64 98.15v72.55H384A277.35 277.35 0 1 0 384 864h256a277.35 277.35 0 1 0 0-554.65zM368 690A80 80 0 0 1 528 690L500 690A52 52 0 0 0 416 690ZM666.7 690A80 80 0 0 1 826.7 690L798.7 690A52 52 0 0 0 714.7 690Z"
+      />
     </svg>
   </button>
 </template>
@@ -168,25 +153,20 @@ onBeforeUnmount(() => window.removeEventListener('resize', onResize))
     0 2px 6px rgba(0, 0, 0, 0.22);
 }
 
-/* 眼组悬停互换：缺省闭眼，hover 睁眼，移开回闭眼 */
-.fv-support-bot__eyes {
+/* 眼态悬停互换：缺省闭眼眠弧（静止），hover 睁眼圆孔，移开回闭眼 */
+.fv-support-bot__face {
   transition: opacity 0.15s ease;
 }
 
-.fv-support-bot__eyes-open {
+.fv-support-bot__face-wink {
   opacity: 0;
 }
 
-.fv-support-bot:hover .fv-support-bot__eyes-open {
+.fv-support-bot:hover .fv-support-bot__face-wink {
   opacity: 1;
 }
 
-.fv-support-bot:hover .fv-support-bot__eyes-closed {
+.fv-support-bot:hover .fv-support-bot__face-rest {
   opacity: 0;
-}
-
-/* 瞳仁取钮底色（主题 primary），大白眼上呈“镂空”瞳效果 */
-.fv-support-bot__pupil {
-  fill: rgb(var(--v-theme-primary));
 }
 </style>
