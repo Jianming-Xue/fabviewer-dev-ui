@@ -37,5 +37,3 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
-.claude/settings.local.json
-.claude/hooks/vui-guard.mjs

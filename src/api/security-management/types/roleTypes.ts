@@ -1,6 +1,6 @@
 /**
  * 角色业务对象（security-management 服务，2026-10-17 后端口径）：
- * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 CLAUDE.md）。
+ * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）。
  * 公用对象（PageRo / PageDto / SecurityReplyDto）在 ./types。
  */
 import type { PageRo } from './types'

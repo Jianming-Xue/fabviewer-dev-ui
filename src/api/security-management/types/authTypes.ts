@@ -4,7 +4,7 @@ import type { UserDto } from './userTypes'
 
 /**
  * 认证业务对象（security-management 服务，2026-10-17 口径）：
- * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 CLAUDE.md）。
+ * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）。
  * 公用对象（PageRo / PageDto / SecurityReplyDto）在 ./types。
  *
  * 登录壳的特殊口径（2026-10-22 随新壳对齐）：登录业务失败 = success 0（新壳常规判据）

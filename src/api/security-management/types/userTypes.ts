@@ -1,6 +1,6 @@
 /**
  * 用户业务对象（security-management 服务，2026-10-18）：
- * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 CLAUDE.md）；
+ * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）；
  * 布尔一律数字 1/0（服务口径，同角色）。
  * 公用对象（PageRo / PageDto / SecurityReplyDto）在 ./types。
  * 列表不展示：createdAt / passwordChangedAt / lastLoginTime / lastLoginIp（查看弹窗全量展示）。

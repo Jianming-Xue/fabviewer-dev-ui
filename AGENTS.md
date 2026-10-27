@@ -2,6 +2,8 @@
 
 项目背景、架构与交接状态见 `docs/HANDOVER.md`（事实状态以该文档为准）。
 
+> 本文件是 ZCode 工作区指令文件（每会话自动加载）。2026-10-27 由 Claude Code 迁入 ZCode：前身 `CLAUDE.md`、`.claude/` 已删；危险命令本地守卫在 `.zcode/hooks/vui-guard.mjs`（PreToolUse，经 `.zcode/config.json` 注册，deny=退出码 2）。
+
 ## Dialog 体系（2026-10-16 用户定稿）
 
 层级三分：
