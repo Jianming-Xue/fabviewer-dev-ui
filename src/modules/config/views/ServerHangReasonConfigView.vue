@@ -2,42 +2,45 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { ApiError, errCodeToI18nKey } from '@/shared/api/errors'
+import { showOpError } from '@/shared/api/opError'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
-import { useAlertToast } from '@/shared/toast/useAlertToast'
+import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
+import FvTable from '@/shared/components/FvTable.vue'
+import FvTableHeader from '@/shared/components/FvTableHeader.vue'
+import ServerHangReasonConfigEditDialog from '../dialogs/ServerHangReasonConfigEditDialog.vue'
 import {
-  createSrvHangCfg,
   deleteSrvHangCfg,
   fetchSrvHangCfgPage,
   toggleSrvHangCfgState,
-  updateSrvHangCfg,
 } from '@/api/log-service/requests/srvHangCfg'
-import { applyMatchMode, splitMatchMode, type MatchMode } from '../matchMode'
 import type { SrvHangCfgDto } from '@/api/log-service/types/types'
 
+/**
+ * 模块 5 · 01 Server Hang Reason Config（2026-10-27 二改版，用户定稿）：
+ * 页面只留表格卡——标题行移除（面包屑/菜单已有功能名）、新增/编辑收进
+ * `dialogs/ServerHangReasonConfigEditDialog`（FvInteractiveDialog 体系，提交收口弹窗内）、
+ * New 钮经 FvTable insert 回调显现、刷新钮经 FvTable refresh prop + @refresh（重查当前页回显）；
+ * 表格样式全走 FvTable 默认，页面级零调整。
+ */
 const { t } = useI18n()
 const dialog = useModalDialog()
-const toast = useAlertToast()
 
-// ===== 表格区 =====
+// ===== 表格区（§4.1） =====
 const rows = ref<SrvHangCfgDto[]>([])
-const total = ref(0)
-const totalPage = ref(1)
-const pageIndex = ref(1)
-const pageSize = 20 // 默认每页 20 条（§4.1）
+const pageContent = reactive({ total: 0, totalPage: 1, pageIndex: 1, pageSize: 20 }) // 默认每页 20 条（§4.1）
 const loading = ref(false)
-const selectedId = ref<string | null>(null)
+const selected = ref<SrvHangCfgDto | null>(null)
 
-async function loadPage(page = pageIndex.value) {
+async function loadPage(page = pageContent.pageIndex) {
   loading.value = true
   try {
-    const data = await fetchSrvHangCfgPage(page, pageSize)
+    const data = await fetchSrvHangCfgPage(page, pageContent.pageSize)
     rows.value = data.contents
-    total.value = data.total
-    totalPage.value = data.totalPage
-    pageIndex.value = data.pageIndex
+    pageContent.total = data.total
+    pageContent.totalPage = data.totalPage
+    pageContent.pageIndex = data.pageIndex
   } catch {
-    showError()
+    showOpError(new Error(t('common.opFailed')))
   } finally {
     loading.value = false
   }
@@ -45,27 +48,39 @@ async function loadPage(page = pageIndex.value) {
 
 onMounted(() => loadPage(1))
 
-function onRowClick(_event: Event, { item }: { item: SrvHangCfgDto }) {
-  selectedId.value = selectedId.value === item.id ? null : item.id
-}
-
-/** Enabled 开关：调 state 成功后就地改该格，失败回滚（§4.1） */
-const switching = ref<Record<string, boolean>>({})
-async function onToggle(row: SrvHangCfgDto, next: boolean | null) {
-  switching.value[row.id] = true
-  const prev = row.enabled
-  row.enabled = next === true
+/** Enabled 开关：FvTable 先写回行再抛 switch-change；失败回拨该格（§4.1 就地改不重拉） */
+async function onSwitchChange({ item, value }: { item: SrvHangCfgDto; key: string; value: boolean }) {
+  const prev = !value
   try {
-    await toggleSrvHangCfgState(row.id, row.enabled)
+    await toggleSrvHangCfgState(item.id, value)
   } catch {
-    row.enabled = prev
-    showError()
-  } finally {
-    switching.value[row.id] = false
+    item.enabled = prev
+    showOpError(new Error(t('common.opFailed')))
   }
 }
 
-// ===== 删除（§4.1：弹框确认后调用；公共确认 Dialog，2026-10-16 迁自裸 v-dialog） =====
+/** 新增（FvTable insert → FvNewButton）：弹窗提交成功后出参回显首行，总数 +1 */
+async function onInsert(): Promise<SrvHangCfgDto | null> {
+  const created = await openInteractiveDialog<{ row?: SrvHangCfgDto }, SrvHangCfgDto>(
+    ServerHangReasonConfigEditDialog,
+    {},
+  )
+  if (!created) return null
+  pageContent.total += 1
+  return created
+}
+
+/** 编辑（action 列 pen）：弹窗提交成功后用出参换引用更新该行（§4.3 整行更新） */
+async function onEdit(row: SrvHangCfgDto) {
+  const updated = await openInteractiveDialog<{ row?: SrvHangCfgDto }, SrvHangCfgDto>(
+    ServerHangReasonConfigEditDialog,
+    { row },
+  )
+  if (!updated) return
+  rows.value = rows.value.map((r) => (r.id === updated.id ? updated : r))
+}
+
+// ===== 删除（§4.1：弹框确认后调用；公共确认 Dialog） =====
 async function onDelete(row: SrvHangCfgDto) {
   const ok = await dialog.confirm({
     title: t('common.delete'),
@@ -76,302 +91,74 @@ async function onDelete(row: SrvHangCfgDto) {
   try {
     await deleteSrvHangCfg(row.id)
     rows.value = rows.value.filter((r) => r.id !== row.id)
-    total.value = Math.max(0, total.value - 1)
-    showSuccess()
+    pageContent.total = Math.max(0, pageContent.total - 1)
+    if (selected.value?.id === row.id) selected.value = null
   } catch (e) {
-    showError(e)
+    showOpError(e)
   }
 }
-
-// ===== 配置控件区（表单） =====
-const form = reactive({
-  ruleName: '',
-  hangReason: '',
-  startText: '',
-  startMode: 'bothFuzzy' as MatchMode,
-  endText: '',
-  endMode: 'bothFuzzy' as MatchMode,
-})
-const editingId = ref<string | null>(null)
-const formRef = ref()
-
-const ruleNameRules = [
-  (v: string) => !!v || t('validation.required'),
-  (v: string) => v.length <= 255 || t('validation.lengthLimit', { n: 255 }),
-  (v: string) => /^[A-Za-z0-9]+$/.test(v) || t('validation.charLimit', { chars: '0-9 A-Z a-z' }),
-]
-const hangReasonRules = [
-  (v: string) => !!v || t('validation.required'),
-  (v: string) => v.length <= 255 || t('validation.lengthLimit', { n: 255 }),
-  (v: string) => /^[A-Za-z0-9,._-]+$/.test(v) || t('validation.charLimit', { chars: '0-9 A-Z a-z , . _ -' }),
-]
-const lineLikeRules = [
-  (v: string) => !!v || t('validation.required'),
-  (v: string) => v.length <= 4000 || t('validation.lengthLimit', { n: 4000 }),
-]
-
-function fillForm(row: SrvHangCfgDto) {
-  editingId.value = row.id
-  selectedId.value = row.id
-  form.ruleName = row.ruleName
-  form.hangReason = row.hangReason
-  const start = splitMatchMode(row.startLineLike)
-  form.startText = start.text
-  form.startMode = start.mode
-  const end = splitMatchMode(row.endLineLike)
-  form.endText = end.text
-  form.endMode = end.mode
-}
-
-const saving = ref(false)
-async function onConfirm() {
-  const { valid } = await formRef.value.validate()
-  if (!valid) return
-  saving.value = true
-  const input = {
-    id: editingId.value,
-    ruleName: form.ruleName,
-    hangReason: form.hangReason,
-    startLineLike: applyMatchMode(form.startText, form.startMode),
-    endLineLike: applyMatchMode(form.endText, form.endMode),
-  }
-  try {
-    if (editingId.value) {
-      const updated = await updateSrvHangCfg(input)
-      const idx = rows.value.findIndex((r) => r.id === editingId.value)
-      if (idx >= 0) rows.value[idx] = updated // 出参更新选中行每个单元格（§4.3）
-    } else {
-      const created = await createSrvHangCfg(input)
-      rows.value.unshift(created) // 表格第一行插入出参内容（§4.3）
-      total.value += 1
-    }
-    showSuccess()
-    onCancel()
-  } catch (e) {
-    showError(e)
-  } finally {
-    saving.value = false
-  }
-}
-
-/** Cancel：清空全部控件值（回到新增模式）+ 取消表格选中（§4.3） */
-function onCancel() {
-  form.ruleName = ''
-  form.hangReason = ''
-  form.startText = ''
-  form.startMode = 'bothFuzzy'
-  form.endText = ''
-  form.endMode = 'bothFuzzy'
-  editingId.value = null
-  selectedId.value = null
-  formRef.value?.resetValidation()
-}
-
-// ===== 反馈（公共 Toast，2026-10-16 迁自自建 v-snackbar） =====
-function showSuccess() {
-  toast.success(t('common.opSuccess'))
-}
-function showError(e?: unknown) {
-  // 传输层非 200 已由 shared/http 全局错误 Dialog 呈现，此处不叠 Toast
-  if (e instanceof ApiError && e.transport) return
-  const key = e instanceof ApiError ? errCodeToI18nKey(e.errCode) : null
-  toast.error(key ? t(key) : t('common.opFailed'))
-}
-
-const headers = [
-  { title: t('config.columns.ruleName'), key: 'ruleName' },
-  { title: t('config.columns.startLineLike'), key: 'startLineLike' },
-  { title: t('config.columns.endLineLike'), key: 'endLineLike' },
-  { title: t('config.columns.hangReason'), key: 'hangReason' },
-  { title: t('config.columns.enabled'), key: 'enabled' },
-  { title: t('config.columns.updatedAt'), key: 'updatedAt' },
-  { title: t('config.columns.updatedBy'), key: 'updatedBy' },
-  { title: t('common.operation'), key: 'actions', sortable: false, fixed: true, align: 'end' as const },
-]
-
-const matchOptions: { value: MatchMode; label: string }[] = [
-  { value: 'leadingFuzzy', label: t('config.match.leading') },
-  { value: 'trailingFuzzy', label: t('config.match.trailing') },
-  { value: 'bothFuzzy', label: t('config.match.both') },
-  { value: 'exact', label: t('config.match.exact') },
-]
 </script>
 
 <template>
-  <section>
-    <!-- 上：配置表格区（§4.1） -->
-    <v-card elevation="0" border class="mb-6">
-      <v-card-title class="d-flex align-center ga-2 py-3">
-        <span class="text-body-1 font-weight-bold">{{ t('config.title') }}</span>
-        <v-spacer />
-        <v-tooltip location="bottom">
-          <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              icon
-              variant="text"
-              size="small"
-              :loading="loading"
-              :aria-label="t('common.refresh')"
-              @click="loadPage()"
-            >
-              <v-icon icon="fas fa-rotate-right" />
-            </v-btn>
-          </template>
-          {{ t('common.refresh') }}
-        </v-tooltip>
-      </v-card-title>
-      <v-divider />
-
-      <v-data-table
-        :headers="headers"
-        :items="rows"
-        :loading="loading"
-        :items-per-page="-1"
-        hide-default-footer
-        hover
-        density="comfortable"
-        class="vui-table--comfortable"
-        :no-data-text="t('common.empty')"
-        :row-props="({ item }: { item: SrvHangCfgDto }) => ({ class: { 'vui-row--selected': item.id === selectedId } })"
-        @click:row="onRowClick"
-      >
-        <template #[`item.ruleName`]="{ value }">
-          <span class="vui-mono text-body-2">{{ value }}</span>
-        </template>
-        <template #[`item.startLineLike`]="{ value }">
-          <span class="vui-mono text-body-2 text-medium-emphasis">{{ value }}</span>
-        </template>
-        <template #[`item.endLineLike`]="{ value }">
-          <span class="vui-mono text-body-2 text-medium-emphasis">{{ value }}</span>
-        </template>
-        <template #[`item.enabled`]="{ item }">
-          <v-switch
-            :model-value="item.enabled"
-            :loading="switching[item.id]"
-            color="primary"
-            density="compact"
-            hide-details
-            @click.stop
-            @update:model-value="onToggle(item, $event)"
-          />
-        </template>
-        <template #[`item.updatedAt`]="{ value }">
-          <span class="vui-mono text-body-2">{{ value }}</span>
-        </template>
-        <template #[`item.updatedBy`]="{ value }">
-          <span class="vui-mono text-body-2">{{ value }}</span>
-        </template>
-        <template #[`item.actions`]="{ item }">
-          <v-btn variant="text" size="small" color="primary" @click.stop="fillForm(item)">
-            {{ t('common.edit') }}
-          </v-btn>
-          <v-btn
-            variant="text"
-            size="small"
-            color="error"
-            @click.stop="onDelete(item)"
-          >
-            {{ t('common.delete') }}
-          </v-btn>
-        </template>
-      </v-data-table>
-
-      <v-divider />
-      <div class="d-flex align-center pa-3">
-        <span class="text-body-2 text-medium-emphasis">{{ t('common.total', { n: total }) }}</span>
-        <v-spacer />
-        <v-pagination
-          v-model="pageIndex"
-          :length="totalPage"
-          total-visible="7"
-          density="comfortable"
-          @update:model-value="loadPage()"
-        />
+  <section class="shc-page">
+    <!-- 单卡铺满（角色页同构布局链）：卡不描边（FvTable 自带框），表格区内部滚动 -->
+    <v-card elevation="0" class="shc-result">
+      <div class="shc-table">
+        <FvTable
+          v-model:page-index="pageContent.pageIndex"
+          v-model:page-size="pageContent.pageSize"
+          v-model:selected="selected"
+          :data="rows"
+          :loading="loading"
+          :page-content="pageContent"
+          :insert="onInsert"
+          refresh
+          select-mode="single"
+          @refresh="loadPage()"
+          @switch-change="onSwitchChange"
+          @edit="onEdit"
+          @delete="onDelete"
+        >
+          <FvTableHeader :title="t('config.columns.ruleName')" data-key="ruleName" />
+          <FvTableHeader :title="t('config.columns.startLineLike')" data-key="startLineLike" />
+          <FvTableHeader :title="t('config.columns.endLineLike')" data-key="endLineLike" />
+          <FvTableHeader :title="t('config.columns.hangReason')" data-key="hangReason" />
+          <FvTableHeader :title="t('config.columns.enabled')" data-key="enabled" header-type="switch" />
+          <FvTableHeader :title="t('config.columns.updatedAt')" data-key="updatedAt" />
+          <FvTableHeader :title="t('config.columns.updatedBy')" data-key="updatedBy" />
+          <FvTableHeader header-type="action" :actions="['edit', 'delete']" />
+        </FvTable>
       </div>
     </v-card>
-
-    <!-- 下：配置控件区（§4.2） -->
-    <v-card elevation="0" border>
-      <v-card-title class="d-flex align-center ga-2 py-3">
-        <span class="text-body-1 font-weight-bold">
-          {{ editingId ? t('config.form.titleEditing') : t('config.form.title') }}
-        </span>
-        <v-chip v-if="editingId" size="x-small" color="primary" label>
-          {{ t('config.form.editingTag') }}
-        </v-chip>
-      </v-card-title>
-      <v-divider />
-
-      <v-form ref="formRef" class="pa-6" @submit.prevent="onConfirm">
-        <v-row density="compact">
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="form.ruleName"
-              :label="t('config.form.ruleName')"
-              :rules="ruleNameRules"
-              :hint="t('config.form.ruleNameHint')"
-              persistent-hint
-              counter="255"
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="form.hangReason"
-              :label="t('config.form.hangReason')"
-              :rules="hangReasonRules"
-              :hint="t('config.form.hangReasonHint')"
-              persistent-hint
-              counter="255"
-            />
-          </v-col>
-
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="form.startText"
-              :label="t('config.form.startLine')"
-              :rules="lineLikeRules"
-              :hint="t('config.form.lineLikeHint')"
-              persistent-hint
-              counter="4000"
-            />
-            <v-radio-group v-model="form.startMode" inline hide-details density="compact" class="mt-1">
-              <template #label>
-                <span class="text-body-2 text-medium-emphasis">{{ t('config.form.matchMode') }}</span>
-              </template>
-              <v-radio v-for="opt in matchOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-            </v-radio-group>
-          </v-col>
-
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="form.endText"
-              :label="t('config.form.endLine')"
-              :rules="lineLikeRules"
-              counter="4000"
-            />
-            <v-radio-group v-model="form.endMode" inline hide-details density="compact" class="mt-1">
-              <template #label>
-                <span class="text-body-2 text-medium-emphasis">{{ t('config.form.matchMode') }}</span>
-              </template>
-              <v-radio v-for="opt in matchOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-            </v-radio-group>
-            <div class="text-caption text-medium-emphasis mt-1">
-              {{ t('config.form.exactHint') }}
-            </div>
-          </v-col>
-        </v-row>
-
-        <div class="d-flex justify-end ga-3 mt-4">
-          <v-btn :disabled="saving" @click="onCancel">
-            {{ t('common.cancel') }}
-          </v-btn>
-          <v-btn color="primary" type="submit" :loading="saving">
-            {{ t('common.confirm') }}
-          </v-btn>
-        </div>
-      </v-form>
-    </v-card>
-
   </section>
 </template>
+
+<style scoped>
+/* 满高布局链（与角色页同构，2026-10-27）：section 列向 → 结果卡铺满剩余高 →
+   表格区收高、滚动交给 FvTable 内部（工具行/分页条固定） */
+.shc-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.shc-result {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--vui-radius-s); /* 与 FvTable 自带圆角同心 */
+}
+
+.shc-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 表格外边距 5px（角色页同口径）：边框与卡边缘留隙 */
+.shc-table :deep(.fv-table) {
+  margin: 5px;
+}
+</style>

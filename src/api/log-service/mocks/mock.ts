@@ -310,7 +310,16 @@ function assertUnique(input: SrvHangCfgRo, excludeId: string | null): void {
 function now(): string {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`
+}
+
+/** 审计用户（演示口径）：取登录会话持久化的用户名，未登录回落 MOCK_USER */
+function currentUser(): string {
+  try {
+    return JSON.parse(localStorage.getItem('vui.auth') ?? '').user?.userName ?? 'MOCK_USER'
+  } catch {
+    return 'MOCK_USER'
+  }
 }
 
 
@@ -336,7 +345,7 @@ registerMock('POST', '/log-service/api/v1/srv_hang_cfg/state', ({ body }) => {
   if (!row) throw new ApiError(404)
   row.enabled = Boolean(body?.enabled)
   row.updatedAt = now()
-  row.updatedBy = 'MOCK_USER'
+  row.updatedBy = currentUser()
 })
 
 registerMock('POST', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
@@ -350,7 +359,7 @@ registerMock('POST', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
     endLineLike: input.endLineLike,
     enabled: true, // 新增默认值由后端定（§4.3）
     updatedAt: now(),
-    updatedBy: 'MOCK_USER',
+    updatedBy: currentUser(),
   }
   cfgRows.unshift(created)
   return created
@@ -367,7 +376,7 @@ registerMock('PUT', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
     startLineLike: input.startLineLike,
     endLineLike: input.endLineLike,
     updatedAt: now(),
-    updatedBy: 'MOCK_USER',
+    updatedBy: currentUser(),
   })
   return row
 })

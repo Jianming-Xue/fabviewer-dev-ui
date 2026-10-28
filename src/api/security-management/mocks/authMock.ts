@@ -15,7 +15,7 @@ import type { UserDto } from '../types/userTypes'
  *   `fail`=AUTH_FAILED（密码错误）/ `invalid`=ACCOUNT_INVALID / `expired`=ACCOUNT_EXPIRED /
  *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED
  * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
- * - 权限清单：`admin` 全功能 / `test` 仅角色+Server Hang / 其他用户名空清单（fail-closed 演示）
+ * - 权限清单：`admin` 全功能 / `test` 仅角色+服务挂起原因配置 / 其他用户名空清单（fail-closed 演示）
  */
 const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
 const fail = <T>(errMsg: string): SecurityReplyDto<T> => ({ code: 'FAIL', success: 0, errMsg, data: null as unknown as T, txId: '' })

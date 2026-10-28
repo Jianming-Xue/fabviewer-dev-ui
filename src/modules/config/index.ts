@@ -21,7 +21,7 @@ const configModule: FvModule = {
       key: 'config.nav.label',
       url: '/config/srv-hang',
       order: 10,
-      component: () => import('./views/SrvHangCfgView.vue'),
+      component: () => import('./views/ServerHangReasonConfigView.vue'),
       // 页内受管控控件（权限系统按 id 管控）
       controls: [
         { id: 'config.srv-hang.add', key: 'config.control.add', type: 'button' },

@@ -46,6 +46,6 @@ src/
 
 - **视觉**：全部走 `shared/styles/tokens.css` 与 Vuetify 主题令牌（05-视觉与交互规范），禁止页面硬编码颜色；圆角阶梯 6/8/10/14。
 - **文案**：模板零硬编码，一律 i18n 词典；新增文案必须同时补 zh-CN / en-US。
-- **菜单**：多级结构。每个模块提供一个一级菜单（带图标，可含 `children` 分组）；二级/三级项不带图标、必有路由 path。当前结构：`Rule Searching → MES Rule Info Searching`、`Config → Server Hang`。进入子路由时所属分组自动展开。
+- **菜单**：多级结构。每个模块提供一个一级菜单（带图标，可含 `children` 分组）；二级/三级项不带图标、必有路由 path。当前结构：`Rule Searching → MES Rule Info Searching`、`Config → Server Hang Reason Config`。进入子路由时所属分组自动展开。
 - **新模块**：复制任一现有模块目录结构，在 `registry.ts` 注册即可获得菜单、路由、词典与 Mock 的全套接线。
 - **Server Hang**：数据未落库，模块 1 的 Hang 按钮本期恒置灰（`ResultTable.vue`），落库后移除 `disabled` 即启用（弹框组件已就位）。

@@ -4,10 +4,10 @@ export default {
     nav: {
       root: 'Config',
       rootDesc: 'System administration configurations',
-      label: 'Server Hang',
-      labelDesc: 'Maintain Server Hang rules: Rule × reason × start/end marker lines',
+      label: 'Server Hang Reason Config',
+      labelDesc: 'Maintain Server Hang Reason Config: Rule × reason × start/end marker lines',
     },
-    title: 'Server Hang Reason Config',
+    delayHint: 'Enable toggles, adds and edits take effect on the judging side within 5 minutes (consumer-side cache)',
     control: {
       add: 'Add configuration',
       edit: 'Edit',
@@ -26,7 +26,6 @@ export default {
     form: {
       title: 'New configuration',
       titleEditing: 'Edit configuration',
-      editingTag: 'Editing',
       ruleName: 'Rule Name',
       hangReason: 'Hang Reason',
       startLine: 'Start Line Like',
@@ -35,7 +34,9 @@ export default {
       ruleNameHint: 'Digits and letters only',
       hangReasonHint: 'Digits, letters and , . _ - only',
       lineLikeHint: 'Enter the literal text only; % is added by the match mode',
-      exactHint: 'Exact match requires the full log body line; prefer "contains" in most cases',
+      exactWarn1: 'Exact match compares against the whole log line verbatim: a full line carrying the timestamp / Server ID prefix cannot be pasted as-is',
+      exactWarn2: 'Log lines whose LOG_BODY exceeds 4000 chars can never hit an exact match (input cap 4000)',
+      exactWarn3: 'Prefer the "{chars}" contains mode (front-and-back fuzzy) in general',
     },
     match: {
       leading: 'Starts fuzzy',
