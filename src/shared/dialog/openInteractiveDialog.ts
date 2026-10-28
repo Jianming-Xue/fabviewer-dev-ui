@@ -78,6 +78,15 @@ export function openInteractiveDialog<P extends object = object, R = unknown>(
   })
 }
 
+/**
+ * 关闭全部业务弹窗（2026-10-27，登出/会话失效收口调用）：与 Esc 仲裁器/取消按钮同一通路
+ * 逐层收栈（open 置 false、走关闭动画，@closed 出栈时唤醒 Promise，调用方 await 得 undefined）。
+ * 宿主挂 App.vue 不随路由切换卸载——防残留必须收口在会话清理处，调用方不得各自处理。
+ */
+export function closeAllInteractiveDialogs(): void {
+  for (const item of [...state.stack]) if (item.open) item.open = false
+}
+
 /** 供宿主消费的内部状态与回调（应用代码请勿直接使用） */
 export function useInteractiveDialogLauncher() {
   return { state, finish, topDialog }

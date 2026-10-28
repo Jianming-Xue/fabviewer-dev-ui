@@ -50,6 +50,12 @@ function settle(result: boolean) {
   dialog.resolve(result)
 }
 
+/** 关闭全部语义弹窗（2026-10-27，登出/会话失效收口调用）：当前弹按 false settle、
+ *  排队依次唤醒（各 await 得 false=取消语义）；宿主挂 App.vue 不随路由卸载，防残留收口在此 */
+export function closeAllModalDialogs(): void {
+  while (state.current) settle(false)
+}
+
 /**
  * 公共 Dialog 服务（重要信息的强反馈；不关键信息用 useAlertToast）：
  * - `await dialog.confirm('…删除？')` → true=确认 / false=取消

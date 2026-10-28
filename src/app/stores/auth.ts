@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 
 import { loginRequest, logoutRequest } from '@/api/security-management/requests/authRequest'
 import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
+import { closeAllInteractiveDialogs } from '@/shared/dialog/openInteractiveDialog'
+import { closeAllModalDialogs } from '@/shared/dialog/useModalDialog'
 import { getDeviceId, getClientIp } from '@/shared/utils/device'
 
 import type { LoginDto } from '@/api/security-management/types/authTypes'
@@ -149,17 +151,26 @@ export const useAuthStore = defineStore('auth', () => {
     return res
   }
 
+  /** 会话清理收口（2026-10-27）：登出/过期共用——清会话与权限之外**收拢全部弹窗**
+   *  （业务栈逐层关、语义弹按取消 settle）；两宿主挂 App.vue 不随路由切换卸载，
+   *  不在收口处关则登出跳登录页后弹窗残留屏上 */
+  function clearSession(): void {
+    auth.value = null
+    loginPolicy.value = null
+    persist(null)
+    usePermissionStore().clear()
+    closeAllInteractiveDialogs()
+    closeAllModalDialogs()
+  }
+
   async function logout(): Promise<void> {
     try {
       await logoutRequest()
     } catch {
       /* 后端登出失败不阻塞本地清理 */
     }
-    auth.value = null
-    loginPolicy.value = null
+    clearSession()
     justExpired = false
-    persist(null)
-    usePermissionStore().clear()
   }
 
   /** 单属性本地同步（2026-10-20 用户信息弹窗行内编辑）：/users/attribute 提交成功后调用，
@@ -174,10 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
    *  2026-10-21 叠加日期卡点：token 时刻过期 或 账户/密码到期时间早于当前 → 清会话 */
   function expireIfNeeded(): boolean {
     if (auth.value && (auth.value.expiresAt <= Date.now() || dateExpired(auth.value.user))) {
-      auth.value = null
-      loginPolicy.value = null
-      persist(null)
-      usePermissionStore().clear() // 会话失效连带清理权限
+      clearSession()
       justExpired = true
     }
     return justExpired
