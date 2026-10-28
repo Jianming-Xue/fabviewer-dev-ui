@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import FvTableHeader, { type FvTableMenuItem } from './FvTableHeader.vue'
 import FvSwitch from './FvSwitch.vue'
 import FvNewButton from './FvNewButton.vue'
+import FvRefreshButton from './FvRefreshButton.vue'
 import FvMultiValueCell from './FvMultiValueCell.vue'
 
 /**
@@ -19,6 +20,9 @@ import FvMultiValueCell from './FvMultiValueCell.vue'
  * - 数据：`data` = 当前页数据；`pageContent` = 服务端分页信息（不传则隐藏分页区）
  * - 新增：`insert` 传回调则表格右上角显示 FvNewButton；回调返回新行 → 回显到第一行
  *   并触发 @inserted（data 变更会重置本地回显）
+ * - 刷新（2026-10-27）：`refresh=true` 工具行左上角显示 FvRefreshButton（loading 随表 loading 态）；
+ *   点击抛 @refresh，取数与回显逻辑全由调用方定义；缺省不显示。
+ *   与 insert 共存同一工具行（刷新左 / New 右）
  * - 空数据：仅显示表头（2026-10-16 改，原恒显 5 空白行；Vuetify no-data 行一并隐藏）
  * - 选择：`selectMode` = 'single'（点击行选中：整行淡主题色底 + 文字随明暗主题联动 +
  *   首格左侧 5px 主题色竖条，操作列底色不变；不显示复选框列）/ 'multiple'（第一列固定复选框）。
@@ -62,6 +66,8 @@ const props = withDefaults(
     pageSizeOptions?: number[]
     /** 新增回调：返回新行则回显首行；提供即显示右上角 FvNewButton */
     insert?: () => Promise<Row | null | undefined> | Row | null | undefined
+    /** 刷新钮开关（2026-10-27）：true = 工具行左上角显示刷新图标钮，点击抛 @refresh；缺省不显示 */
+    refresh?: boolean
     /** 选择模式：single = 行选中高亮；multiple = 第一列复选框 */
     selectMode?: 'single' | 'multiple'
   }>(),
@@ -70,6 +76,7 @@ const props = withDefaults(
     pageContent: null,
     pageSizeOptions: () => [10, 20, 50, 100],
     insert: undefined,
+    refresh: false,
     selectMode: 'single', // 默认单选（用户定稿 2026-10-15）
   },
 )
@@ -84,6 +91,8 @@ const emit = defineEmits<{
   delete: [item: Row]
   view: [item: Row]
   inserted: [item: Row]
+  /** 刷新钮点击（refresh=true 时）：取数/回显由调用方定义 */
+  refresh: []
   'switch-change': [payload: { item: Row; key: string; value: boolean }]
   /** more 下拉菜单项点击：key = FvTableHeader moreMenu 项的 key */
   'more-select': [payload: { item: Row; key: string }]
@@ -439,9 +448,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="rootRef" class="fv-table" :class="{ 'fv-table--has-actions': hasActionsColumn, 'fv-table--x-overflow': xBar.visible }">
-    <!-- insert 回调存在 → 右上角 FvNewButton -->
-    <div v-if="insert" class="fv-table__toolbar">
-      <FvNewButton :label="t('common.add')" @click="onInsert" />
+    <!-- 工具行：刷新钮左上角（refresh=true）/ FvNewButton 右上角（insert 回调存在） -->
+    <div v-if="refresh || insert" class="fv-table__toolbar">
+      <FvRefreshButton v-if="refresh" :loading="loading" @click="emit('refresh')" />
+      <FvNewButton v-if="insert" class="fv-table__new" :label="t('common.add')" @click="onInsert" />
     </div>
 
     <!-- 浮动滚动轨层（2026-10-21）：横/纵自绘条以绝对定位悬浮于滚动区之上，
@@ -819,8 +829,13 @@ onBeforeUnmount(() => {
 
 .fv-table__toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   padding: 8px 12px 8px; /* 与表头保持 8px 间距（用户调优 2026-10-15） */
+}
+
+/* New 钮恒贴右：仅刷新钮时工具行左对齐不受影响（2026-10-27 刷新钮入件） */
+.fv-table__new {
+  margin-left: auto;
 }
 
 /* 表格区内部滚动（2026-10-16 内收定稿）：wrapper 为唯一滚动容器，
