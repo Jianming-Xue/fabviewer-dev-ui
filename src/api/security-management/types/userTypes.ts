@@ -68,28 +68,24 @@ export interface CreateUserRo {
   enabled: number
 }
 
-/** 编辑用户入参（2026-10-19 拆分改造：稀疏语义——userName 定位（2026-10-28 userId 退役、
- *  用户名即唯一标识，创建后不可改），其余字段**传则改、不传保持**，
- *  由 EditUserDialog（昵称/邮箱/电话）与 EditUserRolePolicyDialog（角色/策略/两有效期天数/账户到期日）
- *  各自只提交自己维护的字段；enabled 由表格开关经 /users/enabled
- *  独立维护，编辑不经手 */
-export interface UserRo {
+/** 编辑用户档案入参（2026-10-28 定稿：原 UserRo 稀疏语义退役、拆双接口）：
+ *  PUT /api/v1/users，userName 定位（用户名即唯一标识、创建后不可改），
+ *  nickName/email/phoneNumber **全量替换**（空串=清空；格式校验归 UI 调用前） */
+export interface ModifyUserRo {
   userName: string
-  nickName?: string
-  email?: string
-  phoneNumber?: string
-  /** 挂载角色 id 清单（空数组 = 不挂） */
-  roleIds?: string[]
-  /** 登录策略 id；空串 = 默认策略 */
-  policyId?: string
-  /** 密码有效期天数（-1 = 不限） */
-  passwordValidDays?: number
-  /** 账户有效期天数（-1 = 不限） */
-  accountValidDays?: number
-  /** 账户到期日期 'YYYY-MM-DD'；空串 = 永不过期 */
-  accountExpiresAt?: string
-  /** 1=启用 / 0=停用（编辑表单不展示，由页面透传当前值） */
-  enabled?: number
+  nickName: string
+  email: string
+  phoneNumber: string
+}
+
+/** 编辑用户角色与策略入参（2026-10-28 定稿）：PUT /api/v1/users/role-policy，
+ *  userName 定位；roleIds/policyId **全量替换**（指派语义：roleIds []=不挂、policyId ''=默认策略）；
+ *  账户到期不在入参——界面仅呈现推算效果，后端按策略 accountValidDays 自行推算落库
+ *  （激活日期基准 + 天数；-1=永不过期）；两有效期天数不经手；内置 ADMIN 用户本端点拒收 */
+export interface ModifyUserRolePolicyRo {
+  userName: string
+  roleIds: string[]
+  policyId: string
 }
 
 /** 重置密码入参（管理员侧，2026-10-19 More 菜单新增：ResetPasswordDialog 提交；

@@ -1,13 +1,14 @@
 import { securityRequest } from './request'
 
 import type { PageDto } from '../types/types'
-import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserPageRo, UserRo, UserStateRo } from '../types/userTypes'
+import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserPageRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口（security-management 服务，前缀 /api/v1/users，2026-10-18 首版，文件分类同角色口径）：
  * 分页 GET /page（URL query = UserPageRo：公用 PageRo + keyword）；
  * 新建 POST 入参 CreateUserRo（2026-10-19 拆分：含密码/角色/策略/激活日期/启用）、
- *   编辑 PUT 入参 UserRo（可编辑集=昵称/邮箱/电话/角色/策略/两有效期天数/到期日期），
+ *   编辑 PUT 入参 ModifyUserRo（昵称/邮箱/电话全量替换；2026-10-28 双接口拆分，
+ *   角色与策略走 PUT /users/role-policy 入参 ModifyUserRolePolicyRo），
  *   非空与格式校验归 UI 调用前——Create/EditUserDialog 表单规则，接口层不设守卫；
  * 删除 DELETE 的 userName 写 URL query（?userName=…；2026-10-28 userId 退役、用户名即唯一标识）。
  * 变更类操作走全局 Loading 锁页；查看为纯前端展示（数据已在分页行内），无独立接口。
@@ -25,10 +26,19 @@ export function createUser(ro: CreateUserRo): Promise<UserDto> {
   return securityRequest<UserDto>('createUser', 'POST', '/api/v1/users', { body: ro, loading: true })
 }
 
-/** 3 · 编辑用户（UserRo 稀疏语义，userName 定位；2026-10-19 拆分：EditUserDialog 提交
- *    昵称/邮箱/电话，EditUserRolePolicyDialog 提交 角色/策略/两有效期天数/到期日，各传各的字段） */
-export function updateUser(ro: UserRo): Promise<UserDto> {
+/** 3 · 编辑用户档案（PUT /api/v1/users，ModifyUserRo 全量替换昵称/邮箱/电话；
+ *    2026-10-28 双接口拆分：角色与策略迁 /users/role-policy） */
+export function updateUser(ro: ModifyUserRo): Promise<UserDto> {
   return securityRequest<UserDto>('updateUser', 'PUT', '/api/v1/users', { body: ro, loading: true })
+}
+
+/** 3b · 编辑用户角色与策略（PUT /api/v1/users/role-policy，ModifyUserRolePolicyRo 全量替换；
+ *    内置 ADMIN 用户由服务端拒收；2026-10-28 双接口拆分自 /users） */
+export function updateUserRolePolicy(ro: ModifyUserRolePolicyRo): Promise<UserDto> {
+  return securityRequest<UserDto>('updateUserRolePolicy', 'PUT', '/api/v1/users/role-policy', {
+    body: ro,
+    loading: true,
+  })
 }
 
 /** 6 · 重置密码（管理员侧 ResetPasswordRo，2026-10-19 More 菜单） */

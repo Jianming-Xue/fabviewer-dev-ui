@@ -1,9 +1,10 @@
 import { registerMock } from '@/shared/api/mock'
 
 import { BUILTIN_ROLE_ID } from '../types/roleTypes'
+import { policies } from './policyMock'
 
 import type { PageDto, SecurityReplyDto } from '../types/types'
-import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserRo, UserStateRo } from '../types/userTypes'
+import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserStateRo } from '../types/userTypes'
 
 /**
  * 用户接口 Mock（2026-10-18，壳/分页/URL query 口径同角色）：
@@ -15,11 +16,6 @@ import type { CreateUserRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpir
  */
 const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
-/** 有效期天数规范：只有正整数合法，其余（未传保持现值判断同理由调用侧给）→ -1 = 不限（用户定稿 2026-10-21） */
-const normDays = (v: number | undefined, cur: number): number => {
-  if (v === undefined) return cur > 0 ? cur : -1
-  return v > 0 ? v : -1
-}
 const p2 = (n: number) => String(n).padStart(2, '0')
 const fmtTime = (d: Date) =>
   `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
@@ -149,31 +145,47 @@ registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
   return ok({ ...created })
 })
 
-/** 编辑用户（2026-10-19 拆分改造）：稀疏更新——body 携带的字段才覆盖，未携带保持原值；
- *  EditUserDialog 只提交 昵称/邮箱/电话，EditUserRolePolicyDialog 只提交 角色/策略/两有效期天数/到期日 */
+/** 编辑用户档案（2026-10-28 双接口拆分）：ModifyUserRo 全量替换昵称/邮箱/电话（空串=清空）；
+ *  内置 ADMIN 档案三件套不受限（角色与策略由 /users/role-policy 端点拒收） */
 registerMock('PUT', '/security-management/api/v1/users', ({ body }) => {
-  const ro = body as unknown as UserRo
+  const ro = body as unknown as ModifyUserRo
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
-  // 内置管理员用户（2026-10-21）：挂 ADMIN 角色者角色/策略不可改（档案三件套不受限）
-  if (row.roleIds.includes(BUILTIN_ROLE_ID) && (ro.roleIds !== undefined || ro.policyId !== undefined))
-    return fail('内置管理员用户的角色与策略不可修改')
-  const uname = ro.userName?.trim()
-  if (uname && uname !== row.userName && rows.some((r) => r.userName === uname && r.userName !== row.userName))
-    return fail('该用户名已存在')
   const updated: UserDto = {
     ...row,
-    userName: row.userName, // 创建后锁定，改名忽略
-    ...(ro.nickName !== undefined ? { nickName: ro.nickName.trim() } : {}),
-    ...(ro.email !== undefined ? { email: ro.email.trim() } : {}),
-    ...(ro.phoneNumber !== undefined ? { phoneNumber: ro.phoneNumber.trim() } : {}),
-    ...(ro.enabled !== undefined ? { enabled: ro.enabled === 0 ? 0 : 1 } : {}),
-    ...(ro.roleIds !== undefined ? { roleIds: [...ro.roleIds] } : {}),
-    ...(ro.policyId !== undefined ? { policyId: ro.policyId } : {}),
-    ...(ro.accountExpiresAt !== undefined ? { accountExpiresAt: dayEnd(ro.accountExpiresAt) } : {}),
-    // 有效期天数规范（2026-10-21）：非正值（空/0/负）一律落 -1 = 不限
-    passwordValidDays: normDays(ro.passwordValidDays, row.passwordValidDays),
-    accountValidDays: normDays(ro.accountValidDays, row.accountValidDays),
+    nickName: String(ro.nickName ?? '').trim(),
+    email: String(ro.email ?? '').trim(),
+    phoneNumber: String(ro.phoneNumber ?? '').trim(),
+  }
+  rows[rows.indexOf(row)] = updated
+  return ok({ ...updated })
+})
+
+/** 编辑用户角色与策略（2026-10-28 新端点）：ModifyUserRolePolicyRo 全量替换（指派语义）；
+ *  内置 ADMIN 用户整端点拒收（账户延期另走 /users/expire 审计流）；
+ *  账户到期由本"后端"按策略推算落库（2026-10-28 用户定稿：入参不带到期，界面仅呈现推算效果）——
+ *  激活日期基准（accountActiveAt 空回落 createdAt 当日）+ 策略 accountValidDays；-1=永不过期落空串 */
+registerMock('PUT', '/security-management/api/v1/users/role-policy', ({ body }) => {
+  const ro = body as unknown as ModifyUserRolePolicyRo
+  const row = rows.find((r) => r.userName === ro?.userName)
+  if (!row) return fail('用户不存在')
+  if (row.roleIds.includes(BUILTIN_ROLE_ID)) return fail('内置管理员用户的角色与策略不可修改')
+  const policy = policies.find((p) => p.policyId === ro.policyId)
+  if (!policy) return fail('登录策略不存在')
+  const base = (row.accountActiveAt || row.createdAt || '').slice(0, 10)
+  const days = policy.accountValidDays
+  let expiresAt = ''
+  if (days > 0 && base) {
+    const d = new Date(base + 'T00:00:00')
+    d.setDate(d.getDate() + days)
+    expiresAt = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
+  }
+  const updated: UserDto = {
+    ...row,
+    roleIds: [...(ro.roleIds ?? [])],
+    policyId: ro.policyId,
+    accountValidDays: days,
+    accountExpiresAt: dayEnd(expiresAt),
   }
   rows[rows.indexOf(row)] = updated
   return ok({ ...updated })

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import dayjs from 'dayjs'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextSelect from '@/shared/components/FvTextSelect.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
 import { showOpError } from '@/shared/api/opError'
-import { updateUser } from '@/api/security-management/requests/userRequest'
+import { updateUserRolePolicy } from '@/api/security-management/requests/userRequest'
 import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 import {
   roleOptions,
@@ -19,17 +20,16 @@ import {
 } from '@/api/security-management/rolePolicyNameCollection'
 import type {
   UserDto,
-  UserRo,
+  ModifyUserRolePolicyRo,
 } from '@/api/security-management/types/userTypes'
 
 /**
  * 角色和策略弹窗（经 openInteractiveDialog 打开，2026-10-19 自 EditUserDialog 二次拆分而来，
  * 用户表格 More 菜单「角色和策略」入口）：
- * 在管字段 = 角色/登录策略/账户到期日期（2026-10-21 改版：两有效期天数移除；
- * 激活日期与到期日期均只读展示——本弹窗【不做】策略↔到期值联动（用户定稿，
- * 与新增用户弹窗不同），策略详情仅驱动到期日期 Hint 文案；到期值改动走用户表列编辑路径）；
- * 激活日期基准 = accountActiveAt（空回落 createdAt 当日）。
- * 提交走 UserRo 稀疏语义（只传在管字段，昵称/邮箱/电话/两天数/enabled 一概不经手）。
+ * 在管字段 = 角色/登录策略（2026-10-28 双接口拆分再定稿：账户到期移出入参——
+ * 界面仅呈现推算效果【激活日期+策略账户天数，-1=永不过期】，后端按同规则推算落库；
+ * 激活日期与到期预览均只读；激活日期基准 = accountActiveAt（空回落 createdAt 当日）。
+ * 提交走 ModifyUserRolePolicyRo 全量替换（PUT /users/role-policy；只传角色/策略，昵称/邮箱/电话/天数/到期/enabled 一概不经手）。
  * 必填（2026-10-21 修复）：角色与登录策略均带 required 规则——策略清空不得提交
  * （原「策略空=默认策略」口径作废）。到期日期空=永不过期。
  * 策略 Hint（进页即随携带策略取 detail 更新、切换同步）：-1「策略要求账户永不过期」/
@@ -51,10 +51,10 @@ const form = reactive({
   /** Dto 直发 ID，回显零换算（2026-10-20 名称字典制） */
   roleIds: [...(props.user.roleIds ?? [])],
   policyId: props.user.policyId ?? '',
-  /** 账户到期日期 'YYYY-MM-DD'（Dto 带时间串截断回显）；'' = 永不过期。
-   *  2026-10-21 改版：两有效期天数字段移除，本值切换策略时由 激活日期+策略账户天数 重算 */
-  accountExpiresAt: props.user.accountExpiresAt ? props.user.accountExpiresAt.slice(0, 10) : '',
 })
+
+/** 库内现值（到期预览在策略详情到达前的回落显示） */
+const currentExpiresAt = (props.user.accountExpiresAt || '').slice(0, 10)
 
 /** 激活日期（只读展示 + 到期重算基准）：accountActiveAt 空 = 创建即激活，回落 createdAt 当日 */
 const baseActiveAt = ref(
@@ -68,7 +68,7 @@ const rules = {
 }
 
 /* ===== 策略详情 → 仅驱动到期 Hint（2026-10-21 用户定稿：本弹窗不改到期值）=====
-   policyId 变动或进页携带策略 → fetchPolicyDetail 取 accountValidDays 更新 expiresHint；
+   policyId 变动或进页携带策略 → fetchPolicyDetail 取 accountValidDays 更新 expiresHint 与推算预览；
    到期日期控件禁用，值保持库内现值提交；详情失败/清空策略 → Hint 回落通用口径。 */
 const policyAccountDays = ref<number | null>(null)
 
@@ -99,6 +99,16 @@ const expiresHint = computed(() => {
     : t('security.users.form.policyAcctDays', { n: policyAccountDays.value })
 })
 
+/** 账户到期=只读推算预览（2026-10-28 用户定稿：入参不带到期、界面仅呈现改动后效果，
+ *  后端按策略自行推算落库）：激活日期基准 + 策略账户天数；-1=永不过期显空；
+ *  策略详情未到达前回落脚本库内现值 */
+const previewExpiresAt = computed(() => {
+  const days = policyAccountDays.value
+  if (days === null) return currentExpiresAt
+  if (days === -1 || !baseActiveAt.value) return ''
+  return dayjs(baseActiveAt.value).add(days, 'day').format('YYYY-MM-DD')
+})
+
 /* ===== 名称字典制（用户定稿 2026-10-20，替换旧"分页加载+名称反查 id"机制）=====
    Dto 直发 ID（roleIds/policyId），回显零换算；选项= rolePolicyNameCollection 全局缓存
    （进页已预载，此处兜底）；未开下拉按 ID 从缓存显名；点开下拉强刷字典并清理
@@ -106,7 +116,7 @@ const expiresHint = computed(() => {
 onMounted(() => {
   void ensureRoleNames()
   void ensurePolicyNames()
-  // 进页携带策略：只取详情更新到期 Hint（不覆盖现存到期值；切换才重算）
+  // 进页携带策略：取详情驱动到期 Hint 与推算预览
   if (form.policyId) {
     fetchPolicyDetail(form.policyId).then(
       (p) => {
@@ -147,16 +157,14 @@ const policyModel = computed({
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
-  const ro: UserRo = {
+  const ro: ModifyUserRolePolicyRo = {
     userName: props.user.userName,
     roleIds: [...form.roleIds],
     policyId: form.policyId,
-    // 两有效期天数不经手（2026-10-21 改版，稀疏保持库内现值）；到期由策略联动/手动维护
-    accountExpiresAt: form.accountExpiresAt,
   }
   saving.value = true
   try {
-    const saved = await updateUser(ro)
+    const saved = await updateUserRolePolicy(ro)
     emit('resolve', saved)
     open.value = false
   } catch (e) {
@@ -209,9 +217,9 @@ async function save() {
         :label="t('security.users.form.activeAt')"
         disabled
       />
-      <!-- 到期日期禁用（用户定稿 2026-10-21：本弹窗不改到期值，仅 Hint 随策略） -->
+      <!-- 到期日期=只读推算预览（激活+策略天数，后端落库同规则）；Hint 随策略账户天数动态 -->
       <FvTimer
-        v-model="form.accountExpiresAt"
+        :model-value="previewExpiresAt"
         mode="date"
         :label="t('security.users.form.expiresAt')"
         :hint="expiresHint"

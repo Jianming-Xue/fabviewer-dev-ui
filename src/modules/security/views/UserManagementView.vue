@@ -36,7 +36,7 @@ import type { UserDto } from '@/api/security-management/types/userTypes'
  * 新增按钮（security.users.new 管控）；操作列 = 查看（不管控，恒有）+ 修改 + more 下拉菜单
  *  （角色和策略/重置密码受 edit 管控、删除用户受 delete 管控，2026-10-19 删除从图标钮收进菜单；
  *   编辑拆分：EditUserDialog 只留昵称/邮箱/电话，角色/策略/两有效期天数/账户到期日移入
- *   EditUserRolePolicyDialog，重置密码走 ResetPasswordDialog——UserRo 相应改稀疏语义）。
+ *   EditUserRolePolicyDialog，重置密码走 ResetPasswordDialog；2026-10-28 编辑拆双接口：PUT /users 档案三件套全量（ModifyUserRo）+ PUT /users/role-policy 角色策略全量（ModifyUserRolePolicyRo）。）
  * 新增/修改提交收口在弹窗内（成功才关窗），删除 = 公共确认 Dialog 后页面提交。
  */
 const { t } = useI18n()

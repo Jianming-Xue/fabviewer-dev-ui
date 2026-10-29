@@ -8,14 +8,14 @@ import { showOpError } from '@/shared/api/opError'
 import { updateUser } from '@/api/security-management/requests/userRequest'
 import type {
   UserDto,
-  UserRo,
+  ModifyUserRo,
 } from '@/api/security-management/types/userTypes'
 
 /**
  * 编辑用户弹窗（经 openInteractiveDialog 打开，2026-10-19 自二合一 UserEditDialog 拆分；
  * 同夜二次拆分：角色/策略/两有效期天数/账户到期日 移入 EditUserRolePolicyDialog，
  * 本弹窗只剩档案三件套——昵称/邮箱/电话）：
- * 单列布局、禁用用户名居首（2026-10-19 改版定稿）；提交走 UserRo 稀疏语义
+ * 单列布局、禁用用户名居首（2026-10-19 改版定稿）；提交走 ModifyUserRo 全量替换（2026-10-28 双接口拆分）
  * （只传在管字段，enabled 由表格开关维护不经手）。
  * 空值语义：邮箱/电话选填（填了校验）。
  * 提交收口本组件（同 RoleEditDialog 模式）：成功 → emit('resolve', UserDto)+关窗；
@@ -48,7 +48,7 @@ const rules = {
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
-  const ro: UserRo = {
+  const ro: ModifyUserRo = {
     userName: props.user.userName,
     nickName: form.nickName.trim(),
     email: form.email.trim(),
