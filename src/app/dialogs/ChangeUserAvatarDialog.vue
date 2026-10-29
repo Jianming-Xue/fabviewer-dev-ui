@@ -196,7 +196,7 @@ async function save() {
   if (saving.value) return
   saving.value = true
   try {
-    await updateUserAttribute({ userId: auth.userName, attName: 'avatar', attValue: shown.value })
+    await updateUserAttribute({ userName: auth.userName, attName: 'avatar', attValue: shown.value })
     emit('resolve', shown.value)
     open.value = false
   } catch (e) {

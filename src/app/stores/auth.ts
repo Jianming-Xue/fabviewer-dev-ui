@@ -37,7 +37,6 @@ function dateExpired(u: UserDto): boolean {
 
 /** 空档案（初始/旧持久化格式兜底；旧版本存的是扁平档案，读不出的字段一律补默认） */
 const EMPTY_USER: UserDto = {
-  userId: '',
   userName: '',
   nickName: '',
   email: '',

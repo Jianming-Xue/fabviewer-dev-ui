@@ -37,7 +37,7 @@ const rules = {
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
-  const ro: ResetPasswordRo = { userId: props.user.userId, password: form.password }
+  const ro: ResetPasswordRo = { userName: props.user.userName, password: form.password }
   saving.value = true
   try {
     await resetUserPassword(ro)

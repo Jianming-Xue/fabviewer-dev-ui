@@ -45,7 +45,7 @@ const rules = {
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
-  const ro: UserStateRo = { userId: props.user.userId, enabled: props.enabled, remark: form.remark.trim() }
+  const ro: UserStateRo = { userName: props.user.userName, enabled: props.enabled, remark: form.remark.trim() }
   saving.value = true
   try {
     await setUserEnabled(ro)

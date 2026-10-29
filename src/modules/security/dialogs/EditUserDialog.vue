@@ -49,7 +49,7 @@ async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
   const ro: UserRo = {
-    userId: props.user.userId,
+    userName: props.user.userName,
     nickName: form.nickName.trim(),
     email: form.email.trim(),
     phoneNumber: form.phoneNumber.trim(),

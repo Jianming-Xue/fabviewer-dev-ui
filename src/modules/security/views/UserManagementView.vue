@@ -249,7 +249,7 @@ async function remove(user: UserDto) {
   if (isBuiltinAdmin(user)) return // 内置管理员用户不可删除（双保险）
   if (!(await dialog.confirm(t('security.users.deleteConfirm', { name: user.userName })))) return
   try {
-    await deleteUser(user.userId)
+    await deleteUser(user.userName)
     toast.success(t('security.users.deleted'))
     if (rows.value.length === 1 && pageIndex.value > 1)
       pageIndex.value -= 1 // watch 加载

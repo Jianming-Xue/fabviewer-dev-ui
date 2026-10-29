@@ -8,7 +8,6 @@
 import type { PageRo } from './types'
 
 export interface UserDto {
-  userId: string
   userName: string
   nickName: string
   email: string
@@ -48,7 +47,7 @@ export interface UserPageRo extends PageRo {
   keyword?: string
 }
 
-/** 新增用户入参（2026-10-19 拆分定稿：与编辑分离，userId 由后端生成；
+/** 新增用户入参（2026-10-19 拆分定稿：与编辑分离；
  *  非空/格式校验归 UI 调用前（CreateUserDialog 表单规则），接口层不设守卫） */
 export interface CreateUserRo {
   userName: string
@@ -69,13 +68,13 @@ export interface CreateUserRo {
   enabled: number
 }
 
-/** 编辑用户入参（2026-10-19 拆分改造：稀疏语义——userId 定位，其余字段**传则改、不传保持**，
+/** 编辑用户入参（2026-10-19 拆分改造：稀疏语义——userName 定位（2026-10-28 userId 退役、
+ *  用户名即唯一标识，创建后不可改），其余字段**传则改、不传保持**，
  *  由 EditUserDialog（昵称/邮箱/电话）与 EditUserRolePolicyDialog（角色/策略/两有效期天数/账户到期日）
- *  各自只提交自己维护的字段；userName 锁定仅作定位与查重辅助；enabled 由表格开关经 /users/enabled
+ *  各自只提交自己维护的字段；enabled 由表格开关经 /users/enabled
  *  独立维护，编辑不经手 */
 export interface UserRo {
-  userId: string
-  userName?: string
+  userName: string
   nickName?: string
   email?: string
   phoneNumber?: string
@@ -96,20 +95,20 @@ export interface UserRo {
 /** 重置密码入参（管理员侧，2026-10-19 More 菜单新增：ResetPasswordDialog 提交；
  *  复杂度按创建口径不校验（用户定稿），仅非空由表单规则保证） */
 export interface ResetPasswordRo {
-  userId: string
+  userName: string
   /** 新密码明文（经 TLS） */
   password: string
 }
 
 /** 单属性修改入参（POST /users/attribute，用户定稿 2026-10-20：用户信息弹窗行内编辑）：
- *  userId = 登录用户名（与 /auth/change_password 同口径显式带身份，不走请求头）；
+ *  userName = 登录用户名（与 /auth/change_password 同口径显式带身份，不走请求头）；
  *  可编辑白名单：nickName / email / phoneNumber / avatar（2026-10-22 头像并入：
  *  avatar 存 JSON 配置 {"mode":"username","bg":"","fg":""} / {"mode":"emoji","emoji":"🚀"}
  *  （空串=默认主题色/系统字色）/ {"mode":"img","base64":""}（图片裁剪结果 dataURL，base64 无=默认头像），
  *  兼容旧口径图片 URL/dataURL 直存与 ''（缺省字母退化）；账号字段不在此列） */
 export interface UserAttributeRo {
   /** 登录用户名 */
-  userId: string
+  userName: string
   attName: 'nickName' | 'email' | 'phoneNumber' | 'avatar'
   attValue: string
 }
@@ -119,7 +118,7 @@ export interface UserAttributeRo {
  *  preAccountExpiresAt = 延期前到期串（'YYYY-MM-DD HH:mm:ss'，''=原永不过期）；
  *  newAccountExpiresAt = 新到期日期 'YYYY-MM-DD'，''=永不过期（策略天数 -1） */
 export interface UserExpireRo {
-  userId: string
+  userName: string
   preAccountExpiresAt: string
   newAccountExpiresAt: string
 }
@@ -127,7 +126,7 @@ export interface UserExpireRo {
 /** 变更启用状态入参（2026-10-19 改造：开关点击不再即时提交，
  *  经 ChangeUserStateDialog 录入备注后整体提交；enabled 严格 0/1 服务口径不变） */
 export interface UserStateRo {
-  userId: string
+  userName: string
   /** 目标状态：1=启用 / 0=停用 */
   enabled: number
   /** 操作备注（必填由表单规则保证） */

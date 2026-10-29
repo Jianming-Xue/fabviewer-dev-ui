@@ -148,7 +148,7 @@ async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
   const ro: UserRo = {
-    userId: props.user.userId,
+    userName: props.user.userName,
     roleIds: [...form.roleIds],
     policyId: form.policyId,
     // 两有效期天数不经手（2026-10-21 改版，稀疏保持库内现值）；到期由策略联动/手动维护

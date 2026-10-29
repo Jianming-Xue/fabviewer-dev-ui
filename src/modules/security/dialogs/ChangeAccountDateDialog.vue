@@ -20,7 +20,7 @@ import type { UserDto } from '@/api/security-management/types/userTypes'
  * - 天数 N>0：延期起点 =（当前到期 ≤ 当天或永不过期 ? 当天 : 当前到期），
  *   新到期 = 起点 + N 天，说明「延期起点为 xxx」。
  * 无策略/详情拉取失败：三行回落占位、说明提示不可延期、Confirm 禁用。
- * Confirm → POST /users/expire {userId, preAccountExpiresAt, newAccountExpiresAt}，
+ * Confirm → POST /users/expire {userName, preAccountExpiresAt, newAccountExpiresAt}，
  * 成功 emit('resolve', true)+关窗（页面 Toast+重拉）；失败 showOpError 留窗重试。
  */
 const props = defineProps<{ user: UserDto }>()
@@ -83,7 +83,7 @@ async function save() {
   saving.value = true
   try {
     await extendUserExpire({
-      userId: props.user.userId,
+      userName: props.user.userName,
       preAccountExpiresAt: props.user.accountExpiresAt,
       newAccountExpiresAt: newDate.value,
     })

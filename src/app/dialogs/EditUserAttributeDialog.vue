@@ -16,7 +16,7 @@ import type { UserAttributeRo } from '@/api/security-management/types/userTypes'
  * 只有一个输入框，标题即字段名——昵称进改昵称、邮箱进改邮箱、电话进改电话；
  * 样式与限制规则逐项对齐 EditUserDialog 同名字段（昵称 ≤30 不限字符 / 邮箱填了才校验格式 /
  * 电话仅数字、inputmode=numeric；均 clear、无 required）。
- * Confirm → POST /users/attribute（userId=登录用户名，读 auth store）→ emit('resolve', 新值)+关窗，
+ * Confirm → POST /users/attribute（userName=登录用户名，读 auth store）→ emit('resolve', 新值)+关窗，
  * 调用方（用户信息弹窗）把结果回显到原行；Cancel/关闭=弃改动（无结果）。
  * 提交收口本组件（同 EditUserDialog 模式）：失败 showOpError、弹窗保留可重试。
  */
@@ -72,7 +72,7 @@ async function save() {
   const value = form.value.trim()
   saving.value = true
   try {
-    await updateUserAttribute({ userId: auth.userName, attName: props.attName, attValue: value })
+    await updateUserAttribute({ userName: auth.userName, attName: props.attName, attValue: value })
     emit('resolve', value)
     open.value = false
   } catch (e) {
