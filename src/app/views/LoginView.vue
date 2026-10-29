@@ -21,8 +21,8 @@ import type { LoginFailCode } from '@/api/security-management/types/authTypes'
 /** 登录失败码 → i18n 文案键（errMsg 是机器码，展示归前端词典，2026-10-17 口径） */
 const LOGIN_FAIL_TEXT: Record<LoginFailCode, string> = {
   AUTH_FAILED: 'login.failAuthFailed',
-  ACCOUNT_INVALID: 'login.failAccountInvalid',
   ACCOUNT_EXPIRED: 'login.failAccountExpired',
+  ACCOUNT_NOT_EFFECTIVE: 'login.failAccountNotEffective',
   ACCOUNT_LOCKED: 'login.failAccountLocked',
   PASSWORD_EXPIRED: 'login.failPasswordExpired',
   FIRST_LOGIN: 'login.failFirstLogin',
@@ -138,15 +138,11 @@ async function onLogin() {
         case 'AUTH_FAILED': // 密码错误：清空密码重输
           form.password = ''
           break
-        case 'ACCOUNT_INVALID': // 账户不存在：用户名与密码都清空重输
-          form.username = ''
-          form.password = ''
-          break
         case 'PASSWORD_EXPIRED': // 密码过期：自动跳转改密码（用户名经 query 带出）
         case 'FIRST_LOGIN': // 首次登录须改密（2026-10-28）：同跳转改密码
           void router.replace({ path: '/change-password', query: { user: form.username.trim() } })
           break
-        // ACCOUNT_EXPIRED / ACCOUNT_LOCKED：文案已提示联系管理员，无后续前端动作
+        // ACCOUNT_EXPIRED / ACCOUNT_NOT_EFFECTIVE / ACCOUNT_LOCKED：文案已提示联系管理员或待激活，无后续前端动作
       }
     } else {
       void dialog.error(apiErrorMessage(e))

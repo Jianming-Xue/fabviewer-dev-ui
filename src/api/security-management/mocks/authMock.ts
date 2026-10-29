@@ -12,8 +12,9 @@ import type { UserDto } from '../types/userTypes'
  * 2026-10-17 类型归口 ./authTypes + 登录特殊壳/新 Dto）：
  * - 登录成功：返回 token + 用户档案 + 登录足迹（LoginDto 全字段）
  * - 登录失败（新壳 success:0）+ errMsg 机器码特殊口径，密码输触发词演示：
- *   `fail`=AUTH_FAILED（密码错误）/ `invalid`=ACCOUNT_INVALID / `expired`=ACCOUNT_EXPIRED /
- *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED / `first`=FIRST_LOGIN（首次登录须改密）
+ *   `fail`=AUTH_FAILED（密码错误）/ `expired`=ACCOUNT_EXPIRED /
+ *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED / `first`=FIRST_LOGIN（首次登录须改密）/
+ *   `noteffective`=ACCOUNT_NOT_EFFECTIVE（账户未生效）
  * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
  * - 权限清单：`admin` 全功能 / `test` 仅角色+服务挂起原因配置 / 其他用户名空清单（fail-closed 演示）
  */
@@ -25,8 +26,8 @@ const authFail = (code: LoginFailCode): SecurityReplyDto<null> => ({ code: 'FAIL
 /** 密码触发词 → 登录失败码（演示各分支；键一律小写比较） */
 const LOGIN_FAIL_TRIGGERS: Record<string, LoginFailCode> = {
   fail: 'AUTH_FAILED',
-  invalid: 'ACCOUNT_INVALID',
   expired: 'ACCOUNT_EXPIRED',
+  noteffective: 'ACCOUNT_NOT_EFFECTIVE',
   locked: 'ACCOUNT_LOCKED',
   pwdexpired: 'PASSWORD_EXPIRED',
   first: 'FIRST_LOGIN',
@@ -47,7 +48,7 @@ const AVATAR_DATA_URL =
 
 registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
   const ro = body as unknown as LoginRo
-  const username = String(ro?.username ?? '').trim()
+  const username = String(ro?.userName ?? '').trim() // LoginRo 口径 userName（2026-10-29 修：误读 username 致登录恒空）
   const password = String(ro?.password ?? '')
   const trigger = LOGIN_FAIL_TRIGGERS[password.toLowerCase()]
   if (trigger) return authFail(trigger)

@@ -13,7 +13,7 @@ import type { UserDto } from './userTypes'
  */
 
 export interface LoginRo {
-  username: string
+  userName: string
   password: string
   /** 本机（内网）IP，前端尽力获取，可为空串 */
   clientIp: string
@@ -38,16 +38,16 @@ export interface LoginDto {
 /** 登录业务失败机器码（特殊壳口径下经 errMsg 下发） */
 export type LoginFailCode =
   | 'AUTH_FAILED' // 密码错误
-  | 'ACCOUNT_INVALID' // 账户不存在
   | 'ACCOUNT_EXPIRED' // 账户过期
+  | 'ACCOUNT_NOT_EFFECTIVE' // 账户未生效（早于激活日期）
   | 'ACCOUNT_LOCKED' // 账户锁定
   | 'PASSWORD_EXPIRED' // 密码过期
   | 'FIRST_LOGIN' // 首次登录须修改密码
 
 const LOGIN_FAIL_CODES: readonly LoginFailCode[] = [
   'AUTH_FAILED',
-  'ACCOUNT_INVALID',
   'ACCOUNT_EXPIRED',
+  'ACCOUNT_NOT_EFFECTIVE',
   'ACCOUNT_LOCKED',
   'PASSWORD_EXPIRED',
   'FIRST_LOGIN',
