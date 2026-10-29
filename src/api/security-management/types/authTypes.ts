@@ -42,6 +42,7 @@ export type LoginFailCode =
   | 'ACCOUNT_EXPIRED' // 账户过期
   | 'ACCOUNT_LOCKED' // 账户锁定
   | 'PASSWORD_EXPIRED' // 密码过期
+  | 'FIRST_LOGIN' // 首次登录须修改密码
 
 const LOGIN_FAIL_CODES: readonly LoginFailCode[] = [
   'AUTH_FAILED',
@@ -49,6 +50,7 @@ const LOGIN_FAIL_CODES: readonly LoginFailCode[] = [
   'ACCOUNT_EXPIRED',
   'ACCOUNT_LOCKED',
   'PASSWORD_EXPIRED',
+  'FIRST_LOGIN',
 ]
 
 /** errMsg 是否为登录失败机器码 */

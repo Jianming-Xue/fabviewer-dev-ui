@@ -1,4 +1,5 @@
 import { securityRequest } from './request'
+import { decodeUserDto, toWireDate, toWireDateTime } from '../datetimeCodec'
 
 import type { PageDto } from '../types/types'
 import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserPageRo, UserStateRo } from '../types/userTypes'
@@ -14,22 +15,32 @@ import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordR
  * 变更类操作走全局 Loading 锁页；查看为纯前端展示（数据已在分页行内），无独立接口。
  */
 
-/** 1 · 分页取用户（keyword 模糊匹配 userName/nickName/email；默认按 userName 升序） */
-export function fetchUsersPage(ro: UserPageRo): Promise<PageDto<UserDto>> {
-  return securityRequest<PageDto<UserDto>>('fetchUsersPage', 'GET', '/api/v1/users/page', {
+/** 1 · 分页取用户（keyword 模糊匹配 userName/nickName/email；默认按 userName 升序；响应日期解码） */
+export async function fetchUsersPage(ro: UserPageRo): Promise<PageDto<UserDto>> {
+  const page = await securityRequest<PageDto<UserDto>>('fetchUsersPage', 'GET', '/api/v1/users/page', {
     params: { pageIndex: ro.pageIndex, pageSize: ro.pageSize, keyword: ro.keyword || undefined },
   })
+  return { ...page, data: page.data.map(decodeUserDto) }
 }
 
-/** 2 · 新增用户（CreateUserRo；2026-10-19 含密码/角色/策略/激活日期） */
+/** 2 · 新增用户（CreateUserRo；日期出站编 wire；2026-10-19 含密码/角色/策略/激活日期） */
 export function createUser(ro: CreateUserRo): Promise<UserDto> {
-  return securityRequest<UserDto>('createUser', 'POST', '/api/v1/users', { body: ro, loading: true })
+  const wire = {
+    ...ro,
+    accountActiveAt: toWireDate(ro.accountActiveAt),
+    accountExpiresAt: toWireDate(ro.accountExpiresAt),
+  }
+  return securityRequest<UserDto>('createUser', 'POST', '/api/v1/users', { body: wire, loading: true }).then(
+    decodeUserDto,
+  )
 }
 
 /** 3 · 编辑用户档案（PUT /api/v1/users，ModifyUserRo 全量替换昵称/邮箱/电话；
  *    2026-10-28 双接口拆分：角色与策略迁 /users/role-policy） */
 export function updateUser(ro: ModifyUserRo): Promise<UserDto> {
-  return securityRequest<UserDto>('updateUser', 'PUT', '/api/v1/users', { body: ro, loading: true })
+  return securityRequest<UserDto>('updateUser', 'PUT', '/api/v1/users', { body: ro, loading: true }).then(
+    decodeUserDto,
+  )
 }
 
 /** 3b · 编辑用户角色与策略（PUT /api/v1/users/role-policy，ModifyUserRolePolicyRo 全量替换；
@@ -38,7 +49,7 @@ export function updateUserRolePolicy(ro: ModifyUserRolePolicyRo): Promise<UserDt
   return securityRequest<UserDto>('updateUserRolePolicy', 'PUT', '/api/v1/users/role-policy', {
     body: ro,
     loading: true,
-  })
+  }).then(decodeUserDto)
 }
 
 /** 6 · 重置密码（管理员侧 ResetPasswordRo，2026-10-19 More 菜单） */
@@ -64,7 +75,15 @@ export function updateUserAttribute(ro: UserAttributeRo): Promise<null> {
 }
 
 /** 7 · 账户延期（POST /users/expire，用户定稿 2026-10-21：userName + 延期前到期串 +
- *    新到期日期（前端按策略账户天数计算，''=永不过期），成功后页面重拉刷新到期列） */
+ *    新到期日期（前端按策略账户天数计算，''=永不过期），成功后页面重拉刷新到期列；
+ *    日期出站编 wire：延期前=日期时间 14 位、新到期=仅日期 8 位） */
 export function extendUserExpire(ro: UserExpireRo): Promise<null> {
-  return securityRequest<null>('extendUserExpire', 'POST', '/api/v1/users/expire', { body: ro, loading: true })
+  return securityRequest<null>('extendUserExpire', 'POST', '/api/v1/users/expire', {
+    body: {
+      ...ro,
+      preAccountExpiresAt: toWireDateTime(ro.preAccountExpiresAt),
+      newAccountExpiresAt: toWireDate(ro.newAccountExpiresAt),
+    },
+    loading: true,
+  })
 }

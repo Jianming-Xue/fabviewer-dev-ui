@@ -25,6 +25,7 @@ const LOGIN_FAIL_TEXT: Record<LoginFailCode, string> = {
   ACCOUNT_EXPIRED: 'login.failAccountExpired',
   ACCOUNT_LOCKED: 'login.failAccountLocked',
   PASSWORD_EXPIRED: 'login.failPasswordExpired',
+  FIRST_LOGIN: 'login.failFirstLogin',
 }
 
 const REMEMBER_KEY = 'vui.rememberUser'
@@ -81,10 +82,14 @@ const toast = useAlertToast()
 /** 全局失败 Dialog（错误图标标题、复制 + OK，正文为接口 errMsg，见 shared/dialog） */
 const dialog = useModalDialog()
 
-// 记住我：回填上次记住的用户名（登录与修改密码共用）
-form.username = localStorage.getItem(REMEMBER_KEY) ?? ''
-form.remember = !!form.username
-pwdForm.username = form.username
+// 记住我：回填上次记住的用户名（登录与修改密码共用）；
+// query user = 跨路由切换显式携带的用户名（vue-router 5 按路由记录重挂载同组件，
+// 组件内(pwdForm.username = form.username)携带会随重挂载丢失，2026-10-28 修）
+const carriedUser = typeof route.query.user === 'string' ? route.query.user.trim() : ''
+const remembered = localStorage.getItem(REMEMBER_KEY) ?? ''
+form.username = carriedUser || remembered
+form.remember = !carriedUser && !!remembered
+pwdForm.username = carriedUser || remembered
 
 const rules = {
   required: (v: string) => !!v || t('validation.required'),
@@ -98,7 +103,8 @@ const rules = {
 function switchMode() {
   pwdFormRef.value?.resetValidation()
   formRef.value?.resetValidation()
-  router.push(mode.value === 'login' ? '/change-password' : '/login')
+  const user = (mode.value === 'login' ? form.username : pwdForm.username).trim()
+  router.push({ path: mode.value === 'login' ? '/change-password' : '/login', query: user ? { user } : {} })
 }
 
 /** 失败反馈文案：优先接口返回的 errMsg（用户定稿 2026-10-14：登录/修改密码失败用失败 Dialog 呈现） */
@@ -136,9 +142,9 @@ async function onLogin() {
           form.username = ''
           form.password = ''
           break
-        case 'PASSWORD_EXPIRED': // 密码过期：自动跳转改密码（用户名带出）
-          pwdForm.username = form.username.trim()
-          void router.replace('/change-password')
+        case 'PASSWORD_EXPIRED': // 密码过期：自动跳转改密码（用户名经 query 带出）
+        case 'FIRST_LOGIN': // 首次登录须改密（2026-10-28）：同跳转改密码
+          void router.replace({ path: '/change-password', query: { user: form.username.trim() } })
           break
         // ACCOUNT_EXPIRED / ACCOUNT_LOCKED：文案已提示联系管理员，无后续前端动作
       }
@@ -161,13 +167,12 @@ async function onChangePassword() {
       oldPassword: pwdForm.oldPassword,
       newPassword: pwdForm.newPassword,
     })
-    form.username = pwdForm.username.trim()
     form.password = ''
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''
     pwdFormRef.value?.resetValidation()
-    router.replace('/login') // 修改成功自动回登录页
+    router.replace({ path: '/login', query: { user: pwdForm.username.trim() } }) // 修改成功自动回登录页（用户名经 query 带出）
     toast.success(t('login.changeSuccess'))
   } catch (e) {
     if (!(e instanceof ApiError && e.transport)) void dialog.error(apiErrorMessage(e))

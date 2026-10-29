@@ -3,6 +3,7 @@ import { ApiError } from '@/shared/api/errors'
 import { securityReply, securityRequest } from './request'
 
 import { isLoginFailCode, LoginFailError } from '../types/authTypes'
+import { decodeUserDto } from '../datetimeCodec'
 
 import type { ChangePasswordRo, LoginDto, LoginRo } from '../types/authTypes'
 
@@ -27,7 +28,7 @@ export async function loginRequest(ro: LoginRo): Promise<LoginDto> {
     if (isLoginFailCode(errMsg)) throw new LoginFailError(errMsg)
     throw new ApiError(200, errMsg || undefined)
   }
-  return env.data
+  return { ...env.data, user: decodeUserDto(env.data.user) } // 档案日期 wire→UI（2026-10-28 codec）
 }
 
 /** 2 · 登出（失败不阻塞本地清理，silent 抑制全局错误 Dialog） */

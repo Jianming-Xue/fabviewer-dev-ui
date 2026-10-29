@@ -72,6 +72,7 @@ export default {
     failAccountExpired: '账户已过期，请联系管理员处理',
     failAccountLocked: '账户已锁定，请联系管理员处理',
     failPasswordExpired: '密码已过期，请立即修改密码',
+    failFirstLogin: '首次登录，请先修改密码后再使用',
     expired: '登录已失效，请重新登录',
     idleLogout: '长时间未操作，已自动登出',
   },

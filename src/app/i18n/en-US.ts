@@ -72,6 +72,7 @@ export default {
     failAccountExpired: 'Account expired, please contact your administrator',
     failAccountLocked: 'Account locked, please contact your administrator',
     failPasswordExpired: 'Password expired, please change your password',
+    failFirstLogin: 'First sign-in: change your password before continuing',
     expired: 'Session expired, please sign in again',
     idleLogout: 'Signed out automatically due to inactivity',
   },

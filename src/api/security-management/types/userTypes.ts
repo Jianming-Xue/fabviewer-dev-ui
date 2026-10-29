@@ -2,6 +2,9 @@
  * 用户业务对象（security-management 服务，2026-10-18）：
  * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）；
  * 布尔一律数字 1/0（服务口径，同角色）。
+ * 日期时间 wire 格式（2026-10-28 定稿）：响应一律 YYYYMMDDHHmmss、请求仅日期 YYYYMMDD /
+ * 含时间 YYYYMMDDHHmmss；**本类型与 UI 层保持人类可读格式**（'YYYY-MM-DD' / 'YYYY-MM-DD HH:mm:ss'），
+ * 换算收口 datetimeCodec、由请求层出站编码/入站解码；Mock 扮演后端直接说 wire 格式。
  * 公用对象（PageRo / PageDto / SecurityReplyDto）在 ./types。
  * 列表不展示：createdAt / passwordChangedAt / lastLoginTime / lastLoginIp（查看弹窗全量展示）。
  */
@@ -60,9 +63,9 @@ export interface CreateUserRo {
   roleIds: string[]
   /** 登录策略 id（必填） */
   policyId: string
-  /** 账户激活日期 'YYYY-MM-DD'（必填，UI 默认=当天；晚于今天 → 提交时 enabled 必为 0，表单已联动锁定） */
+  /** 账户激活日期（UI 格式 'YYYY-MM-DD'，必填，UI 默认=当天；出站经 codec 编为 wire YYYYMMDD） */
   accountActiveAt: string
-  /** 账户到期日期 'YYYY-MM-DD'（UI 初始默认=激活+365 天；空串 = 永不过期） */
+  /** 账户到期日期（UI 格式 'YYYY-MM-DD'；UI 初始默认=激活+365 天；空串 = 永不过期；出站编 wire） */
   accountExpiresAt: string
   /** 1=启用 / 0=停用 */
   enabled: number
@@ -115,7 +118,9 @@ export interface UserAttributeRo {
  *  newAccountExpiresAt = 新到期日期 'YYYY-MM-DD'，''=永不过期（策略天数 -1） */
 export interface UserExpireRo {
   userName: string
+  /** 延期前到期串（UI 格式 'YYYY-MM-DD HH:mm:ss'，''=原永不过期；出站编 wire 14 位） */
   preAccountExpiresAt: string
+  /** 新到期日期（UI 格式 'YYYY-MM-DD'，''=永不过期；出站编 wire 8 位） */
   newAccountExpiresAt: string
 }
 

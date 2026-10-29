@@ -17,11 +17,15 @@ import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordR
 const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
 const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
 const p2 = (n: number) => String(n).padStart(2, '0')
+/** wire 日期时间（YYYYMMDDHHmmss；响应总是 14 位，2026-10-28 口径） */
 const fmtTime = (d: Date) =>
-  `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
-const dayStart = (d: string) => (d ? `${d} 00:00:00` : '')
-/** 'YYYY-MM-DD' → 当日 23:59:59（到期含当天）；空串原样 = 永不过期 */
-const dayEnd = (d: string) => (d ? `${d} 23:59:59` : '')
+  `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
+/** wire 仅日期（8 位）→ 当日 000000（14 位）；空串原样 = 未发生 */
+const dayStart = (d: string) => (d ? `${d}000000` : '')
+/** wire 仅日期（8 位）→ 当日 235959（到期含当天）；空串原样 = 永不过期 */
+const dayEnd = (d: string) => (d ? `${d}235959` : '')
+/** wire 仅日期（8 位）→ Date（本地午夜） */
+const parseWireDate = (d: string) => new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00`)
 
 /**
  * 用户接口 Mock（2026-10-18，壳/分页/URL query 口径同角色）：
@@ -38,62 +42,62 @@ export const rows: UserDto[] = [
   {
     userName: 'admin', nickName: '系统管理员', email: 'admin@fabcorp.example', phoneNumber: '138-0000-0001',
     avatar: '', enabled: 1, roleIds: ['ADMIN'], policyId: 'P001',
-    createdAt: '2025-01-15 09:00:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-08-01 10:00:00', passwordExpiresAt: '',
-    lastLoginTime: '2026-10-17 08:55:12', lastLoginIp: '10.20.33.101', passwordValidDays: -1, accountValidDays: -1,
+    createdAt: '20250115090000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260801100000', passwordExpiresAt: '',
+    lastLoginTime: '20261017085512', lastLoginIp: '10.20.33.101', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhang.xiaofeng', nickName: '张小峰', email: 'zhang.xf@fabcorp.example', phoneNumber: '138-0000-0002',
     avatar: '', enabled: 1, roleIds: ['OPR-ENGINEER'], policyId: 'P001',
-    createdAt: '2025-06-03 10:30:00', accountActiveAt: '', accountExpiresAt: '2027-06-02 23:59:59', passwordChangedAt: '2026-08-25 09:12:00', passwordExpiresAt: '2026-11-23 09:12:00',
-    lastLoginTime: '2026-10-16 20:41:33', lastLoginIp: '10.20.33.121', passwordValidDays: 365, accountValidDays: 365,
+    createdAt: '20250603103000', accountActiveAt: '', accountExpiresAt: '20270602235959', passwordChangedAt: '20260825091200', passwordExpiresAt: '20261123091200',
+    lastLoginTime: '20261016204133', lastLoginIp: '10.20.33.121', passwordValidDays: 365, accountValidDays: 365,
   },
   {
     userName: 'li.na', nickName: '李娜', email: 'li.na@fabcorp.example', phoneNumber: '138-0000-0003',
     avatar: '', enabled: 0, roleIds: ['VIEWER'], policyId: '',
-    createdAt: '2025-09-18 14:05:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-03-02 11:20:00', passwordExpiresAt: '',
-    lastLoginTime: '2026-09-30 17:26:40', lastLoginIp: '10.20.33.88', passwordValidDays: -1, accountValidDays: -1,
+    createdAt: '20250918140500', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260302112000', passwordExpiresAt: '',
+    lastLoginTime: '20260930172640', lastLoginIp: '10.20.33.88', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'wang.jianguo', nickName: '王建国', email: '', phoneNumber: '138-0000-0004',
     avatar: '', enabled: 1, roleIds: ['AUDITOR'], policyId: 'P001',
-    createdAt: '2024-10-01 08:00:00', accountActiveAt: '', accountExpiresAt: '2026-10-01 00:00:00', passwordChangedAt: '2026-06-11 15:30:00', passwordExpiresAt: '2026-12-15 15:30:00',
-    lastLoginTime: '2026-09-28 09:02:11', lastLoginIp: '10.20.34.17', passwordValidDays: 365, accountValidDays: 730,
+    createdAt: '20241001080000', accountActiveAt: '', accountExpiresAt: '20261001000000', passwordChangedAt: '20260611153000', passwordExpiresAt: '20261215153000',
+    lastLoginTime: '20260928090211', lastLoginIp: '10.20.34.17', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userName: 'chen.siya', nickName: '陈思雅', email: 'chen.sy@fabcorp.example', phoneNumber: '',
     avatar: '', enabled: 1, roleIds: ['EQUIP-ENGINEER', 'PROCESS-ENGINEER'], policyId: 'P002',
-    createdAt: '2026-02-14 13:45:00', accountActiveAt: '', accountExpiresAt: '2026-08-13 13:45:00', passwordChangedAt: '2026-09-20 10:05:00', passwordExpiresAt: '2026-11-19 10:05:00',
-    lastLoginTime: '2026-10-17 07:58:03', lastLoginIp: '10.20.35.62', passwordValidDays: 60, accountValidDays: 180,
+    createdAt: '20260214134500', accountActiveAt: '', accountExpiresAt: '20260813134500', passwordChangedAt: '20260920100500', passwordExpiresAt: '20261119100500',
+    lastLoginTime: '20261017075803', lastLoginIp: '10.20.35.62', passwordValidDays: 60, accountValidDays: 180,
   },
   {
     userName: 'liu.dehua', nickName: '刘德华', email: 'liu.dh@fabcorp.example', phoneNumber: '138-0000-0006',
     avatar: '', enabled: 1, roleIds: ['MAINT-TECH'], policyId: '',
-    createdAt: '2026-07-01 09:30:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-07-01 09:30:00', passwordExpiresAt: '',
+    createdAt: '20260701093000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260701093000', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhao.min', nickName: '赵敏', email: 'zhao.min@fabcorp.example', phoneNumber: '138-0000-0007',
     avatar: '', enabled: 0, roleIds: ['PROCESS-ENGINEER'], policyId: 'P001',
-    createdAt: '2025-03-22 16:20:00', accountActiveAt: '', accountExpiresAt: '2027-03-21 23:59:59', passwordChangedAt: '2025-12-30 14:10:00', passwordExpiresAt: '2026-12-24 14:10:00',
-    lastLoginTime: '2026-08-15 11:47:29', lastLoginIp: '10.20.33.140', passwordValidDays: 365, accountValidDays: 730,
+    createdAt: '20250322162000', accountActiveAt: '', accountExpiresAt: '20270321235959', passwordChangedAt: '20251230141000', passwordExpiresAt: '20261224141000',
+    lastLoginTime: '20260815114729', lastLoginIp: '10.20.33.140', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userName: 'sunlei.etl', nickName: '孙磊', email: 'sun.lei@fabcorp.example', phoneNumber: '138-0000-0008',
     avatar: '', enabled: 1, roleIds: ['ETL-OPERATOR'], policyId: '',
-    createdAt: '2025-11-08 10:00:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-10-10 09:00:00', passwordExpiresAt: '',
-    lastLoginTime: '2026-10-17 08:30:55', lastLoginIp: '10.20.36.9', passwordValidDays: -1, accountValidDays: -1,
+    createdAt: '20251108100000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20261010090000', passwordExpiresAt: '',
+    lastLoginTime: '20261017083055', lastLoginIp: '10.20.36.9', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhou.yajing', nickName: '周雅静', email: '', phoneNumber: '',
     avatar: '', enabled: 1, roleIds: [], policyId: 'P003',
-    createdAt: '2026-10-15 15:20:00', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '2026-10-15 15:20:00', passwordExpiresAt: '',
+    createdAt: '20261015152000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20261015152000', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'wu.qiang', nickName: '吴强', email: 'wu.qiang@fabcorp.example', phoneNumber: '138-0000-0010',
     avatar: '', enabled: 1, roleIds: ['QA-VIEWER'], policyId: 'P002',
-    createdAt: '2026-05-06 11:11:00', accountActiveAt: '', accountExpiresAt: '2026-11-02 11:11:00', passwordChangedAt: '2026-09-01 08:45:00', passwordExpiresAt: '2026-10-31 08:45:00',
-    lastLoginTime: '2026-10-16 16:20:07', lastLoginIp: '10.20.33.203', passwordValidDays: 60, accountValidDays: 180,
+    createdAt: '20260506111100', accountActiveAt: '', accountExpiresAt: '20261102111100', passwordChangedAt: '20260901084500', passwordExpiresAt: '20261031084500',
+    lastLoginTime: '20261016162007', lastLoginIp: '10.20.33.203', passwordValidDays: 60, accountValidDays: 180,
   },
 ]
 
@@ -172,13 +176,13 @@ registerMock('PUT', '/security-management/api/v1/users/role-policy', ({ body }) 
   if (row.roleIds.includes(BUILTIN_ROLE_ID)) return fail('内置管理员用户的角色与策略不可修改')
   const policy = policies.find((p) => p.policyId === ro.policyId)
   if (!policy) return fail('登录策略不存在')
-  const base = (row.accountActiveAt || row.createdAt || '').slice(0, 10)
+  const base = (row.accountActiveAt || row.createdAt || '').slice(0, 8)
   const days = policy.accountValidDays
   let expiresAt = ''
   if (days > 0 && base) {
-    const d = new Date(base + 'T00:00:00')
+    const d = parseWireDate(base)
     d.setDate(d.getDate() + days)
-    expiresAt = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
+    expiresAt = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`
   }
   const updated: UserDto = {
     ...row,
@@ -225,10 +229,8 @@ registerMock('POST', '/security-management/api/v1/users/expire', ({ body }) => {
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
   const d = String(ro.newAccountExpiresAt ?? '').trim()
-  if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return fail('到期日期格式应为 YYYY-MM-DD')
-  const days = d
-    ? Math.max(0, Math.round((new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000))
-    : -1
+  if (d && !/^\d{8}$/.test(d)) return fail('到期日期格式应为 YYYYMMDD')
+  const days = d ? Math.max(0, Math.round((parseWireDate(d).getTime() - Date.now()) / 86400000)) : -1
   rows[rows.indexOf(row)] = { ...row, accountExpiresAt: dayEnd(d), accountValidDays: days }
   return ok(null)
 })

@@ -13,7 +13,7 @@ import type { UserDto } from '../types/userTypes'
  * - 登录成功：返回 token + 用户档案 + 登录足迹（LoginDto 全字段）
  * - 登录失败（新壳 success:0）+ errMsg 机器码特殊口径，密码输触发词演示：
  *   `fail`=AUTH_FAILED（密码错误）/ `invalid`=ACCOUNT_INVALID / `expired`=ACCOUNT_EXPIRED /
- *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED
+ *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED / `first`=FIRST_LOGIN（首次登录须改密）
  * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
  * - 权限清单：`admin` 全功能 / `test` 仅角色+服务挂起原因配置 / 其他用户名空清单（fail-closed 演示）
  */
@@ -29,11 +29,13 @@ const LOGIN_FAIL_TRIGGERS: Record<string, LoginFailCode> = {
   expired: 'ACCOUNT_EXPIRED',
   locked: 'ACCOUNT_LOCKED',
   pwdexpired: 'PASSWORD_EXPIRED',
+  first: 'FIRST_LOGIN',
 }
 
 const p2 = (n: number) => String(n).padStart(2, '0')
+/** wire 日期时间（YYYYMMDDHHmmss，响应总是 14 位，2026-10-28 口径） */
 const fmtTime = (d: Date) =>
-  `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
+  `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
 
 /** 演示用小头像：通用人像剪影内联 SVG（data URL base64） */
 const AVATAR_DATA_URL =
@@ -63,7 +65,7 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
     enabled: 1,
     roleIds: username === 'admin' ? ['ADMIN'] : username === 'test' ? ['VIEWER'] : [],
     policyId,
-    createdAt: '2025-01-15 09:00:00',
+    createdAt: '20250115090000',
     accountActiveAt: '',
     accountExpiresAt: '',
     passwordChangedAt: fmtTime(new Date(now.getTime() - 30 * 24 * 3600 * 1000)),
