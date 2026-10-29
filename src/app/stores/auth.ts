@@ -109,6 +109,8 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const isLoggedIn = computed(() => auth.value !== null && auth.value.expiresAt > Date.now())
+  /** Bearer 令牌（2026-10-29 暴露：shared/http 经 setAuthTokenGetter 注入 Authorization 头；未登录空串） */
+  const token = computed(() => auth.value?.token ?? '')
   const userName = computed(() => auth.value?.user.userName ?? '')
   /** 用户档案全量（只读）：用户信息弹窗等消费 */
   const user = computed<UserDto>(() => auth.value?.user ?? EMPTY_USER)
@@ -121,9 +123,9 @@ export const useAuthStore = defineStore('auth', () => {
     avatar: user.value.avatar,
   }))
 
-  async function login(username: string, password: string): Promise<LoginDto> {
+  async function login(userName: string, password: string): Promise<LoginDto> {
     // 登录入参 = 账密 + 本机 IP / 设备指纹透传（LoginRo，2026-10-17 口径；IP 尽力获取取不到为空串）
-    const res = await loginRequest({ username, password, clientIp: await getClientIp(), deviceId: getDeviceId() })
+    const res = await loginRequest({ userName, password, clientIp: await getClientIp(), deviceId: getDeviceId() })
     // 档案整体入库（嵌套 UserDto：昵称/邮箱/电话/头像 + 上次登录时间/IP，2026-10-20 改版）
     auth.value = {
       token: res.token,
@@ -190,5 +192,5 @@ export const useAuthStore = defineStore('auth', () => {
     return justExpired
   }
 
-  return { isLoggedIn, userName, user, profile, loginPolicy, idleLogoutMinutes, login, logout, patchUser, expireIfNeeded }
+  return { isLoggedIn, token, userName, user, profile, loginPolicy, idleLogoutMinutes, login, logout, patchUser, expireIfNeeded }
 })

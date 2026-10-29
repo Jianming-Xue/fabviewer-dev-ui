@@ -25,9 +25,9 @@ export function toWireDateTime(v: string): string {
   return m ? `${m[1]}${m[2]}${m[3]}000000` : t
 }
 
-/** wire（8 位=仅日期 / 14 位=日期时间）→ UI 格式 */
+/** wire（8 位=仅日期 / 14 位=日期时间）→ UI 格式；空/缺字段归一空串（防御后端省略） */
 export function fromWire(v: string): string {
-  const t = v.trim()
+  const t = String(v ?? '').trim()
   if (/^\d{8}$/.test(t)) return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`
   if (/^\d{14}$/.test(t))
     return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)} ${t.slice(8, 10)}:${t.slice(10, 12)}:${t.slice(12, 14)}`

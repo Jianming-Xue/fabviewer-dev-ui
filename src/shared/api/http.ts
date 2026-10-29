@@ -144,6 +144,9 @@ async function execute<T>(
   // 非 2xx 统一收口、返回 JSON 原文」——出参壳解析属服务私有事，由各服务 api 层负责
   const init: RequestInit = { method }
   const headers: Record<string, string> = { ...opts.headers }
+  // 登录态令牌统一注入（2026-10-29）：全服务全方法；登出/未登录 getter 返回空即不挂
+  const bearer = authTokenGetter?.() ?? null
+  if (bearer) headers['Authorization'] = `Bearer ${bearer}`
   if (method !== 'GET' && opts.body !== undefined) {
     headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(opts.body)
@@ -207,6 +210,13 @@ export interface RuntimeAppConfig {
   services?: Record<string, { host?: string; timeout?: number }>
 }
 let runtimeConfig: RuntimeAppConfig | null = null
+
+/** Authorization Bearer 令牌供给（2026-10-29 定稿）：app 层（main.ts）注册、如从 auth store 读；
+ *  shared 层不反依赖 app/store（与 loadRuntimeConfig 同注册式口径）；未注册/返回空 = 不挂该头 */
+let authTokenGetter: (() => string | null) | null = null
+export function setAuthTokenGetter(getter: () => string | null): void {
+  authTokenGetter = getter
+}
 
 export async function loadRuntimeConfig(path = `${import.meta.env.BASE_URL}app-config.json`): Promise<void> {
   try {
