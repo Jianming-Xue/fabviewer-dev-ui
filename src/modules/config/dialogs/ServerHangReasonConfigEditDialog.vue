@@ -7,9 +7,9 @@ import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvRadioGroup from '@/shared/components/FvRadioGroup.vue'
 import FvRadio from '@/shared/components/FvRadio.vue'
 import { showOpError } from '@/shared/api/opError'
-import { createSrvHangCfg, updateSrvHangCfg } from '@/api/log-service/requests/srvHangCfg'
+import { createSrvHangCfg, updateSrvHangCfg } from '@/api/telemetry-hub/requests/srvHangCfg'
 import { applyMatchMode, splitMatchMode, type MatchMode } from '../matchMode'
-import type { SrvHangCfgDto } from '@/api/log-service/types/types'
+import type { SrvHangCfgDto } from '@/api/telemetry-hub/types/types'
 
 /**
  * 服务挂起原因配置 新增/编辑二合一弹窗（2026-10-27 定稿：原页面底部配置控件区表单迁入弹窗，

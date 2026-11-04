@@ -33,7 +33,8 @@ const { t } = useI18n()
         :aria-label="label ?? t('common.refresh')"
         @click="emit('click')"
       >
-        <v-icon icon="fas fa-rotate-right" />
+        <!-- 图标 14px（用户定稿 2026-11-04：稍小于默认，与 FvNewButton 加号 12px 同档节奏） -->
+        <v-icon icon="fas fa-rotate-right" size="14" />
       </v-btn>
     </template>
     {{ label ?? t('common.refresh') }}

@@ -9,12 +9,12 @@ import {
   fetchRuleInfoPage,
   fetchRuleResultList,
   fetchServerCategoryList,
-} from '@/api/log-service/requests/ruleInfo'
-import type { PageRequest } from '@/api/log-service/requests/ruleInfo'
+} from '@/api/telemetry-hub/requests/ruleInfo'
+import type { PageRequest } from '@/api/telemetry-hub/requests/ruleInfo'
 import type {
   RuleInfoDto,
   RuleSearchRo,
-} from '@/api/log-service/types/types'
+} from '@/api/telemetry-hub/types/types'
 import { minutesAgo, nowMinute, normalizeServerNumbers, toApiTime } from '@/shared/utils/time'
 
 /** 折叠开关状态记忆（§2.6：存浏览器本地） */
@@ -190,8 +190,8 @@ export const useSearchStore = defineStore('rule-searching', () => {
     try {
       const req: PageRequest = { pageIndex: page, pageSize: pageSize.value, parameters }
       const data = await fetchRuleInfoPage(req)
-      rows.value = data.contents
-      total.value = data.total
+      rows.value = data.data
+      total.value = data.totalSize
       totalPage.value = data.totalPage
       pageIndex.value = data.pageIndex
       searched.value = true

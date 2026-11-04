@@ -1,9 +1,18 @@
 import { zipSync, strToU8 } from 'fflate'
 
-import { ApiError } from '@/shared/api/errors'
 import { registerMock } from '@/shared/api/mock'
 
-import type { PageDto, SrvHangCfgDto, SrvHangCfgRo, CostBreakDownDto, HangEntryDto, RuleInfoDto, RuleSearchRo } from '../types/types'
+import type { TelemetryReplyDto, PageDto, SrvHangCfgDto, SrvHangCfgRo, CostBreakDownDto, HangEntryDto, RuleInfoDto, RuleSearchRo } from '../types/types'
+
+/**
+ * telemetry-hub 服务 Mock（2026-11-04 对齐 security-management 口径）：出参统一壳
+ * { code: 'OK'/失败 'FAIL'(字符串), success: 布尔, errMsg, data, txId }
+ * （txId 回显——Mock 无请求头上下文，一律空串）；分页 data = { pageSize, pageIndex, totalSize, totalPage, data }。
+ * 业务失败（唯一键冲突/未找到）以 success:false + errMsg 返回，演练前端失败分支；
+ * 例外 full_log zip 下载：不走统一壳，handler 直接回 Blob（与真实分支 raw fetch 口径一致）。
+ */
+const ok = <T>(data: T): TelemetryReplyDto<T> => ({ code: 'OK', success: true, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): TelemetryReplyDto<null> => ({ code: 'FAIL', success: false, errMsg, data: null, txId: '' })
 
 // ===== 可复现的种子随机（演示数据稳定，刷新不漂移） =====
 function mulberry32(seed: number): () => number {
@@ -147,18 +156,18 @@ function applyFilters(rows: RuleInfoDto[], p: RuleSearchRo): RuleInfoDto[] {
 }
 
 // ===== 候选类接口（§5.3 · 1~6，出参即文档示例值） =====
-registerMock('GET', '/log-service/api/v1/env/list', () => ({ env: [...ENVS] }))
-registerMock('GET', '/log-service/api/v1/ipaddress/list', ({ params }) => {
+registerMock('GET', '/telemetry-hub/api/v1/env/list', () => ok({ env: [...ENVS] }))
+registerMock('GET', '/telemetry-hub/api/v1/ipaddress/list', ({ params }) => {
   const env = String(params?.environment ?? '') as 'PROD' | 'PIRUN' | ''
-  return { ipaddress: env && env in IPS ? [...IPS[env]] : [...IPS.PROD, ...IPS.PIRUN] }
+  return ok({ ipaddress: env && env in IPS ? [...IPS[env]] : [...IPS.PROD, ...IPS.PIRUN] })
 })
-registerMock('GET', '/log-service/api/v1/server_category/list', () => ({ serverCategory: [...CATEGORIES] }))
-registerMock('GET', '/log-service/api/v1/rule_result/list', () => ({ ruleResult: ['PASS', 'CANCELRULE'] }))
-registerMock('GET', '/log-service/api/v1/lock_object/list', () => ({ lockObject: [...LOCK_OBJECTS] }))
-registerMock('GET', '/log-service/api/v1/call_sys/list', () => ({ calledSystem: [...CALL_SYS] }))
+registerMock('GET', '/telemetry-hub/api/v1/server_category/list', () => ok({ serverCategory: [...CATEGORIES] }))
+registerMock('GET', '/telemetry-hub/api/v1/rule_result/list', () => ok({ ruleResult: ['PASS', 'CANCELRULE'] }))
+registerMock('GET', '/telemetry-hub/api/v1/lock_object/list', () => ok({ lockObject: [...LOCK_OBJECTS] }))
+registerMock('GET', '/telemetry-hub/api/v1/call_sys/list', () => ok({ calledSystem: [...CALL_SYS] }))
 
 // ===== 9 · rule_info/page =====
-registerMock('POST', '/log-service/api/v1/rule_info/page', ({ body }) => {
+registerMock('POST', '/telemetry-hub/api/v1/rule_info/page', ({ body }) => {
   const req = (body ?? {}) as { pageIndex?: number; pageSize?: number; parameters?: RuleSearchRo }
   const pageIndex = req.pageIndex ?? 1
   const pageSize = req.pageSize ?? 20
@@ -174,13 +183,14 @@ registerMock('POST', '/log-service/api/v1/rule_info/page', ({ body }) => {
   let result = applyFilters(ALL_ROWS, params)
   if (params.descTime) result = [...result].reverse()
   const start = (pageIndex - 1) * pageSize
-  return {
-    totalPage: Math.max(1, Math.ceil(result.length / pageSize)),
-    total: result.length,
-    pageIndex,
+  const page: PageDto<RuleInfoDto> = {
     pageSize,
-    contents: result.slice(start, start + pageSize),
+    pageIndex,
+    totalSize: result.length,
+    totalPage: Math.max(1, Math.ceil(result.length / pageSize)),
+    data: result.slice(start, start + pageSize),
   }
+  return ok(page)
 })
 
 // ===== 7 · rule_info/detail（游标分页：每批 150 行，fingerprint 恒定、offset 为行号） =====
@@ -211,7 +221,7 @@ function int2(id: string, i: number): number {
   return (id.charCodeAt(4) * 31 + i * 7) % 10000000
 }
 
-registerMock('GET', '/log-service/api/v1/rule_info/detail', ({ params }) => {
+registerMock('GET', '/telemetry-hub/api/v1/rule_info/detail', ({ params }) => {
   const id = String(params?.id ?? '')
   const offset = params?.lastOffset !== undefined && params?.lastOffset !== ''
     ? Number(params.lastOffset)
@@ -220,16 +230,16 @@ registerMock('GET', '/log-service/api/v1/rule_info/detail', ({ params }) => {
   const end = Math.min(offset + DETAIL_CHUNK, total)
   const lines: string[] = []
   for (let i = offset; i < end; i++) lines.push(detailLine(id, i))
-  return {
+  return ok({
     raw: lines.join('\n'),
     finished: end >= total,
     fingerprint: `FP-${id}`,
     offset: end,
-  }
+  })
 })
 
 // ===== 8 · rule_info/full_log（fflate 现场打 zip：每个文件一个 .log） =====
-registerMock('POST', '/log-service/api/v1/rule_info/full_log', ({ body }) => {
+registerMock('POST', '/telemetry-hub/api/v1/rule_info/full_log', ({ body }) => {
   const id = String(body?.id ?? 'blk-0001')
   const mkLog = (fileIdx: number): Uint8Array => {
     const lines: string[] = []
@@ -244,9 +254,9 @@ registerMock('POST', '/log-service/api/v1/rule_info/full_log', ({ body }) => {
 })
 
 // ===== 10 · rule_info/hang_list（本期按钮置灰；结构与数据先备好） =====
-registerMock('GET', '/log-service/api/v1/rule_info/hang_list', ({ params }): HangEntryDto[] => {
+registerMock('GET', '/telemetry-hub/api/v1/rule_info/hang_list', ({ params }): TelemetryReplyDto<HangEntryDto[]> => {
   const id = String(params?.id ?? '')
-  return [0, 1].map((n) => {
+  return ok([0, 1].map((n) => {
     const t = BASE + n * 3600_000
     return {
       startTime: msTime(t),
@@ -258,10 +268,10 @@ registerMock('GET', '/log-service/api/v1/rule_info/hang_list', ({ params }): Han
       startLineId: `${id}-s-${n}`,
       endLineId: `${id}-e-${n}`,
     }
-  })
+  }))
 })
 
-/* ===== Server Hang Reason Config（config 模块后端并入 log-service，2026-10-16） ===== */
+/* ===== Server Hang Reason Config（config 模块后端并入 telemetry-hub，2026-10-16） ===== */
 
 /** 内存态配置集（初始 3 条，业务命名真实、不用占位符 —— 05 §六） */
 const cfgRows: SrvHangCfgDto[] = [
@@ -297,14 +307,15 @@ const cfgRows: SrvHangCfgDto[] = [
   },
 ]
 
-function assertUnique(input: SrvHangCfgRo, excludeId: string | null): void {
+/** 业务唯一键冲突（§4.4 联动口径）：命中返回 errMsg，由 handler 以 success:false 壳回复 */
+function uniqueConflict(input: SrvHangCfgRo, excludeId: string | null): string | null {
   const dup = cfgRows.some(
     (r) =>
       r.ruleName === input.ruleName &&
       r.hangReason === input.hangReason &&
       r.id !== excludeId,
   )
-  if (dup) throw new ApiError(409) // 业务唯一键冲突（§4.4 联动口径）
+  return dup ? '相同 Rule 名称与挂起原因的配置已存在' : null
 }
 
 function now(): string {
@@ -323,34 +334,36 @@ function currentUser(): string {
 }
 
 
-registerMock('GET', '/log-service/api/v1/srv_hang_cfg/page', ({ params }) => {
+registerMock('GET', '/telemetry-hub/api/v1/srv_hang_cfg/page', ({ params }) => {
   const pageIndex = Number(params?.pageIndex ?? 1)
   const pageSize = Number(params?.pageSize ?? 20)
   const sorted = [...cfgRows].sort(
     (a, b) => `${a.ruleName}+${a.hangReason}`.localeCompare(`${b.ruleName}+${b.hangReason}`),
   )
   const start = (pageIndex - 1) * pageSize
-  const data: PageDto<SrvHangCfgDto> = {
-    totalPage: Math.max(1, Math.ceil(sorted.length / pageSize)),
-    total: sorted.length,
-    pageIndex,
+  const page: PageDto<SrvHangCfgDto> = {
     pageSize,
-    contents: sorted.slice(start, start + pageSize),
+    pageIndex,
+    totalSize: sorted.length,
+    totalPage: Math.max(1, Math.ceil(sorted.length / pageSize)),
+    data: sorted.slice(start, start + pageSize),
   }
-  return data
+  return ok(page)
 })
 
-registerMock('POST', '/log-service/api/v1/srv_hang_cfg/state', ({ body }) => {
+registerMock('POST', '/telemetry-hub/api/v1/srv_hang_cfg/state', ({ body }) => {
   const row = cfgRows.find((r) => r.id === body?.id)
-  if (!row) throw new ApiError(404)
+  if (!row) return fail('配置不存在或已被删除')
   row.enabled = Boolean(body?.enabled)
   row.updatedAt = now()
   row.updatedBy = currentUser()
+  return ok(null)
 })
 
-registerMock('POST', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
+registerMock('POST', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
   const input = body as unknown as SrvHangCfgRo
-  assertUnique(input, null)
+  const conflict = uniqueConflict(input, null)
+  if (conflict) return fail(conflict)
   const created: SrvHangCfgDto = {
     id: `cfg-${1000 + cfgRows.length + 1}`,
     ruleName: input.ruleName,
@@ -362,14 +375,15 @@ registerMock('POST', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
     updatedBy: currentUser(),
   }
   cfgRows.unshift(created)
-  return created
+  return ok(created)
 })
 
-registerMock('PUT', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
+registerMock('PUT', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
   const input = body as unknown as SrvHangCfgRo
   const row = cfgRows.find((r) => r.id === input.id)
-  if (!row) throw new ApiError(404)
-  assertUnique(input, row.id)
+  if (!row) return fail('配置不存在或已被删除')
+  const conflict = uniqueConflict(input, row.id)
+  if (conflict) return fail(conflict)
   Object.assign(row, {
     ruleName: input.ruleName,
     hangReason: input.hangReason,
@@ -378,11 +392,12 @@ registerMock('PUT', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
     updatedAt: now(),
     updatedBy: currentUser(),
   })
-  return row
+  return ok(row)
 })
 
-registerMock('DELETE', '/log-service/api/v1/srv_hang_cfg', ({ body }) => {
+registerMock('DELETE', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
   const idx = cfgRows.findIndex((r) => r.id === body?.id)
-  if (idx < 0) throw new ApiError(404)
+  if (idx < 0) return fail('配置不存在或已被删除')
   cfgRows.splice(idx, 1)
+  return ok(null)
 })

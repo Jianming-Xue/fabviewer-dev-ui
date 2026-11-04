@@ -15,11 +15,11 @@ export default {
       toggleStatus: '启用/停用',
     },
     columns: {
-      // 领域词保留英文（用户定稿 2026-10-27：Rule/Hang 等不强行中文化），其余走中文
+      // Rule 领域词保留英文（用户定稿 2026-10-27）；Hang 原因列改「挂起原因」（用户定稿 2026-11-04），其余走中文
       ruleName: 'Rule 名称',
       startLineLike: '起始标志行',
       endLineLike: '结束标志行',
-      hangReason: 'Hang 原因',
+      hangReason: '挂起原因',
       enabled: '启用',
       updatedAt: '最后更新时间',
       updatedBy: '最后更新人',

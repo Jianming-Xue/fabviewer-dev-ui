@@ -3,11 +3,11 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
-import { fetchHangList } from '@/api/log-service/requests/ruleInfo'
+import { fetchHangList } from '@/api/telemetry-hub/requests/ruleInfo'
 import type {
   HangEntryDto,
   RuleInfoDto,
-} from '@/api/log-service/types/types'
+} from '@/api/telemetry-hub/types/types'
 import { msToSeconds } from '@/shared/utils/time'
 
 /**

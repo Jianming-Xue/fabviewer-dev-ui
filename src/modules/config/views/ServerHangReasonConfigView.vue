@@ -12,8 +12,8 @@ import {
   deleteSrvHangCfg,
   fetchSrvHangCfgPage,
   toggleSrvHangCfgState,
-} from '@/api/log-service/requests/srvHangCfg'
-import type { SrvHangCfgDto } from '@/api/log-service/types/types'
+} from '@/api/telemetry-hub/requests/srvHangCfg'
+import type { SrvHangCfgDto } from '@/api/telemetry-hub/types/types'
 
 /**
  * 模块 5 · 01 Server Hang Reason Config（2026-10-27 二改版，用户定稿）：
@@ -35,8 +35,8 @@ async function loadPage(page = pageContent.pageIndex) {
   loading.value = true
   try {
     const data = await fetchSrvHangCfgPage(page, pageContent.pageSize)
-    rows.value = data.contents
-    pageContent.total = data.total
+    rows.value = data.data
+    pageContent.total = data.totalSize
     pageContent.totalPage = data.totalPage
     pageContent.pageIndex = data.pageIndex
   } catch {

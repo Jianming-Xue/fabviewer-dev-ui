@@ -1,5 +1,6 @@
 /**
- * log-service 服务配置（2026-10-17 定稿：本文件只声明服务名；
+ * telemetry-hub 服务配置（2026-10-17 定稿：本文件只声明服务名；服务名 2026-11-04 更正为 telemetry-hub，
+ * 请求壳/交易头/分页口径与 security-management 一致，见 ./requests/request.ts；
  * Host 不逐服务写死，由全局链解析——运行时 app-config.json > 构建 env FV_APP_HOST > 内置兜底，
  * 仅当某服务确需编译期专属 Host 时才填 ServiceConfig.host）。
  * 另兼本服务 Mock 注册点（项目约定 2026-10-18：Mock 一律收在 api 层——
@@ -13,7 +14,7 @@ if (import.meta.env.VITE_MOCK === 'true') {
 }
 
 const config: ServiceConfig = {
-  service: 'log-service',
+  service: 'telemetry-hub',
 }
 
 export default config

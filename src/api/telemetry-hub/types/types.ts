@@ -1,10 +1,31 @@
-/** 分页出参通用壳（§5.3-9） */
-export interface PageDto<T> {
-  totalPage: number
-  total: number
+/** telemetry-hub 服务公用对象（2026-11-04 定稿：请求壳/分页口径与 security-management 一致）：
+ *  本文件只放 PageRo / PageDto / TelemetryReplyDto 这类公用参数；业务对象按域分文件（§5.3-9 等）。 */
+
+/** 分页接口公用入参——本服务分页一律遵循此对象 */
+export interface PageRo {
   pageIndex: number
   pageSize: number
-  contents: T[]
+}
+
+/** 服务统一回复壳（与 security-management SecurityReplyDto 同构，2026-11-04 对齐）：code 字符串——成功恒 'OK'，
+ *  失败默认 'FAIL'（可指定具体业务码）；success 布尔 true=成功/false=失败（失败 errMsg 携错误信息）；
+ *  data 为业务出参；txId 将请求头入参原封回显；
+ *  正常情况（含业务失败）HTTP 码恒 200，非正常状态才为其他值（shared/http 统一收口） */
+export interface TelemetryReplyDto<T> {
+  code: string
+  success: boolean
+  errMsg: string
+  data: T
+  txId: string
+}
+
+/** 分页接口 data 壳（security-management 同构：totalSize 总条数 + totalPage 总页数后端直发 + data 行数组） */
+export interface PageDto<T> {
+  pageSize: number
+  pageIndex: number
+  totalSize: number
+  totalPage: number
+  data: T[]
 }
 
 /** 动态耗时列数据源（§5.3-9 costBreakDown[]） */
