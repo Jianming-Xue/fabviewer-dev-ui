@@ -3,7 +3,7 @@
   "globalHost": "",
   "globalTimeout": 0,
   "services": {
-    "security-management": { "host": "", "timeout": 0 },
+    "security-management": { "host": "http://127.0.0.1", "timeout": 0 },
     "log-service": { "host": "", "timeout": 0 }
   }
 }
