@@ -1,7 +1,7 @@
 import { ApiError } from '../errors'
 
 export interface MockContext {
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | boolean | undefined>
   body?: Record<string, unknown>
 }
 

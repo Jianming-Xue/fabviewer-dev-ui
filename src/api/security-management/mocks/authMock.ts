@@ -18,10 +18,10 @@ import type { UserDto } from '../types/userTypes'
  * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
  * - 权限清单：`admin` 全功能 / `test` 仅角色+服务挂起原因配置 / 其他用户名空清单（fail-closed 演示）
  */
-const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
-const fail = <T>(errMsg: string): SecurityReplyDto<T> => ({ code: 'FAIL', success: 0, errMsg, data: null as unknown as T, txId: '' })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: true, errMsg: '', data, txId: '' })
+const fail = <T>(errMsg: string): SecurityReplyDto<T> => ({ code: 'FAIL', success: false, errMsg, data: null as unknown as T, txId: '' })
 /** 登录失败：新壳 success=0 + errMsg 携机器码（特殊点仅在 errMsg 为码非文案，UI 按码映射 i18n） */
-const authFail = (code: LoginFailCode): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg: code, data: null, txId: '' })
+const authFail = (code: LoginFailCode): SecurityReplyDto<null> => ({ code: 'FAIL', success: false, errMsg: code, data: null, txId: '' })
 
 /** 密码触发词 → 登录失败码（演示各分支；键一律小写比较） */
 const LOGIN_FAIL_TRIGGERS: Record<string, LoginFailCode> = {
@@ -63,7 +63,7 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
     email: `${username.toLowerCase()}@fabcorp.example`,
     phoneNumber: '138-0000-1234',
     avatar: AVATAR_DATA_URL,
-    enabled: 1,
+    enabled: true,
     roleIds: username === 'admin' ? ['ADMIN'] : username === 'test' ? ['VIEWER'] : [],
     policyId,
     createdAt: '20250115090000',

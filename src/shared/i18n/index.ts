@@ -18,13 +18,19 @@ export const LOCALE_KEY = 'vui.locale'
 /** 模块级实例登记（结构子集，避开 vue-i18n 泛型实例赋值不兼容）：
  *  供非组件共享代码（如 http 全局错误呈现）取当前语言文案 */
 interface SharedI18nLike {
-  global: { t: (key: string, params?: Record<string, unknown>) => string }
+  global: { t: (key: string, params?: Record<string, unknown>) => string; locale: { value: string } }
 }
 let sharedI18n: SharedI18nLike | null = null
 
 /** 非组件上下文翻译（实例未就绪时回退键名）；组件内一律 useI18n() */
 export function tShared(key: string, params?: Record<string, unknown>): string {
   return sharedI18n ? sharedI18n.global.t(key, params) : key
+}
+
+/** 非组件上下文取当前语言（实例未就绪回退 'zh-CN'）；供 http 层注入 Accept-Language（2026-11-03
+ *  联调定稿：后端 errMsg i18n 按该标准头切换中英） */
+export function currentLocale(): AppLocale {
+  return sharedI18n?.global.locale.value === 'en-US' ? 'en-US' : 'zh-CN'
 }
 
 /** shared 词典 + 调用方词典（app/模块）逐语言合并创建 i18n 实例 */

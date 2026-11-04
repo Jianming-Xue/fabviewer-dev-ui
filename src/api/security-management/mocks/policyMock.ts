@@ -1,6 +1,6 @@
 import { registerMock } from '@/shared/api/mock'
 
-import type { PolicyDto, PolicyNameDto, PolicyRo } from '../types/policyTypes'
+import { BUILTIN_POLICY_ID, type PolicyDto, type PolicyNameDto, type PolicyRo } from '../types/policyTypes'
 import type { SecurityReplyDto } from '../types/types'
 
 /**
@@ -11,8 +11,8 @@ import type { SecurityReplyDto } from '../types/types'
  * policies 数组增删改一律**原地变更**（unshift/splice/整行替换），保字典接口活引用同步。
  * 布尔一律数字 1/0、天数 -1=永不过期；业务失败（ID 重复/未找到）以 success:0 + errMsg 返回（壳口径 2026-10-22 改版）。
  */
-const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
-const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: true, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: false, errMsg, data: null, txId: '' })
 /** 内存态策略集（种子描述与字段逐字对齐；P003 账户 -1 演示永不过期） */
 export const policies: PolicyDto[] = [
   {
@@ -21,10 +21,10 @@ export const policies: PolicyDto[] = [
     description: '密码 8–16 位（数字+大小写）、90 天有效；账户 365 天有效',
     passwdMinLength: 8,
     passwdMaxLength: 16,
-    passwdRequireDigit: 1,
-    passwdRequireLowerChar: 1,
-    passwdRequireUpperChar: 1,
-    passwdRequireSpecialChar: 0,
+    passwdRequireDigit: true,
+    passwdRequireLowerChar: true,
+    passwdRequireUpperChar: true,
+    passwdRequireSpecialChar: false,
     passwdSpecials: [],
     passwdValidDays: 90,
     accountValidDays: 365,
@@ -36,10 +36,10 @@ export const policies: PolicyDto[] = [
     description: '密码 10–18 位（四类字符全含）、60 天有效；账户 180 天有效',
     passwdMinLength: 10,
     passwdMaxLength: 18,
-    passwdRequireDigit: 1,
-    passwdRequireLowerChar: 1,
-    passwdRequireUpperChar: 1,
-    passwdRequireSpecialChar: 1,
+    passwdRequireDigit: true,
+    passwdRequireLowerChar: true,
+    passwdRequireUpperChar: true,
+    passwdRequireSpecialChar: true,
     passwdSpecials: ['!', '@', '#', '$', '%', '&', '*', '~'],
     passwdValidDays: 60,
     accountValidDays: 180,
@@ -51,10 +51,10 @@ export const policies: PolicyDto[] = [
     description: '密码 12–18 位（四类字符全含）、30 天有效；账户永不过期',
     passwdMinLength: 12,
     passwdMaxLength: 18,
-    passwdRequireDigit: 1,
-    passwdRequireLowerChar: 1,
-    passwdRequireUpperChar: 1,
-    passwdRequireSpecialChar: 1,
+    passwdRequireDigit: true,
+    passwdRequireLowerChar: true,
+    passwdRequireUpperChar: true,
+    passwdRequireSpecialChar: true,
     passwdSpecials: ['!', '@', '#', '$', '%', '&', '*', '?', '-', '_', '+', '=', '~'],
     passwdValidDays: 30,
     accountValidDays: -1,
@@ -87,6 +87,7 @@ registerMock('POST', '/security-management/api/v1/login_policy', ({ body }) => {
   const input = body as unknown as PolicyRo
   if (!input?.policyId?.trim()) return fail('policyId 不能为空')
   if (!input?.policyName?.trim()) return fail('policyName 不能为空')
+  if (input.policyId === BUILTIN_POLICY_ID) return fail('内置策略 ID 不可占用') // UI-16：真实后端靠 PolicyIdExists 自然防，mock 种子无此行故显式拒
   if (policies.some((p) => p.policyId === input.policyId)) return fail('该策略 ID 已存在')
   const created: PolicyDto = {
     ...input,
@@ -98,9 +99,10 @@ registerMock('POST', '/security-management/api/v1/login_policy', ({ body }) => {
   return ok(copy(created))
 })
 
-/** 编辑：入参 PolicyRo（policyId 定位不可改；整行字段全量覆盖） */
+/** 编辑：入参 PolicyRo（policyId 定位不可改；整行字段全量覆盖）；内置策略拒收（UI-16，真实后端口径） */
 registerMock('PUT', '/security-management/api/v1/login_policy', ({ body }) => {
   const input = body as unknown as PolicyRo
+  if (input?.policyId === BUILTIN_POLICY_ID) return fail('内置策略不可编辑')
   const row = policies.find((p) => p.policyId === input?.policyId)
   if (!row) return fail('策略不存在')
   if (!input?.policyName?.trim()) return fail('policyName 不能为空')
@@ -114,9 +116,10 @@ registerMock('PUT', '/security-management/api/v1/login_policy', ({ body }) => {
   return ok(copy(updated))
 })
 
-/** 删除：policyId 经 URL query */
+/** 删除：policyId 经 URL query；内置策略拒收（UI-16） */
 registerMock('DELETE', '/security-management/api/v1/login_policy', ({ params }) => {
   const policyId = String(params?.policyId ?? '')
+  if (policyId === BUILTIN_POLICY_ID) return fail('内置策略不可删除')
   const row = policies.find((p) => p.policyId === policyId)
   if (!row) return fail('策略不存在')
   policies.splice(policies.indexOf(row), 1)

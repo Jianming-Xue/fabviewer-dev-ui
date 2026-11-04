@@ -1,7 +1,7 @@
 /**
  * 用户业务对象（security-management 服务，2026-10-18）：
  * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）；
- * 布尔一律数字 1/0（服务口径，同角色）。
+ * 布尔字段一律 true/false（2026-11-03 联调定案全局布尔口径）。
  * 日期时间 wire 格式（2026-10-28 定稿）：响应一律 YYYYMMDDHHmmss、请求仅日期 YYYYMMDD /
  * 含时间 YYYYMMDDHHmmss；**本类型与 UI 层保持人类可读格式**（'YYYY-MM-DD' / 'YYYY-MM-DD HH:mm:ss'），
  * 换算收口 datetimeCodec、由请求层出站编码/入站解码；Mock 扮演后端直接说 wire 格式。
@@ -18,8 +18,8 @@ export interface UserDto {
   /** 头像（小图）：base64 图像内容（data URL 可直接渲染）；2026-10-20 自 LoginDto 迁入，
    *  仅随档案展示（顶栏/用户信息弹窗），用户管理界面不编辑 */
   avatar: string
-  /** 用户状态：1=启用 / 0=停用 */
-  enabled: number
+  /** 用户状态：true=启用 / false=停用（2026-11-03 联调定案全局布尔） */
+  enabled: boolean
   /** 挂载角色 id 清单（用户定稿 2026-10-20：后端只存/发 ID，
    *  展示名由前端名称字典翻译，见 ./rolePolicyNameCollection） */
   roleIds: string[]
@@ -67,8 +67,8 @@ export interface CreateUserRo {
   accountActiveAt: string
   /** 账户到期日期（UI 格式 'YYYY-MM-DD'；UI 初始默认=激活+365 天；空串 = 永不过期；出站编 wire） */
   accountExpiresAt: string
-  /** 1=启用 / 0=停用 */
-  enabled: number
+  /** true=启用 / false=停用（2026-11-03 联调定案全局布尔） */
+  enabled: boolean
 }
 
 /** 编辑用户档案入参（2026-10-28 定稿：原 UserRo 稀疏语义退役、拆双接口）：
@@ -125,11 +125,20 @@ export interface UserExpireRo {
 }
 
 /** 变更启用状态入参（2026-10-19 改造：开关点击不再即时提交，
- *  经 ChangeUserStateDialog 录入备注后整体提交；enabled 严格 0/1 服务口径不变） */
+ *  经 ChangeUserStateDialog 录入备注后整体提交；enabled 布尔口径 2026-11-03 联调定案） */
 export interface UserStateRo {
   userName: string
-  /** 目标状态：1=启用 / 0=停用 */
-  enabled: number
+  /** 目标状态：true=启用 / false=停用 */
+  enabled: boolean
   /** 操作备注（必填由表单规则保证） */
   remark: string
+}
+
+/** 内置用户名编码（2026-11-03 定稿）：FvAdmin / Admin 两类——不区分大小写、一律按大写比对
+ *  （fvadmin/ADMIN/fvAdmin 等均视为内置）。内置用户不允许禁用、删除、延期（修改角色和策略亦禁，
+ *  口径沿袭）；防线归前端 UI（菜单置灰+处理函数双保险+Mock 拒收），替代 2026-10-21 起
+ *  「挂 ADMIN 内置角色即视为内置用户」的旧判定（普通用户挂 ADMIN 角色不再受内置限制） */
+const BUILTIN_USER_NAMES: readonly string[] = ['FVADMIN', 'ADMIN']
+export function isBuiltinUserName(userName: string): boolean {
+  return BUILTIN_USER_NAMES.includes(userName.trim().toUpperCase())
 }

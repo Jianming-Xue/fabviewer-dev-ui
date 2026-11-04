@@ -1,9 +1,9 @@
 import { registerMock } from '@/shared/api/mock'
 
-import { BUILTIN_ROLE_ID } from '../types/roleTypes'
 import { policies } from './policyMock'
 
 import type { PageDto, SecurityReplyDto } from '../types/types'
+import { isBuiltinUserName } from '../types/userTypes'
 import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordRo, UserAttributeRo, UserDto, UserExpireRo, UserStateRo } from '../types/userTypes'
 
 /**
@@ -14,8 +14,8 @@ import type { CreateUserRo, ModifyUserRo, ModifyUserRolePolicyRo, ResetPasswordR
  * 用户名即唯一标识（userId 2026-10-28 退役）；布尔一律 1/0，日期为 'YYYY-MM-DD HH:mm:ss' 串，
  * 空串 = 永不过期 / 未发生，-1 = 有效期不限。
  */
-const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: 1, errMsg: '', data, txId: '' })
-const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: 0, errMsg, data: null, txId: '' })
+const ok = <T>(data: T): SecurityReplyDto<T> => ({ code: 'OK', success: true, errMsg: '', data, txId: '' })
+const fail = (errMsg: string): SecurityReplyDto<null> => ({ code: 'FAIL', success: false, errMsg, data: null, txId: '' })
 const p2 = (n: number) => String(n).padStart(2, '0')
 /** wire 日期时间（YYYYMMDDHHmmss；响应总是 14 位，2026-10-28 口径） */
 const fmtTime = (d: Date) =>
@@ -41,61 +41,61 @@ const parseWireDate = (d: string) => new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}
 export const rows: UserDto[] = [
   {
     userName: 'admin', nickName: '系统管理员', email: 'admin@fabcorp.example', phoneNumber: '138-0000-0001',
-    avatar: '', enabled: 1, roleIds: ['ADMIN'], policyId: 'P001',
+    avatar: '', enabled: true, roleIds: ['ADMIN'], policyId: 'P001',
     createdAt: '20250115090000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260801100000', passwordExpiresAt: '',
     lastLoginTime: '20261017085512', lastLoginIp: '10.20.33.101', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhang.xiaofeng', nickName: '张小峰', email: 'zhang.xf@fabcorp.example', phoneNumber: '138-0000-0002',
-    avatar: '', enabled: 1, roleIds: ['OPR-ENGINEER'], policyId: 'P001',
+    avatar: '', enabled: true, roleIds: ['OPR-ENGINEER'], policyId: 'P001',
     createdAt: '20250603103000', accountActiveAt: '', accountExpiresAt: '20270602235959', passwordChangedAt: '20260825091200', passwordExpiresAt: '20261123091200',
     lastLoginTime: '20261016204133', lastLoginIp: '10.20.33.121', passwordValidDays: 365, accountValidDays: 365,
   },
   {
     userName: 'li.na', nickName: '李娜', email: 'li.na@fabcorp.example', phoneNumber: '138-0000-0003',
-    avatar: '', enabled: 0, roleIds: ['VIEWER'], policyId: '',
+    avatar: '', enabled: false, roleIds: ['VIEWER'], policyId: '',
     createdAt: '20250918140500', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260302112000', passwordExpiresAt: '',
     lastLoginTime: '20260930172640', lastLoginIp: '10.20.33.88', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'wang.jianguo', nickName: '王建国', email: '', phoneNumber: '138-0000-0004',
-    avatar: '', enabled: 1, roleIds: ['AUDITOR'], policyId: 'P001',
+    avatar: '', enabled: true, roleIds: ['AUDITOR'], policyId: 'P001',
     createdAt: '20241001080000', accountActiveAt: '', accountExpiresAt: '20261001000000', passwordChangedAt: '20260611153000', passwordExpiresAt: '20261215153000',
     lastLoginTime: '20260928090211', lastLoginIp: '10.20.34.17', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userName: 'chen.siya', nickName: '陈思雅', email: 'chen.sy@fabcorp.example', phoneNumber: '',
-    avatar: '', enabled: 1, roleIds: ['EQUIP-ENGINEER', 'PROCESS-ENGINEER'], policyId: 'P002',
+    avatar: '', enabled: true, roleIds: ['EQUIP-ENGINEER', 'PROCESS-ENGINEER'], policyId: 'P002',
     createdAt: '20260214134500', accountActiveAt: '', accountExpiresAt: '20260813134500', passwordChangedAt: '20260920100500', passwordExpiresAt: '20261119100500',
     lastLoginTime: '20261017075803', lastLoginIp: '10.20.35.62', passwordValidDays: 60, accountValidDays: 180,
   },
   {
     userName: 'liu.dehua', nickName: '刘德华', email: 'liu.dh@fabcorp.example', phoneNumber: '138-0000-0006',
-    avatar: '', enabled: 1, roleIds: ['MAINT-TECH'], policyId: '',
+    avatar: '', enabled: true, roleIds: ['MAINT-TECH'], policyId: '',
     createdAt: '20260701093000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20260701093000', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhao.min', nickName: '赵敏', email: 'zhao.min@fabcorp.example', phoneNumber: '138-0000-0007',
-    avatar: '', enabled: 0, roleIds: ['PROCESS-ENGINEER'], policyId: 'P001',
+    avatar: '', enabled: false, roleIds: ['PROCESS-ENGINEER'], policyId: 'P001',
     createdAt: '20250322162000', accountActiveAt: '', accountExpiresAt: '20270321235959', passwordChangedAt: '20251230141000', passwordExpiresAt: '20261224141000',
     lastLoginTime: '20260815114729', lastLoginIp: '10.20.33.140', passwordValidDays: 365, accountValidDays: 730,
   },
   {
     userName: 'sunlei.etl', nickName: '孙磊', email: 'sun.lei@fabcorp.example', phoneNumber: '138-0000-0008',
-    avatar: '', enabled: 1, roleIds: ['ETL-OPERATOR'], policyId: '',
+    avatar: '', enabled: true, roleIds: ['ETL-OPERATOR'], policyId: '',
     createdAt: '20251108100000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20261010090000', passwordExpiresAt: '',
     lastLoginTime: '20261017083055', lastLoginIp: '10.20.36.9', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'zhou.yajing', nickName: '周雅静', email: '', phoneNumber: '',
-    avatar: '', enabled: 1, roleIds: [], policyId: 'P003',
+    avatar: '', enabled: true, roleIds: [], policyId: 'P003',
     createdAt: '20261015152000', accountActiveAt: '', accountExpiresAt: '', passwordChangedAt: '20261015152000', passwordExpiresAt: '',
     lastLoginTime: '', lastLoginIp: '', passwordValidDays: -1, accountValidDays: -1,
   },
   {
     userName: 'wu.qiang', nickName: '吴强', email: 'wu.qiang@fabcorp.example', phoneNumber: '138-0000-0010',
-    avatar: '', enabled: 1, roleIds: ['QA-VIEWER'], policyId: 'P002',
+    avatar: '', enabled: true, roleIds: ['QA-VIEWER'], policyId: 'P002',
     createdAt: '20260506111100', accountActiveAt: '', accountExpiresAt: '20261102111100', passwordChangedAt: '20260901084500', passwordExpiresAt: '20261031084500',
     lastLoginTime: '20261016162007', lastLoginIp: '10.20.33.203', passwordValidDays: 60, accountValidDays: 180,
   },
@@ -132,7 +132,7 @@ registerMock('POST', '/security-management/api/v1/users', ({ body }) => {
     email: ro.email?.trim() ?? '',
     phoneNumber: ro.phoneNumber?.trim() ?? '',
     avatar: '',
-    enabled: ro.enabled === 0 ? 0 : 1,
+    enabled: ro.enabled !== false, // 布尔口径（2026-11-03）：仅显式 false 停用，缺省启用
     roleIds: [...(ro.roleIds ?? [])],
     policyId: ro.policyId ?? '',
     createdAt: fmtTime(now),
@@ -173,7 +173,7 @@ registerMock('PUT', '/security-management/api/v1/users/role-policy', ({ body }) 
   const ro = body as unknown as ModifyUserRolePolicyRo
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
-  if (row.roleIds.includes(BUILTIN_ROLE_ID)) return fail('内置管理员用户的角色与策略不可修改')
+  if (isBuiltinUserName(row.userName)) return fail('内置用户的角色与策略不可修改')
   const policy = policies.find((p) => p.policyId === ro.policyId)
   if (!policy) return fail('登录策略不存在')
   const base = (row.accountActiveAt || row.createdAt || '').slice(0, 8)
@@ -195,8 +195,8 @@ registerMock('PUT', '/security-management/api/v1/users/role-policy', ({ body }) 
   return ok({ ...updated })
 })
 
-/** 重置密码（管理员侧，2026-10-19 More 菜单）：仅更新上次密码修改时间戳，密码明文 mock 不落档 */
-registerMock('PUT', '/security-management/api/v1/users/password', ({ body }) => {
+/** 重置密码（管理员侧，2026-10-19 More 菜单；2026-11-03 联调改 POST 与真实后端对齐）：仅更新上次密码修改时间戳，密码明文 mock 不落档 */
+registerMock('POST', '/security-management/api/v1/users/password', ({ body }) => {
   const ro = body as unknown as ResetPasswordRo
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
@@ -223,9 +223,11 @@ registerMock('POST', '/security-management/api/v1/users/attribute', ({ body }) =
 })
 
 /** 账户延期（2026-10-21）：新到期存 dayEnd（含当天，口径同创建）；''=永不过期；
- *  账户有效天数按「今日→新到期日」重算落库（永不过期记 -1） */
+ *  账户有效天数按「今日→新到期日」重算落库（永不过期记 -1）；
+ *  内置用户不允许延期（2026-11-03 定稿：FvAdmin/Admin 用户名口径，见 userTypes） */
 registerMock('POST', '/security-management/api/v1/users/expire', ({ body }) => {
   const ro = body as unknown as UserExpireRo
+  if (isBuiltinUserName(String(ro?.userName ?? ''))) return fail('内置用户不允许延期')
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
   const d = String(ro.newAccountExpiresAt ?? '').trim()
@@ -235,23 +237,25 @@ registerMock('POST', '/security-management/api/v1/users/expire', ({ body }) => {
   return ok(null)
 })
 
-/** 删除：userName 经 URL query */
+/** 删除：userName 经 URL query；内置用户拒收（2026-11-03 用户名口径） */
 registerMock('DELETE', '/security-management/api/v1/users', ({ params }) => {
   const userName = String(params?.userName ?? '')
+  if (isBuiltinUserName(userName)) return fail('内置用户不可删除')
   const row = rows.find((r) => r.userName === userName)
   if (!row) return fail('用户不存在')
-  if (row.roleIds.includes(BUILTIN_ROLE_ID)) return fail('内置管理员用户不可删除')
   rows.splice(rows.indexOf(row), 1)
   return ok(null)
 })
 
-/** 变更启用状态（2026-10-19 改造）：UserStateRo body——enabled 严格 0/1（口径同角色 /roles/enabled）
- *  + 操作备注必填（服务端守卫，前端表单规则之外双保险；备注仅校验，内存态不落档） */
+/** 变更启用状态（2026-10-19 改造）：UserStateRo body——enabled 布尔（2026-11-03 全局布尔口径）
+ *  + 操作备注必填（服务端守卫，前端表单规则之外双保险；备注仅校验，内存态不落档）；
+ *  内置用户不允许禁用（2026-11-03 定稿） */
 registerMock('POST', '/security-management/api/v1/users/enabled', ({ body }) => {
   const ro = body as unknown as UserStateRo
-  const enabled = Number(ro?.enabled)
-  if (enabled !== 0 && enabled !== 1) return fail('enabled 必须为 0 或 1')
+  if (typeof ro?.enabled !== 'boolean') return fail('enabled 必须为布尔')
+  const enabled = ro.enabled
   if (!ro?.remark?.trim()) return fail('备注不能为空')
+  if (isBuiltinUserName(String(ro?.userName ?? '')) && !enabled) return fail('内置用户不允许禁用')
   const row = rows.find((r) => r.userName === ro?.userName)
   if (!row) return fail('用户不存在')
   rows[rows.indexOf(row)] = { ...row, enabled }

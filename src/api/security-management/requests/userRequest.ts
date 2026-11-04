@@ -52,9 +52,9 @@ export function updateUserRolePolicy(ro: ModifyUserRolePolicyRo): Promise<UserDt
   }).then(decodeUserDto)
 }
 
-/** 6 · 重置密码（管理员侧 ResetPasswordRo，2026-10-19 More 菜单） */
+/** 6 · 重置密码（管理员侧 ResetPasswordRo，2026-10-19 More 菜单；2026-11-03 联调改 POST——后端仅注册 POST，PUT 405） */
 export function resetUserPassword(ro: ResetPasswordRo): Promise<null> {
-  return securityRequest<null>('resetUserPassword', 'PUT', '/api/v1/users/password', { body: ro, loading: true })
+  return securityRequest<null>('resetUserPassword', 'POST', '/api/v1/users/password', { body: ro, loading: true })
 }
 
 /** 4 · 删除用户（userName 写 URL query） */

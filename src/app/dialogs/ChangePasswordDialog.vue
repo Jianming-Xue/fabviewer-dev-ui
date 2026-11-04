@@ -48,10 +48,10 @@ const policyHint = computed(() => {
   const p = auth.loginPolicy
   const bits = [t('validation.pwdLen', { min: p?.passwdMinLength ?? FALLBACK_PWD_MIN, max: p?.passwdMaxLength ?? FALLBACK_PWD_MAX })]
   if (p) {
-    if (p.passwdRequireDigit === 1) bits.push(t('validation.pwdNeedDigit'))
-    if (p.passwdRequireUpperChar === 1) bits.push(t('validation.pwdNeedUpper'))
-    if (p.passwdRequireLowerChar === 1) bits.push(t('validation.pwdNeedLower'))
-    if (p.passwdRequireSpecialChar === 1) bits.push(t('validation.pwdNeedSpecial'))
+    if (p.passwdRequireDigit) bits.push(t('validation.pwdNeedDigit'))
+    if (p.passwdRequireUpperChar) bits.push(t('validation.pwdNeedUpper'))
+    if (p.passwdRequireLowerChar) bits.push(t('validation.pwdNeedLower'))
+    if (p.passwdRequireSpecialChar) bits.push(t('validation.pwdNeedSpecial'))
   }
   return bits.join('；')
 })

@@ -212,7 +212,7 @@ async function save() {
     policyId: form.policyId,
     accountActiveAt: form.accountActiveAt,
     accountExpiresAt: form.accountExpiresAt,
-    enabled: form.enabled ? 1 : 0,
+    enabled: form.enabled,
   }
   saving.value = true
   try {

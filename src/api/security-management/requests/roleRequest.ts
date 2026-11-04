@@ -11,7 +11,7 @@ import type { AssignRolePermissionRo, RoleDto, RoleNameDto, RolePageRo, RoleRo }
  * 删除 DELETE 的 roleId 写 URL query（?roleId=…）；
  * 是否启用 POST /enabled 也走 URL query（enabled 严格 0/1，签名以类型锁定、调用方由布尔换算）；
  * 分配权限 POST /permissions 传对象 AssignRolePermissionRo（roleId + permissions）。
- * 出参 RoleDto 布尔一律数字 1/0。
+ * 出参 RoleDto 布尔字段一律 true/false（2026-11-03 联调定案全局布尔）。
  */
 
 /** 1 · 分页取角色（keyword 模糊匹配 roleId/roleName/description；默认按 roleId 升序） */
@@ -41,8 +41,8 @@ export function assignRolePermissions(ro: AssignRolePermissionRo): Promise<null>
   return securityRequest<null>('assignRolePermissions', 'POST', '/api/v1/roles/permissions', { body: ro, loading: true })
 }
 
-/** 6 · 是否启用（URL query：enabled 严格 0/1——1=启用、0=停用；调用方由布尔换算后传入） */
-export function setRoleEnabled(roleId: string, enabled: 0 | 1): Promise<null> {
+/** 6 · 是否启用（URL query：enabled 布尔 true=启用/false=停用，2026-11-03 联调全局布尔口径） */
+export function setRoleEnabled(roleId: string, enabled: boolean): Promise<null> {
   return securityRequest<null>('setRoleEnabled', 'POST', '/api/v1/roles/enabled', { params: { roleId, enabled }, loading: true })
 }
 

@@ -1,5 +1,5 @@
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
-import { tShared } from '@/shared/i18n'
+import { currentLocale, tShared } from '@/shared/i18n'
 import { acquireLoading, releaseLoading } from '@/shared/loading/loadingState'
 
 import { mockRequest } from './mock'
@@ -40,7 +40,7 @@ export const MOCK_ENABLED = import.meta.env.VITE_MOCK === 'true'
 
 export interface RequestOptions {
   /** URL 查询参数 */
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | boolean | undefined>
   /** JSON 请求体 */
   body?: unknown
   /** 自定义请求头（服务私有头如交易头由服务 api 层注入） */
@@ -147,6 +147,9 @@ async function execute<T>(
   // 登录态令牌统一注入（2026-10-29）：全服务全方法；登出/未登录 getter 返回空即不挂
   const bearer = authTokenGetter?.() ?? null
   if (bearer) headers['Authorization'] = `Bearer ${bearer}`
+  // 语言头统一注入（2026-11-03 联调定稿）：后端 errMsg 文案按 Accept-Language 切换中英，
+  // 与应用内语言切换（vui.locale）同步；值即 AppLocale（'zh-CN'/'en-US'）
+  headers['Accept-Language'] = currentLocale()
   if (method !== 'GET' && opts.body !== undefined) {
     headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(opts.body)

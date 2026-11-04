@@ -29,11 +29,11 @@ export function newPwdPolicyRule(
     const max = policy?.passwdMaxLength ?? FALLBACK_PWD_MAX
     if (v.length < min || v.length > max) return t('validation.pwdLen', { min, max })
     if (policy) {
-      if (policy.passwdRequireDigit === 1 && !/\d/.test(v)) return t('validation.pwdNeedDigit')
-      if (policy.passwdRequireUpperChar === 1 && !/[A-Z]/.test(v)) return t('validation.pwdNeedUpper')
-      if (policy.passwdRequireLowerChar === 1 && !/[a-z]/.test(v)) return t('validation.pwdNeedLower')
+      if (policy.passwdRequireDigit && !/\d/.test(v)) return t('validation.pwdNeedDigit')
+      if (policy.passwdRequireUpperChar && !/[A-Z]/.test(v)) return t('validation.pwdNeedUpper')
+      if (policy.passwdRequireLowerChar && !/[a-z]/.test(v)) return t('validation.pwdNeedLower')
       if (
-        policy.passwdRequireSpecialChar === 1 &&
+        policy.passwdRequireSpecialChar &&
         !v
           .split('')
           .some((c) => policy.passwdSpecials.includes(c))

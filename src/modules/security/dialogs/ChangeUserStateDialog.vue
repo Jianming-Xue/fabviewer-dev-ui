@@ -20,7 +20,7 @@ import type {
  * 提交收口本组件（同 RoleEditDialog 模式）：成功 → emit('resolve', true)+关窗（页面 Toast+归一开关）；
  * 失败 → showOpError，弹窗保留可改可重试（用户关闭则页面回拨开关）。
  */
-const props = defineProps<{ user: UserDto; enabled: number }>()
+const props = defineProps<{ user: UserDto; enabled: boolean }>()
 
 const open = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ resolve: [ok: boolean] }>()
@@ -31,7 +31,7 @@ const saving = ref(false)
 
 const title = computed(
   () =>
-    (props.enabled === 1 ? t('security.users.enableUser') : t('security.users.disableUser')) +
+    (props.enabled ? t('security.users.enableUser') : t('security.users.disableUser')) +
     ' · ' +
     props.user.userName,
 )

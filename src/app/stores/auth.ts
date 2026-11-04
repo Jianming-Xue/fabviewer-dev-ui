@@ -42,7 +42,7 @@ const EMPTY_USER: UserDto = {
   email: '',
   phoneNumber: '',
   avatar: '',
-  enabled: 0,
+  enabled: false,
   roleIds: [],
   policyId: '',
   createdAt: '',

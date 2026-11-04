@@ -8,13 +8,13 @@ export interface PageRo {
   pageSize: number
 }
 
-/** 服务统一回复壳（security-management 口径，2026-10-22 后端定）：code 字符串——成功恒 'OK'，
- *  失败默认 'FAIL'（可指定具体业务码）；success 数字 1=成功/0=失败（失败 errMsg 携错误信息）；
+/** 服务统一回复壳（security-management 口径，2026-10-22 后端定；2026-11-03 联调定案布尔化）：code 字符串——成功恒 'OK'，
+ *  失败默认 'FAIL'（可指定具体业务码）；success 布尔 true=成功/false=失败（失败 errMsg 携错误信息）；
  *  data 为业务出参；txId 将请求头入参原封回显；
  *  正常情况（含业务失败）HTTP 码恒 200，非正常状态才为其他值（shared/http 统一收口） */
 export interface SecurityReplyDto<T> {
   code: string
-  success: number
+  success: boolean
   errMsg: string
   data: T
   txId: string

@@ -30,7 +30,7 @@ const rows = computed(() => [
   { label: t('security.users.col.phoneNumber'), value: dash(props.user.phoneNumber) },
   {
     label: t('security.users.col.status'),
-    value: props.user.enabled === 1 ? t('security.users.enabledOn') : t('security.users.enabledOff'),
+    value: props.user.enabled ? t('security.users.enabledOn') : t('security.users.enabledOff'),
   },
   // 挂载 ID 经名称字典翻译（用户定稿 2026-10-20；字典稍后到达亦自动重显名）
   { label: t('security.users.col.roles'), value: props.user.roleIds.map(roleNameOf).filter(Boolean).join('、') || '—' },

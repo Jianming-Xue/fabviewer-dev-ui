@@ -9,8 +9,8 @@ export interface RoleDto {
   roleId: string
   roleName: string
   description: string
-  /** 1=启用 / 0=停用 */
-  enabled: number
+  /** true=启用 / false=停用（2026-11-03 联调定案全局布尔） */
+  enabled: boolean
   permissions: string[]
 }
 

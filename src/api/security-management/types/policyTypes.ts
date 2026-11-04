@@ -3,7 +3,7 @@
  * 命名遵循项目规则——请求体 Ro 结尾、返回对象 Dto 结尾（见 AGENTS.md）。
  * 字段口径（用户定稿 2026-10-20）：密码段 = 最小/最大长度 + 四类字符必含开关 + 特殊字符集合
  * （字符串数组，须含特殊字符时必填）+ 有效天数；账户段 = 有效天数。
- * 布尔一律数字 1/0（同 RoleDto.enabled 后端口径）；天数 -1 = 永不过期。
+ * 布尔字段一律 true/false（2026-11-03 联调定案全局布尔口径）；天数 -1 = 永不过期。
  * 读接口不分页（用户定稿 2026-10-20：策略量小，全量返回 GET /api/v1/login_policy/list，
  * 管理页与用户弹窗下拉同一数据源、客户端自行展示）。
  */
@@ -16,14 +16,14 @@ export interface PolicyDto {
   passwdMinLength: number
   /** 密码最大长度 */
   passwdMaxLength: number
-  /** 密码须含数字：1=是 / 0=否 */
-  passwdRequireDigit: number
-  /** 密码须含小写字母：1=是 / 0=否 */
-  passwdRequireLowerChar: number
-  /** 密码须含大写字母：1=是 / 0=否 */
-  passwdRequireUpperChar: number
-  /** 密码须含特殊字符：1=是 / 0=否 */
-  passwdRequireSpecialChar: number
+  /** 密码须含数字（2026-11-03 联调定案布尔） */
+  passwdRequireDigit: boolean
+  /** 密码须含小写字母（同上布尔） */
+  passwdRequireLowerChar: boolean
+  /** 密码须含大写字母（同上布尔） */
+  passwdRequireUpperChar: boolean
+  /** 密码须含特殊字符（同上布尔） */
+  passwdRequireSpecialChar: boolean
   /** 须含特殊字符时的字符集合（字符串数组，每元素一个特殊字符；
    *  passwdRequireSpecialChar=0 时为空数组。用户定稿 2026-10-20） */
   passwdSpecials: string[]
@@ -43,6 +43,11 @@ export interface PolicyNameDto {
   policyName: string
 }
 
+/** 内置策略编码（种子数据，2026-11-03 联调定稿 UI-16）：不可编辑、不可删除——
+ *  其长度特权值（0~255=不限密码长度）不属常规校验 6≤min<max≤18 范围，编辑即违约；
+ *  口径对齐 roleTypes 的 BUILTIN_ROLE_ID（前端菜单置灰 + 处理函数双保险 + Mock 拒收） */
+export const BUILTIN_POLICY_ID = 'Admin-Policy'
+
 /** 新建/修改共用入参（policyId 定位、编辑时不可改；非空校验归 UI 调用前：策略编辑弹窗表单规则，
  *  接口层不设守卫——同 RoleRo 口径） */
 export interface PolicyRo {
@@ -51,10 +56,10 @@ export interface PolicyRo {
   description: string
   passwdMinLength: number
   passwdMaxLength: number
-  passwdRequireDigit: 0 | 1
-  passwdRequireLowerChar: 0 | 1
-  passwdRequireUpperChar: 0 | 1
-  passwdRequireSpecialChar: 0 | 1
+  passwdRequireDigit: boolean
+  passwdRequireLowerChar: boolean
+  passwdRequireUpperChar: boolean
+  passwdRequireSpecialChar: boolean
   /** 须含特殊字符时的字符集合；不要求时传空数组 */
   passwdSpecials: string[]
   /** 密码有效天数；-1=永不过期 */

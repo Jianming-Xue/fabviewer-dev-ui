@@ -45,8 +45,8 @@ export async function securityReply<T>(
   })
 }
 
-/** 常规壳拆解：success ≠ 1 → ApiError（业务失败，呈现归调用方）；成功返回 data。
- *  业务失败 HTTP 恒 200（2026-10-22 口径），ApiError.errCode 记 200；
+/** 常规壳拆解：success false → ApiError（业务失败，呈现归调用方）；成功返回 data。
+ *  业务失败 HTTP 恒 200（2026-10-22 口径；success 布尔 2026-11-03 联调定案），ApiError.errCode 记 200；
  *  业务码为 code 字符串（'FAIL'/指定码），错误文案归 errMsg。
  *  登录例外口径不走本函数（用 securityReply 自拆） */
 export async function securityRequest<T>(
@@ -56,7 +56,7 @@ export async function securityRequest<T>(
   opts: RequestOptions = {},
 ): Promise<T> {
   const envelope = await securityReply<T>(txName, method, path, opts)
-  if (envelope.success !== 1) {
+  if (!envelope.success) {
     throw new ApiError(200, envelope.errMsg || undefined)
   }
   return envelope.data
