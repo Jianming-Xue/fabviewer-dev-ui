@@ -1,9 +1,8 @@
 /* 真实后端 E2E（2026-11-03 联调）：security-management :80 全链路——
    登录(FvAdmin) → 权限通配 UI-2（菜单出现/权限树「全部」交互+持久化+提交收敛 ["*"]）→ 用户/角色/策略页真实数据 →
    UI-16 内置策略保护 + 内置用户（FvAdmin/Admin 用户名口径）禁用/删除/延期全禁 → 登出。25 断言。
-   前置：VITE_MOCK=false + app-config.json host 指后端 + dev :5173 +
-   headless Chrome :9333 **须带 --disable-web-security**（绕后端 CORS 预检 405，见 UI_ISSUE.md UI-17；
-   后端 CORS 修好后去掉该参数重验）。 */
+   前置：VITE_MOCK=false + app-config.json host 指后端 + dev :5173 + headless Chrome :9333（普通模式；
+   后端 CORS 2026-11-04 已修复——预检 204 + 全 Allow 头，原 --disable-web-security 绕过已去除并重验 25/25）。 */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function tp() { for (let i = 0; i < 8; i++) { try { const r = await fetch('http://127.0.0.1:9333/json/new?about:blank', { method: 'PUT' }); const j = await r.json(); if (j.webSocketDebuggerUrl) return j } catch {} await sleep(500) } throw new Error('no') }
 let ws, mid = 0; const pn = new Map()
