@@ -4,6 +4,7 @@ import { policies } from './policyMock'
 import { rows as userRows } from './userMock'
 
 import type { ChangePasswordRo, LoginDto, LoginFailCode, LoginRo } from '../types/authTypes'
+import type { PolicyDto } from '../types/policyTypes'
 import type { SecurityReplyDto } from '../types/types'
 import type { UserDto } from '../types/userTypes'
 
@@ -95,6 +96,18 @@ registerMock('POST', '/security-management/api/v1/auth/login', ({ body }) => {
 })
 
 registerMock('POST', '/security-management/api/v1/auth/logout', () => ok(null))
+
+/** 未登录改密查策略（2026-11-04 后端新接口 /login_policy/user，userId=用户名；接口未部署，mock 先行）：
+ *  用户不存在 → 壳失败（前端按定稿口径清空改密表单）；存在未挂策略 → data null（前端退化基础 6~18）。
+ *  注册在本文件而非 policyMock：policyMock 不可反向 import userMock（userMock→policyMock 会成环），
+ *  本文件已同时持有 policies 与 userRows 两域内存态 */
+registerMock('GET', '/security-management/api/v1/login_policy/user', ({ params }) => {
+  const userId = String(params?.userId ?? '').trim()
+  const user = userRows.find((r) => r.userName.toLowerCase() === userId.toLowerCase())
+  if (!user) return fail<PolicyDto | null>(`用户不存在：${userId}`)
+  const policy = policies.find((p) => p.policyId === user.policyId)
+  return ok<PolicyDto | null>(policy ? { ...policy, passwdSpecials: [...policy.passwdSpecials] } : null)
+})
 
 registerMock('GET', '/security-management/api/v1/auth/permissions', ({ params }) => {
   const username = String(params?.username ?? '').toLowerCase()

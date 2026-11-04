@@ -40,6 +40,7 @@ node scripts/cdp/vui-policy-test.mjs  # 单套
 | vui-idle-logout-test.mjs | 未活动登出（策略 idleLogoutMinutes 下发/配置、0 值拦截、过期账户守卫登出、1 分钟静置真机自动登出） | 6 |
 | vui-bars-test.mjs | FvTable 浮动双轨（横轨贴底/止于操作列/4·6px 悬浮·滑动加宽停 3s 回落/纵轨贴右起于表头下底缘恒贴/停滚 3s 淡出复显/末行边框静态/操作格底色随横滚重叠联动/滚动同步/拇指拖拽） | 17 |
 | vui-esc-stack.mjs | 弹窗 Esc 逐层关闭（单层/两层栈顶先关/下拉不误伤弹窗/四层连按全出栈/菜单复开——B、C 段 headless 残留见 HANDOVER §六.11） | 11 |
+| vui-pwd-policy-user-test.mjs | 未登录改密策略查询联调（真实后端）：S1 匿名进卡拉策略→提示逐行（**后端匿名 401 放行前红属预期**）/ S2 报错清空口径（blur 触发、401 与 UserNotFound 两态都过）/ S3 登录态顶栏弹窗 hint 真实策略 + pre-line + 登出。坑：原生 setter 填值不产生焦点，blur 断言须先 focus 再填值再移焦 | 7 |
 
 ## 已知坑（详见 docs/HANDOVER.md §六.2）
 

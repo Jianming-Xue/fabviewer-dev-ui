@@ -31,6 +31,17 @@ export function fetchPolicyDetail(policyId: string): Promise<PolicyDto> {
   })
 }
 
+/** 1d · 按用户查策略（GET /login_policy/user?userId=…，2026-11-04 后端新增、未部署——前端按约定口径先落地）：
+ *  未登录改密场景专用，登录页改密卡按输入用户名实时拉取该用户密码策略（提示/校验与顶栏弹窗同源）；
+ *  userId 取值 = 用户名（前端 userId 字段已退役、userName 为唯一标识，参数名联调时与后端复核）；
+ *  data null = 用户存在但未挂策略 → 前端退化基础限制 6~18；用户不存在/异常 = 壳失败抛错（调用方清表单）；
+ *  匿名可调（无 token 注入）待联调确认 */
+export function fetchUserLoginPolicy(userId: string): Promise<PolicyDto | null> {
+  return securityRequest<PolicyDto | null>('fetchUserLoginPolicy', 'GET', '/api/v1/login_policy/user', {
+    params: { userId },
+  })
+}
+
 /** 2 · 新增策略（入参 PolicyRo） */
 export function createPolicy(input: PolicyRo): Promise<PolicyDto> {
   return securityRequest<PolicyDto>('createPolicy', 'POST', '/api/v1/login_policy', { body: input, loading: true })

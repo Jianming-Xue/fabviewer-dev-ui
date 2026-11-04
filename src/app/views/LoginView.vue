@@ -9,6 +9,7 @@ import FvTextInput from '@/shared/components/FvTextInput.vue'
 import LoginArtLog from '@/app/images/LoginArtLog.vue'
 import LoginArtReport from '@/app/images/LoginArtReport.vue'
 import { changePasswordRequest } from '@/api/security-management/requests/authRequest'
+import { fetchUserLoginPolicy } from '@/api/security-management/requests/policyRequest'
 import { LoginFailError } from '@/api/security-management/types/authTypes'
 import { useAuthStore } from '@/app/stores/auth'
 import { newPwdPolicyHint, newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
@@ -17,6 +18,7 @@ import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
 
 import type { LoginFailCode } from '@/api/security-management/types/authTypes'
+import type { PolicyDto } from '@/api/security-management/types/policyTypes'
 
 /** 登录失败码 → i18n 文案键（errMsg 是机器码，展示归前端词典，2026-10-17 口径） */
 const LOGIN_FAIL_TEXT: Record<LoginFailCode, string> = {
@@ -99,17 +101,93 @@ watch(
   { immediate: true },
 )
 
+/** 未登录改密的策略查询（2026-11-04，后端新接口 GET /login_policy/user?userId=用户名，
+ *  接口未部署前按约定口径先落地）：登录页改密卡按输入用户名实时拉该用户密码策略——
+ *  新密码提示与校验和顶栏改密弹窗同源同格式；data null = 用户存在未挂策略 → 基础限制 6~18 */
+const pwdPolicy = ref<PolicyDto | null>(null)
+/** pwdPolicy 归属的用户名（''=未拉取/已失效）——同名不重复拉 */
+const pwdPolicyUser = ref('')
+/** 在飞请求（同名去重：blur 与紧随其后的提交不重复发） */
+let pwdPolicyInflight: { user: string; done: Promise<boolean> } | null = null
+
+/** 按当前用户名拉策略；返回 false = 拉取失败已按定稿口径清空表单（提交流程应中止）。
+ *  报错清空范围（用户定稿 2026-11-04）：用户名、新旧密码（含确认），「记住我」缓存的正是
+ *  该用户名时一并失效——与登录 UserNotFound 的清表单口径对齐 */
+async function loadPwdPolicy(): Promise<boolean> {
+  const user = pwdForm.username.trim()
+  if (!user) {
+    pwdPolicy.value = null
+    pwdPolicyUser.value = ''
+    return true
+  }
+  if (user === pwdPolicyUser.value) return true
+  if (pwdPolicyInflight?.user === user) return pwdPolicyInflight.done
+  const done = (async () => {
+    try {
+      const policy = await fetchUserLoginPolicy(user)
+      if (pwdForm.username.trim() !== user) return false // 在飞期间用户名已改：过期回复丢弃
+      pwdPolicy.value = policy
+      pwdPolicyUser.value = user
+      return true
+    } catch (e) {
+      if (pwdForm.username.trim() !== user) return false // 过期请求的报错不清空正在编辑的表单
+      pwdPolicy.value = null
+      pwdPolicyUser.value = ''
+      if (localStorage.getItem(REMEMBER_KEY) === user) localStorage.removeItem(REMEMBER_KEY)
+      form.username = ''
+      pwdForm.username = ''
+      pwdForm.oldPassword = ''
+      pwdForm.newPassword = ''
+      pwdForm.confirmPassword = ''
+      pwdFormRef.value?.resetValidation()
+      // 传输层非 200 已由 shared/http 全局 Dialog 呈现；业务失败（如用户不存在）在此弹出
+      if (!(e instanceof ApiError && e.transport)) void dialog.error(apiErrorMessage(e))
+      return false
+    } finally {
+      if (pwdPolicyInflight?.user === user) pwdPolicyInflight = null
+    }
+  })()
+  pwdPolicyInflight = { user, done }
+  return done
+}
+
+// 用户名一改即作废旧策略（提示/校验不吃过期数据），待 blur/进卡/提交重拉
+watch(
+  () => pwdForm.username,
+  (u) => {
+    if (u.trim() !== pwdPolicyUser.value) {
+      pwdPolicy.value = null
+      pwdPolicyUser.value = ''
+    }
+  },
+)
+
+// 进入改密卡即按预填用户名拉一次（FIRST_LOGIN/PASSWORD_EXPIRED 跳转、登录⇄改密手动切换、
+// 直接 URL 进入三口径；注册在 query.user 回填 watch 之后，immediate 时预填已就位）
+watch(
+  mode,
+  (m) => {
+    if (m === 'change-pwd') void loadPwdPolicy()
+  },
+  { immediate: true },
+)
+
+/** 用户名失焦 = 拉取该用户密码策略（提示与校验的数据源） */
+function onPwdUserBlur() {
+  void loadPwdPolicy()
+}
+
 const rules = {
   required: (v: string) => !!v || t('validation.required'),
-  /** 新密码限制（2026-10-20 统一口径）：登录页改密卡 = 未登录无策略 → 基础长度 6~18；
-   *  与顶栏改密弹窗共用工厂，若会话策略已载（异常回跳场景）自动按策略校验 */
-  policy: newPwdPolicyRule(() => auth.loginPolicy, t),
+  /** 新密码限制（2026-11-04 升级）：登录页改密卡按输入用户名经 /login_policy/user 实时拉策略，
+   *  未拉到/未挂策略退化基础长度 6~18；与顶栏改密弹窗（会话策略）共用工厂 */
+  policy: newPwdPolicyRule(() => pwdPolicy.value ?? auth.loginPolicy, t),
   match: (v: string) => v === pwdForm.newPassword || t('login.passwordMismatch'),
 }
 
 /** 新密码要求提示（问号 tooltip，2026-11-04）：与顶栏改密弹窗同一生成器、同格式
- *  （每项一行、行首「* 」）；登录页为未登录场景通常无策略 → 基础长度 6~18 */
-const pwdHint = computed(() => newPwdPolicyHint(() => auth.loginPolicy, t))
+ *  （每项一行、行首「* 」）；策略经 loadPwdPolicy 实时拉取，无策略 → 基础长度 6~18 */
+const pwdHint = computed(() => newPwdPolicyHint(() => pwdPolicy.value ?? auth.loginPolicy, t))
 
 /** 模式切换 = 路由跳转（两个独立 URL） */
 function switchMode() {
@@ -176,6 +254,8 @@ async function onLogin() {
 
 /** 修改密码：成功后回登录模式（用户名带出） */
 async function onChangePassword() {
+  // 提交前按用户名兜底拉一次策略（blur 未触发/未完成的场景）；报错 = 表单已清空，中止提交
+  if (!(await loadPwdPolicy())) return
   const { valid } = await pwdFormRef.value.validate()
   if (!valid) return
   loading.value = true
@@ -285,6 +365,7 @@ const logoutReason = computed(() =>
           required
           autocomplete="username"
           prepend-icon="fas fa-user"
+          @blur="onPwdUserBlur"
         />
         <FvTextInput
           v-model="pwdForm.oldPassword"
