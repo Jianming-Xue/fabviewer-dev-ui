@@ -18,15 +18,19 @@ import type { ChangePasswordRo, LoginDto, LoginRo } from '../types/authTypes'
  * 函数保留 *Request 命名——stores/auth 已有局部 login/logout，避免同名遮蔽。
  */
 
-/** 1 · 登录（公共接口，不属于任何业务模块）——特殊壳口径（2026-10-22 随新壳对齐）：
- *  登录业务失败 = success 0（新壳常规判据）且 errMsg 携 LoginFailCode 机器码；
- *  success=1 但 errMsg 非空仍按失败防御处理；非枚举的 errMsg 视为后端直发文案 */
+/** 1 · 登录（公共接口，不属于任何业务模块）——特殊壳口径（双通道，2026-11-03 联调适配）：
+ *  登录失败机器码有两个下发通道，两通道都认——
+ *  ① 新后端（2026-11-03 部署起）：code 字段携码 + success=true + data 空壳（如 FIRST_LOGIN）；
+ *  ② 旧口径（mock 同）：success=false + errMsg 携码。
+ *  success=true 但 errMsg 非空 / code 非 'OK' / data 无 token 均按失败防御处理；
+ *  非枚举的 errMsg 视为后端直发文案，code 通道非枚举码兜底直出 */
 export async function loginRequest(ro: LoginRo): Promise<LoginDto> {
   const env = await securityReply<LoginDto>('loginRequest', 'POST', '/api/v1/auth/login', { body: ro })
   const errMsg = env.errMsg?.trim() ?? ''
-  if (env.success !== 1 || errMsg) {
-    if (isLoginFailCode(errMsg)) throw new LoginFailError(errMsg)
-    throw new ApiError(200, errMsg || undefined)
+  const failCode = [env.code, errMsg].find((c) => isLoginFailCode(c)) // 枚举码命中者即失败码
+  if (!env.success || errMsg || env.code !== 'OK' || !env.data?.token) {
+    if (failCode) throw new LoginFailError(failCode)
+    throw new ApiError(200, errMsg || (env.code !== 'OK' ? env.code : undefined))
   }
   return { ...env.data, user: decodeUserDto(env.data.user) } // 档案日期 wire→UI（2026-10-28 codec）
 }

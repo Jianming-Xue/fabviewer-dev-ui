@@ -83,13 +83,20 @@ const toast = useAlertToast()
 const dialog = useModalDialog()
 
 // 记住我：回填上次记住的用户名（登录与修改密码共用）；
-// query user = 跨路由切换显式携带的用户名（vue-router 5 按路由记录重挂载同组件，
-// 组件内(pwdForm.username = form.username)携带会随重挂载丢失，2026-10-28 修）
-const carriedUser = typeof route.query.user === 'string' ? route.query.user.trim() : ''
+// query user = 跨路由切换显式携带的用户名（失败码跳转/改密成功回跳/手动切换三路径）。
+// 2026-11-03 修：同组件路由间跳转（/login ⇄ /change-password）实例可能复用不重挂载，
+// setup 一次性读取会停留在旧 query（真实后端 FIRST_LOGIN 跳转实测空用户名暴露）——改 watch 响应
 const remembered = localStorage.getItem(REMEMBER_KEY) ?? ''
-form.username = carriedUser || remembered
-form.remember = !carriedUser && !!remembered
-pwdForm.username = carriedUser || remembered
+watch(
+  () => route.query.user,
+  (u) => {
+    const carried = typeof u === 'string' ? u.trim() : ''
+    form.username = carried || remembered
+    form.remember = !carried && !!remembered
+    pwdForm.username = carried || remembered
+  },
+  { immediate: true },
+)
 
 const rules = {
   required: (v: string) => !!v || t('validation.required'),
