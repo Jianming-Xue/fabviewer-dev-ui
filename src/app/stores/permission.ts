@@ -57,6 +57,10 @@ export const usePermissionStore = defineStore('permission', () => {
       ),
   )
 
+  /** 全局通配（2026-11-03 UI-2 联调定稿）：清单含 `*` = 全部 Function 与 Control 权限拥有
+   *  （后端管理员口径，如 FvAdmin / ADMIN 角色下发 `["*"]`）；Deny 显式排除仍优先（见下） */
+  const hasWildcard = computed(() => list.value.includes('*'))
+
   /**
    * 排除串（2026-10-16 权限树三态机引入）：`Deny:<功能URL>` / `Deny:<功能URL>:<控件ID>`——
    * 祖先授权期间对单个节点的显式取消（被动选中→取消选中的唯一一致表示），前端约定、后端不关心格式。
@@ -76,15 +80,16 @@ export const usePermissionStore = defineStore('permission', () => {
     return out
   })
 
-  /** 功能/模块 URL 是否放行（供导航生成匹配）；Deny 优先于 Function 授权 */
+  /** 功能/模块 URL 是否放行（供导航生成匹配）；全局通配或精确 Function 串，Deny 显式排除优先 */
   function isGranted(url: string): boolean {
-    return functionUrls.value.has(url) && !denyUrls.value.has(url)
+    if (denyUrls.value.has(url)) return false
+    return hasWildcard.value || functionUrls.value.has(url)
   }
 
-  /** 页内受管控控件是否放行：功能级通配 或 精确控件串，且未被 Deny（控件级或其功能级）排除 */
+  /** 页内受管控控件是否放行：全局通配 / 功能级通配 / 精确控件串，且未被 Deny（控件级或其功能级）排除 */
   function hasControl(featureUrl: string, controlId: string): boolean {
     if (denyUrls.value.has(featureUrl) || denyControlKeys.value.has(`${featureUrl}@${controlId}`)) return false
-    return controlWildcards.value.has(featureUrl) || controlKeys.value.has(`${featureUrl}@${controlId}`)
+    return hasWildcard.value || controlWildcards.value.has(featureUrl) || controlKeys.value.has(`${featureUrl}@${controlId}`)
   }
 
   /** 登录后按用户名拉取权限清单（接口失败按空清单处理 = 无权限，fail-closed） */
@@ -111,6 +116,7 @@ export const usePermissionStore = defineStore('permission', () => {
     functionUrls,
     controlKeys,
     controlWildcards,
+    hasWildcard,
     denyUrls,
     denyControlKeys,
     isGranted,

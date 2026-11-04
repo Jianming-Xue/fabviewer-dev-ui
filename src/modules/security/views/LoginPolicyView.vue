@@ -16,7 +16,7 @@ import {
   fetchLoginPolicies,
   deletePolicy,
 } from '@/api/security-management/requests/policyRequest'
-import type { PolicyDto } from '@/api/security-management/types/policyTypes'
+import { BUILTIN_POLICY_ID, type PolicyDto } from '@/api/security-management/types/policyTypes'
 
 /**
  * 登录策略管理（模块 · 用户和安全，2026-10-20 页面定稿）：搜索卡片 + 表格卡片。
@@ -47,6 +47,12 @@ const rowActions = computed(() => {
   return out
 })
 
+/** 操作列逐行禁用（2026-11-03 UI-16 定稿）：内置策略 Admin-Policy 编辑+删除全禁——
+ *  其长度特权值 0~255 不属常规校验 6≤min<max≤18，编辑即违约（比角色页更严：角色名称/描述可改） */
+function actionDisabled(row: unknown): boolean {
+  return (row as PolicyDto).policyId === BUILTIN_POLICY_ID
+}
+
 // ===== 搜索（全量拉取，输入值与已生效值分离：Enter/点击才生效） =====
 const keywordInput = ref('')
 const keyword = ref('')
@@ -68,7 +74,7 @@ const rows = computed<PolicyRow[]>(() => {
     : allPolicies.value.filter((p) =>
         [p.policyId, p.policyName, p.description].some((v) => v.toLowerCase().includes(kw)),
       )
-  return list.map((p) => ({ ...p, specialsShow: p.passwdRequireSpecialChar === 1 ? p.passwdSpecials : [] }))
+  return list.map((p) => ({ ...p, specialsShow: p.passwdRequireSpecialChar ? p.passwdSpecials : [] }))
 })
 
 async function load() {
@@ -87,7 +93,7 @@ function search() {
 onMounted(load)
 
 /** 布尔 1/0 → 是/否（表格显示口径，编辑走弹窗） */
-const reqText = (v: number) => t(v === 1 ? 'security.loginPolicy.yes' : 'security.loginPolicy.no')
+const reqText = (v: boolean) => t(v ? 'security.loginPolicy.yes' : 'security.loginPolicy.no')
 /** 有效天数 → 数字或永不过期（-1） */
 const daysText = (v: number) => (v === -1 ? t('security.loginPolicy.neverExpire') : String(v))
 /** 未活动登出 → 不开启（-1）或 N 分钟 */
@@ -95,6 +101,7 @@ const idleText = (v: number) => (v === -1 ? t('security.loginPolicy.idleOff') : 
 
 /** 编辑：落库由弹窗内完成（成功才关窗、失败留窗重试），此处只 Toast + 重拉 */
 async function openEditor(policy: PolicyDto) {
+  if (policy.policyId === BUILTIN_POLICY_ID) return // 内置策略不可编辑（双保险，UI-16）
   const saved = await openInteractiveDialog<{ policy?: PolicyDto }, PolicyDto | undefined>(PolicyEditDialog, { policy })
   if (!saved) return
   toast.success(t('security.loginPolicy.updated'))
@@ -111,6 +118,7 @@ async function onInsertPolicy(): Promise<PolicyDto | null> {
 
 /** 删除：确认 Dialog → 落库 → 重拉 */
 async function remove(policy: PolicyDto) {
+  if (policy.policyId === BUILTIN_POLICY_ID) return // 内置策略不可删除（双保险，UI-16）
   if (!(await dialog.confirm(t('security.loginPolicy.deleteConfirm', { name: policy.policyName })))) return
   try {
     await deletePolicy(policy.policyId)
@@ -197,8 +205,15 @@ async function remove(policy: PolicyDto) {
               <span class="text-body-2">{{ daysText((item as PolicyDto).accountValidDays) }}</span>
             </template>
           </FvTableHeader>
-          <!-- 受控操作列按控件权限显隐：全无权时不声明（FvTable 无 actions 即无此列） -->
-          <FvTableHeader v-if="rowActions.length" header-type="action" :actions="rowActions" />
+          <!-- 受控操作列按控件权限显隐：全无权时不声明（FvTable 无 actions 即无此列）；
+               内置策略 Admin-Policy 编辑+删除逐行置灰（UI-16，悬停提示同角色页模式） -->
+          <FvTableHeader
+            v-if="rowActions.length"
+            header-type="action"
+            :actions="rowActions"
+            :action-disabled="actionDisabled"
+            :action-disabled-hint="t('security.loginPolicy.builtinHint')"
+          />
         </FvTable>
       </div>
     </v-card>

@@ -3,8 +3,9 @@
  * 全局开关（shared，2026-10-15 Apple 风格定稿）：组件库开关 + 全局主题色。
  * 轨道更高更窄（20×34 胶囊）；滑块白色小圆、内嵌于轨道（与主题色分离，不再同色等高）——
  * 关 = 中性灰轨道，开 = 主题色轨道 + 白色滑块。v-model/loading 透传。
- * disabled（2026-10-16 定稿）= 锁定交互的禁用态：**保持原配色不置灰**（不走 Vuetify disabled
- * 的 opacity 灰化）——pointer-events 封锁 + tabindex 移除 + 模型更新守卫三重拦截。
+ * disabled（2026-11-03 改版）= 锁定交互的禁用态：**与按钮禁用一致的整体置灰**
+ * （opacity 0.26 对齐 .v-btn--disabled；原「保持原配色不置灰」2026-10-16 口径退役）——
+ * pointer-events 封锁 + tabindex 移除 + 模型更新守卫三重拦截不变。
  */
 const props = withDefaults(defineProps<{ disabled?: boolean; loading?: boolean }>(), {
   disabled: false,
@@ -38,9 +39,11 @@ function onUpdate(v: boolean | null) {
 </template>
 
 <style scoped>
-/* 禁用态：仅封锁指针交互，配色保持开/关原样（不置灰，用户定稿 2026-10-16） */
+/* 禁用态：封锁指针交互 + 整体置灰与按钮禁用一致（2026-11-03 定稿；
+   0.26 = Vuetify .v-btn--disabled 同款透明度——按钮为硬编码值非变量，此处对齐取值） */
 .fv-switch--locked {
   pointer-events: none;
+  opacity: 0.26;
 }
 
 /* Apple 风格尺寸：轨道 20px 高 × 34px 宽（默认 14×36 槽），滑块 14px 白色圆 */

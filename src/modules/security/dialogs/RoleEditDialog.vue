@@ -36,7 +36,7 @@ const form = reactive({
   description: props.role?.description ?? '',
 })
 
-const ID_PATTERN = /^[A-Z0-9_-]+$/
+const ID_PATTERN = /^[A-Za-z0-9_-]+$/ // 2026-11-03 定稿：大小写字母、数字、下划线、中划线
 const rules = {
   required: (v: string) => !!v.trim() || t('validation.required'),
   id: (v: string) => ID_PATTERN.test(v.trim()) || t('security.roles.form.idInvalid'),

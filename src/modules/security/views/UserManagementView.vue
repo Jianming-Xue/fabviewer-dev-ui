@@ -23,9 +23,8 @@ import {
   fetchUsersPage,
   deleteUser,
 } from '@/api/security-management/requests/userRequest'
-import { BUILTIN_ROLE_ID } from '@/api/security-management/types/roleTypes'
 import { ensureRoleNames, ensurePolicyNames, roleNameOf, policyNameOf } from '@/api/security-management/rolePolicyNameCollection'
-import type { UserDto } from '@/api/security-management/types/userTypes'
+import { isBuiltinUserName, type UserDto } from '@/api/security-management/types/userTypes'
 
 /**
  * 用户管理（模块 6 · 用户和安全，2026-10-18 首版）：上搜索卡片 + 下结果表格卡片（布局总纲同角色页）。
@@ -47,21 +46,23 @@ const permission = usePermissionStore()
 const FEATURE_URL = '/security/users'
 const can = (id: string) => permission.hasControl(FEATURE_URL, id)
 
-/** 内置管理员用户（挂 ADMIN 内置角色，2026-10-21 定稿）：不能修改角色和策略、不能删除
-    ——口径同角色页内置守卫：菜单项逐行置灰 + 处理函数双保险 + Mock 服务端拒绝 */
-const isBuiltinAdmin = (row: unknown) => ((row as UserDto).roleIds ?? []).includes(BUILTIN_ROLE_ID)
+/** 内置用户（2026-11-03 定稿：FvAdmin/Admin 按用户名、不区分大小写大写比对，见 userTypes
+ *  isBuiltinUserName——原「挂 ADMIN 内置角色即内置」口径退役）：不能修改角色和策略、不能禁用、
+ *  不能删除、不能延期——菜单项逐行置灰 + 处理函数双保险 + Mock 服务端拒绝 */
+const isBuiltin = (row: unknown) => isBuiltinUserName(((row as UserDto).userName ?? ''))
 
 /** more 下拉菜单（2026-10-19 改造：删除从图标钮收进菜单）：角色和策略/重置密码受 edit 管控、
-    删除用户受 delete 管控——受控项按权限过滤（口径同原图标钮显隐），全无权则菜单为空 */
+    删除用户受 delete 管控——受控项按权限过滤（口径同原图标钮显隐），全无权则菜单为空；
+    内置用户行：角色和策略/账户延期/删除用户置灰（重置密码保留） */
 const moreMenu = computed<FvTableMenuItem[]>(() => {
   const out: FvTableMenuItem[] = []
   if (can('security.users.edit')) {
-    out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield', disabled: isBuiltinAdmin })
+    out.push({ key: 'rolesPolicy', label: t('security.users.ctlRolesPolicy'), icon: 'fas fa-user-shield', disabled: isBuiltin })
     out.push({ key: 'resetPwd', label: t('security.users.ctlResetPwd'), icon: 'fas fa-key' })
-    out.push({ key: 'expire', label: t('security.users.ctlExpire'), icon: 'fas fa-calendar-plus' })
+    out.push({ key: 'expire', label: t('security.users.ctlExpire'), icon: 'fas fa-calendar-plus', disabled: isBuiltin })
   }
   if (can('security.users.delete'))
-    out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error', disabled: isBuiltinAdmin })
+    out.push({ key: 'delete', label: t('security.users.ctlDelete'), icon: 'fas fa-trash', color: 'error', disabled: isBuiltin })
   return out
 })
 
@@ -98,25 +99,31 @@ function expireStatus(v: string): { text: string; cls: string } {
   return { text: t('security.users.expireStatusOk'), cls: 'vui-expire--success' }
 }
 
-/** 状态开关行级禁用：无 edit 权限整列禁（禁用态而非隐藏，口径同角色页） */
+/** 状态开关行级禁用：无 edit 权限整列禁（禁用态而非隐藏，口径同角色页）；
+    内置用户行亦禁（恒启用、不允许禁用，2026-11-03 定稿） */
 function switchDisabled(row: unknown): boolean {
-  void row
-  return !can('security.users.edit')
+  return !can('security.users.edit') || isBuiltin(row)
 }
 
 /** 行内启用开关（FvTable switch 列回调，2026-10-19 改造）：点击不即时提交——
     弹 ChangeUserStateDialog 录备注后落库（标题随方向=启用用户/禁用用户）；
     弹窗未成（取消/失败后关闭）回拨 FvTable 已即时写回的视觉态，服务端状态未动 */
 async function onSwitchChange({ item, value }: { item: UserDto; key: string; value: boolean }) {
-  const done = await openInteractiveDialog<{ user: UserDto; enabled: number }, boolean | undefined>(
-    ChangeUserStateDialog,
-    { user: item, enabled: value ? 1 : 0 },
-  )
-  if (!done) {
-    item.enabled = value ? 0 : 1 // 回拨开关
+  // 内置用户不允许禁用（2026-11-03 定稿）：双保险拦截——开关列已置灰，此处兜底回拨+提示
+  if (isBuiltin(item) && !value) {
+    item.enabled = true // 回拨 FvTable 已写回的视觉态
+    await dialog.warning(t('security.users.builtinNoDisable'))
     return
   }
-  item.enabled = value ? 1 : 0 // 出参口径数字 1/0（FvTable 内部写回的是布尔，此处归一）
+  const done = await openInteractiveDialog<{ user: UserDto; enabled: boolean }, boolean | undefined>(
+    ChangeUserStateDialog,
+    { user: item, enabled: value },
+  )
+  if (!done) {
+    item.enabled = !value // 回拨开关
+    return
+  }
+  item.enabled = value // 布尔口径（2026-11-03 联调定案；FvTable 内部写回同为布尔）
   toast.success(t('security.users.enabledUpdated'))
 }
 
@@ -216,7 +223,7 @@ async function onInsertUser(): Promise<UserRow | null> {
 
 /** 角色和策略（More 菜单）：落库由弹窗内完成（成功才关窗），此处只 Toast + 重拉 */
 async function openRolesPolicy(user: UserDto) {
-  if (isBuiltinAdmin(user)) return // 内置管理员用户双保险（菜单项已置灰）
+  if (isBuiltin(user)) return // 内置用户双保险（菜单项已置灰，2026-11-03 用户名口径）
   const saved = await openInteractiveDialog<{ user: UserDto }, UserDto | undefined>(
     EditUserRolePolicyDialog,
     { user },
@@ -238,6 +245,7 @@ async function openResetPwd(user: UserDto) {
 
 /** 账户延期（More 菜单，2026-10-21）：ChangeAccountDateDialog 落库收口弹窗内，此处只 Toast+重拉 */
 async function openExpire(user: UserDto) {
+  if (isBuiltin(user)) return // 内置用户不允许延期（双保险，2026-11-03 定稿）
   const done = await openInteractiveDialog<{ user: UserDto }, boolean | undefined>(ChangeAccountDateDialog, { user })
   if (!done) return
   toast.success(t('security.users.expired'))
@@ -246,7 +254,12 @@ async function openExpire(user: UserDto) {
 
 /** 删除：确认 Dialog → 落库 → 重拉（删空尾页回退一页） */
 async function remove(user: UserDto) {
-  if (isBuiltinAdmin(user)) return // 内置管理员用户不可删除（双保险）
+  if (isBuiltin(user)) return // 内置用户不可删除（双保险，2026-11-03 用户名口径）
+  // 启用态不可删（2026-11-03 联调对齐：后端 UserDeleteWhileEnabled 拒收）——提示先禁用，不出确认框
+  if (user.enabled) {
+    await dialog.warning(t('security.users.deleteEnabledBlocked', { name: user.userName }))
+    return
+  }
   if (!(await dialog.confirm(t('security.users.deleteConfirm', { name: user.userName })))) return
   try {
     await deleteUser(user.userName)

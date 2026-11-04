@@ -47,10 +47,10 @@ const form = reactive({
   description: props.policy?.description ?? '',
   passwdMinLength: String(props.policy?.passwdMinLength ?? 8),
   passwdMaxLength: String(props.policy?.passwdMaxLength ?? 16),
-  requireDigit: (props.policy?.passwdRequireDigit ?? 1) === 1,
-  requireLowerChar: (props.policy?.passwdRequireLowerChar ?? 1) === 1,
-  requireUpperChar: (props.policy?.passwdRequireUpperChar ?? 1) === 1,
-  requireSpecialChar: (props.policy?.passwdRequireSpecialChar ?? 0) === 1,
+  requireDigit: props.policy?.passwdRequireDigit ?? true, // 布尔口径（2026-11-03 联调定案）；新建缺省=开
+  requireLowerChar: props.policy?.passwdRequireLowerChar ?? true,
+  requireUpperChar: props.policy?.passwdRequireUpperChar ?? true,
+  requireSpecialChar: props.policy?.passwdRequireSpecialChar ?? false,
   /** 特殊字符集合：UI 以英文逗号分隔文本编辑，传输换算 string[]（去空白/去重；
    *  用户定稿 2026-10-20：勾选须含特殊字符后必填） */
   passwdSpecials: (props.policy?.passwdSpecials ?? []).join(','),
@@ -76,7 +76,7 @@ const IDLE_MAX = 9999
  *  不入词典原文——@/% 为 vue-i18n 保留语法字符） */
 const SPECIAL_CHARS = '-_+=!@#$%&*~?'
 
-const ID_PATTERN = /^[A-Z0-9_-]+$/
+const ID_PATTERN = /^[A-Za-z0-9_-]+$/ // 2026-11-03 定稿：大小写字母、数字、下划线、中划线
 const POS_INT_PATTERN = /^\d+$/
 const isPosInt = (v: string) => POS_INT_PATTERN.test(v.trim()) && Number(v) >= 1
 /** 天数：-1（永不过期）或 1–999 */
@@ -131,10 +131,10 @@ async function save() {
     description: form.description.trim(),
     passwdMinLength: Number(form.passwdMinLength.trim()),
     passwdMaxLength: Number(form.passwdMaxLength.trim()),
-    passwdRequireDigit: form.requireDigit ? 1 : 0,
-    passwdRequireLowerChar: form.requireLowerChar ? 1 : 0,
-    passwdRequireUpperChar: form.requireUpperChar ? 1 : 0,
-    passwdRequireSpecialChar: form.requireSpecialChar ? 1 : 0,
+    passwdRequireDigit: form.requireDigit,
+    passwdRequireLowerChar: form.requireLowerChar,
+    passwdRequireUpperChar: form.requireUpperChar,
+    passwdRequireSpecialChar: form.requireSpecialChar,
     passwdSpecials: form.requireSpecialChar
       ? [...new Set(form.passwdSpecials.split(',').map((s) => s.trim()).filter(Boolean))]
       : [],

@@ -115,8 +115,8 @@ async function onInsertRole(): Promise<RoleDto | null> {
 async function onSwitchChange({ item, value }: { item: RoleDto; key: string; value: boolean }) {
   if (item.roleId === BUILTIN_ROLE_ID && !value) return
   try {
-    await setRoleEnabled(item.roleId, value ? 1 : 0)
-    item.enabled = value ? 1 : 0 // 出参口径数字 1/0（FvTable 内部写回的是布尔，此处归一）
+    await setRoleEnabled(item.roleId, value)
+    item.enabled = value // 布尔口径（2026-11-03 联调定案；FvTable 内部写回同为布尔）
     toast.success(t('security.roles.enabledUpdated'))
   } catch (e) {
     await loadPage()
