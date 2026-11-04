@@ -21,8 +21,8 @@ export default {
       endLineLike: '结束标志行',
       hangReason: '挂起原因',
       enabled: '启用',
-      updatedAt: '最后更新时间',
-      updatedBy: '最后更新人',
+      lastUpdatedAt: '最后更新时间',
+      lastUpdatedBy: '最后更新人',
     },
     form: {
       title: '新增配置',

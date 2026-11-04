@@ -9,11 +9,11 @@ import FvTable from '@/shared/components/FvTable.vue'
 import FvTableHeader from '@/shared/components/FvTableHeader.vue'
 import ServerHangReasonConfigEditDialog from '../dialogs/ServerHangReasonConfigEditDialog.vue'
 import {
-  deleteSrvHangCfg,
-  fetchSrvHangCfgPage,
-  toggleSrvHangCfgState,
-} from '@/api/telemetry-hub/requests/srvHangCfg'
-import type { SrvHangCfgDto } from '@/api/telemetry-hub/types/types'
+  deleteSrvHangConfig,
+  fetchSrvHangConfigPage,
+  toggleSrvHangConfigState,
+} from '@/api/telemetry-hub/requests/srvHangConfigRequest'
+import type { ServerHangConfigDto } from '@/api/telemetry-hub/types/srvHangConfigTypes'
 
 /**
  * 模块 5 · 01 Server Hang Reason Config（2026-10-27 二改版，用户定稿）：
@@ -26,15 +26,15 @@ const { t } = useI18n()
 const dialog = useModalDialog()
 
 // ===== 表格区（§4.1） =====
-const rows = ref<SrvHangCfgDto[]>([])
+const rows = ref<ServerHangConfigDto[]>([])
 const pageContent = reactive({ total: 0, totalPage: 1, pageIndex: 1, pageSize: 20 }) // 默认每页 20 条（§4.1）
 const loading = ref(false)
-const selected = ref<SrvHangCfgDto | null>(null)
+const selected = ref<ServerHangConfigDto | null>(null)
 
 async function loadPage(page = pageContent.pageIndex) {
   loading.value = true
   try {
-    const data = await fetchSrvHangCfgPage(page, pageContent.pageSize)
+    const data = await fetchSrvHangConfigPage(page, pageContent.pageSize)
     rows.value = data.data
     pageContent.total = data.totalSize
     pageContent.totalPage = data.totalPage
@@ -49,10 +49,10 @@ async function loadPage(page = pageContent.pageIndex) {
 onMounted(() => loadPage(1))
 
 /** Enabled 开关：FvTable 先写回行再抛 switch-change；失败回拨该格（§4.1 就地改不重拉） */
-async function onSwitchChange({ item, value }: { item: SrvHangCfgDto; key: string; value: boolean }) {
+async function onSwitchChange({ item, value }: { item: ServerHangConfigDto; key: string; value: boolean }) {
   const prev = !value
   try {
-    await toggleSrvHangCfgState(item.id, value)
+    await toggleSrvHangConfigState(item.id, value)
   } catch {
     item.enabled = prev
     showOpError(new Error(t('common.opFailed')))
@@ -60,8 +60,8 @@ async function onSwitchChange({ item, value }: { item: SrvHangCfgDto; key: strin
 }
 
 /** 新增（FvTable insert → FvNewButton）：弹窗提交成功后出参回显首行，总数 +1 */
-async function onInsert(): Promise<SrvHangCfgDto | null> {
-  const created = await openInteractiveDialog<{ row?: SrvHangCfgDto }, SrvHangCfgDto>(
+async function onInsert(): Promise<ServerHangConfigDto | null> {
+  const created = await openInteractiveDialog<{ row?: ServerHangConfigDto }, ServerHangConfigDto>(
     ServerHangReasonConfigEditDialog,
     {},
   )
@@ -71,8 +71,8 @@ async function onInsert(): Promise<SrvHangCfgDto | null> {
 }
 
 /** 编辑（action 列 pen）：弹窗提交成功后用出参换引用更新该行（§4.3 整行更新） */
-async function onEdit(row: SrvHangCfgDto) {
-  const updated = await openInteractiveDialog<{ row?: SrvHangCfgDto }, SrvHangCfgDto>(
+async function onEdit(row: ServerHangConfigDto) {
+  const updated = await openInteractiveDialog<{ row?: ServerHangConfigDto }, ServerHangConfigDto>(
     ServerHangReasonConfigEditDialog,
     { row },
   )
@@ -81,7 +81,7 @@ async function onEdit(row: SrvHangCfgDto) {
 }
 
 // ===== 删除（§4.1：弹框确认后调用；公共确认 Dialog） =====
-async function onDelete(row: SrvHangCfgDto) {
+async function onDelete(row: ServerHangConfigDto) {
   const ok = await dialog.confirm({
     title: t('common.delete'),
     message: t('common.deleteConfirm'),
@@ -89,7 +89,7 @@ async function onDelete(row: SrvHangCfgDto) {
   })
   if (!ok) return
   try {
-    await deleteSrvHangCfg(row.id)
+    await deleteSrvHangConfig(row.id)
     rows.value = rows.value.filter((r) => r.id !== row.id)
     pageContent.total = Math.max(0, pageContent.total - 1)
     if (selected.value?.id === row.id) selected.value = null
@@ -124,8 +124,8 @@ async function onDelete(row: SrvHangCfgDto) {
           <FvTableHeader :title="t('config.columns.endLineLike')" data-key="endLineLike" />
           <FvTableHeader :title="t('config.columns.hangReason')" data-key="hangReason" />
           <FvTableHeader :title="t('config.columns.enabled')" data-key="enabled" header-type="switch" />
-          <FvTableHeader :title="t('config.columns.updatedAt')" data-key="updatedAt" />
-          <FvTableHeader :title="t('config.columns.updatedBy')" data-key="updatedBy" />
+          <FvTableHeader :title="t('config.columns.lastUpdatedAt')" data-key="lastUpdatedAt" />
+          <FvTableHeader :title="t('config.columns.lastUpdatedBy')" data-key="lastUpdatedBy" />
           <FvTableHeader header-type="action" :actions="['edit', 'delete']" />
         </FvTable>
       </div>

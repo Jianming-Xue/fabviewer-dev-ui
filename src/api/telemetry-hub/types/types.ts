@@ -102,25 +102,4 @@ export interface HangEntryDto {
   endLineId: string
 }
 
-/** Server Hang Reason 配置条目（模块 5 · 01 §二） */
-export interface SrvHangCfgDto {
-  id: string
-  ruleName: string
-  hangReason: string
-  startLineLike: string
-  endLineLike: string
-  enabled: boolean
-  updatedAt: string
-  updatedBy: string
-}
-
-/** Confirm 提交体：新增 id=null，编辑 id=选中行 id（§4.3） */
-export interface SrvHangCfgRo {
-  id: string | null
-  ruleName: string
-  hangReason: string
-  startLineLike: string
-  endLineLike: string
-}
-
 

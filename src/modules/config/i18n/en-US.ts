@@ -20,8 +20,8 @@ export default {
       endLineLike: 'End Line Like',
       hangReason: 'Hang Reason',
       enabled: 'Enabled',
-      updatedAt: 'Last Updated Time',
-      updatedBy: 'Last Updated User',
+      lastUpdatedAt: 'Last Updated Time',
+      lastUpdatedBy: 'Last Updated User',
     },
     form: {
       title: 'New configuration',

@@ -7,9 +7,9 @@ import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvRadioGroup from '@/shared/components/FvRadioGroup.vue'
 import FvRadio from '@/shared/components/FvRadio.vue'
 import { showOpError } from '@/shared/api/opError'
-import { createSrvHangCfg, updateSrvHangCfg } from '@/api/telemetry-hub/requests/srvHangCfg'
+import { createSrvHangConfig, updateSrvHangConfig } from '@/api/telemetry-hub/requests/srvHangConfigRequest'
 import { applyMatchMode, splitMatchMode, type MatchMode } from '../matchMode'
-import type { SrvHangCfgDto } from '@/api/telemetry-hub/types/types'
+import type { ServerHangConfigDto } from '@/api/telemetry-hub/types/srvHangConfigTypes'
 
 /**
  * 服务挂起原因配置 新增/编辑二合一弹窗（2026-10-27 定稿：原页面底部配置控件区表单迁入弹窗，
@@ -19,10 +19,10 @@ import type { SrvHangCfgDto } from '@/api/telemetry-hub/types/types'
  * 匹配方式四选单选（§4.2）：% 拼装提交 / 回显拆分（matchMode.ts）；任一组选「精确匹配」显现三后果警告条（§3）；
  * 5 分钟生效提示（§6）置弹窗正文尾部。
  */
-const props = defineProps<{ row?: SrvHangCfgDto }>()
+const props = defineProps<{ row?: ServerHangConfigDto }>()
 
 const open = defineModel<boolean>({ required: true })
-const emit = defineEmits<{ resolve: [saved: SrvHangCfgDto] }>()
+const emit = defineEmits<{ resolve: [saved: ServerHangConfigDto] }>()
 
 const { t } = useI18n()
 const formRef = ref()
@@ -78,7 +78,7 @@ async function save() {
     endLineLike: applyMatchMode(form.endText, form.endMode),
   }
   try {
-    const saved = editing ? await updateSrvHangCfg(input) : await createSrvHangCfg(input)
+    const saved = editing ? await updateSrvHangConfig(input) : await createSrvHangConfig(input)
     emit('resolve', saved)
     open.value = false
   } catch (e) {
