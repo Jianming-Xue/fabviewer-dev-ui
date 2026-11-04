@@ -23,6 +23,8 @@ import type { RoleDto } from '@/api/security-management/types/roleTypes'
 
 /**
  * 角色管理（模块 · 用户和安全）：搜索卡片 + 结果卡片。
+ * 表格刷新钮（2026-11-04，FvTable refresh prop + @refresh）：重查当前页回显（已生效关键字保留），
+ * 与 Config 页/策略页同定式。
  * 表格列：角色 ID / 名称 / 描述 / 启用开关（FvSwitch 行内切换）/ 权限（点击分配）/ 操作（编辑+删除）。
  * 卡片只含表格与 New Role（FvNewButton 圆形加号）。
  */
@@ -181,7 +183,9 @@ async function remove(role: RoleDto) {
         :loading="loading"
         select-mode="single"
         v-model:selected="selectedRole"
+        refresh
         :insert="can('security.roles.new') ? onInsertRole : undefined"
+        @refresh="loadPage()"
         @edit="openEditor"
         @delete="remove"
         @switch-change="onSwitchChange"

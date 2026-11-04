@@ -45,6 +45,7 @@ export default {
     opSuccess: 'Operation succeeded',
     opFailed: 'Operation failed',
     httpError: 'Request failed (HTTP {code})',
+    httpUnauthorized: 'Unauthorized: token missing or expired, please sign in again',
     requestTimeout: 'Request timed out, please try again later',
   },
   dialog: {

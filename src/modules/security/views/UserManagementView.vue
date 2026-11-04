@@ -28,6 +28,8 @@ import { isBuiltinUserName, type UserDto } from '@/api/security-management/types
 
 /**
  * 用户管理（模块 6 · 用户和安全，2026-10-18 首版）：上搜索卡片 + 下结果表格卡片（布局总纲同角色页）。
+ * 表格刷新钮（2026-11-04，FvTable refresh prop + @refresh）：重查当前页回显（已生效关键字保留），
+ * 与 Config 页/角色页/策略页同定式。
  * 搜索：单关键字框，模糊匹配 用户名 / 昵称 / 邮箱（后端口径，前端只管发起）。
  * 表格列（2026-10-18 扩全档案）：用户名/昵称/邮箱/电话/状态/角色/策略/账户过期时间/密码过期时间/
  * 密码有效期(天)/账户有效期(天) + 操作；列表不展示 创建时间/上次密码修改/上次登录时间/上次登录IP
@@ -300,7 +302,9 @@ async function remove(user: UserDto) {
           :data="rows"
           :page-content="pageContent"
           :loading="loading"
+          refresh
           :insert="can('security.users.new') ? onInsertUser : undefined"
+          @refresh="loadPage()"
           @view="openViewer"
           @edit="openEditor"
           @more-select="onMoreSelect"

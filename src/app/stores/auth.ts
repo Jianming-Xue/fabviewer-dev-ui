@@ -140,7 +140,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (res.user.policyId) {
       void fetchPolicyDetail(res.user.policyId).then(
         (policy) => {
-          loginPolicy.value = policy
+          // 会话仍在才落策略（2026-11-04）：登录回滚/登出后的迟到回包不得复写 loginPolicy
+          if (auth.value) loginPolicy.value = policy
         },
         () => {
           /* 详情拉取失败不影响登录：修改密码限制自动退化为基础内容（6~18 长度） */
@@ -148,7 +149,15 @@ export const useAuthStore = defineStore('auth', () => {
       )
     }
     // 登录成功即按服务端确认的身份拉取权限清单（菜单/控件权限由此派生，见 stores/permission.ts）
-    await usePermissionStore().loadPermissions(res.user.userName)
+    try {
+      await usePermissionStore().loadPermissions(res.user.userName)
+    } catch (e) {
+      // 登录不半成功（2026-11-04 修，用户反馈「已失败还存了 localStorage」）：会话持久化在前、
+      // 权限拉取在后——后者失败即登录不成立，回滚清理（vui.auth/vui.permissions 不留残留）再抛给调用方
+      clearSession()
+      justExpired = false
+      throw e
+    }
     return res
   }
 
@@ -192,5 +201,6 @@ export const useAuthStore = defineStore('auth', () => {
     return justExpired
   }
 
-  return { isLoggedIn, token, userName, user, profile, loginPolicy, idleLogoutMinutes, login, logout, patchUser, expireIfNeeded }
+  // clearSession 对外暴露（2026-11-04）：main.ts 的 401 全局处理器消费（token 已死就地清会话）
+  return { isLoggedIn, token, userName, user, profile, loginPolicy, idleLogoutMinutes, login, logout, patchUser, expireIfNeeded, clearSession }
 })

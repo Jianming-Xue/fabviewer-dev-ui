@@ -85,24 +85,8 @@ const toast = useAlertToast()
 /** 全局失败 Dialog（错误图标标题、复制 + OK，正文为接口 errMsg，见 shared/dialog） */
 const dialog = useModalDialog()
 
-// 记住我：回填上次记住的用户名（登录与修改密码共用）；
-// query user = 跨路由切换显式携带的用户名（失败码跳转/改密成功回跳/手动切换三路径）。
-// 2026-11-03 修：同组件路由间跳转（/login ⇄ /change-password）实例可能复用不重挂载，
-// setup 一次性读取会停留在旧 query（真实后端 FIRST_LOGIN 跳转实测空用户名暴露）——改 watch 响应
-const remembered = localStorage.getItem(REMEMBER_KEY) ?? ''
-watch(
-  () => route.query.user,
-  (u) => {
-    const carried = typeof u === 'string' ? u.trim() : ''
-    form.username = carried || remembered
-    form.remember = !carried && !!remembered
-    pwdForm.username = carried || remembered
-  },
-  { immediate: true },
-)
-
 /** 未登录改密的策略查询（2026-11-04，后端新接口 GET /login_policy/user?userId=用户名，
- *  接口未部署前按约定口径先落地）：登录页改密卡按输入用户名实时拉该用户密码策略——
+ *  已部署并放行匿名）：登录页改密卡按输入用户名实时拉该用户密码策略——
  *  新密码提示与校验和顶栏改密弹窗同源同格式；data null = 用户存在未挂策略 → 基础限制 6~18 */
 const pwdPolicy = ref<PolicyDto | null>(null)
 /** pwdPolicy 归属的用户名（''=未拉取/已失效）——同名不重复拉 */
@@ -162,8 +146,29 @@ watch(
   },
 )
 
-// 进入改密卡即按预填用户名拉一次（FIRST_LOGIN/PASSWORD_EXPIRED 跳转、登录⇄改密手动切换、
-// 直接 URL 进入三口径；注册在 query.user 回填 watch 之后，immediate 时预填已就位）
+// 记住我：回填上次记住的用户名（登录与修改密码共用）；
+// query user = 跨路由切换显式携带的用户名（失败码跳转/改密成功回跳/手动切换三路径）。
+// 2026-11-03 修：同组件路由间跳转（/login ⇄ /change-password）实例可能复用不重挂载，
+// setup 一次性读取会停留在旧 query（真实后端 FIRST_LOGIN 跳转实测空用户名暴露）——改 watch 响应
+const remembered = localStorage.getItem(REMEMBER_KEY) ?? ''
+watch(
+  () => route.query.user,
+  (u) => {
+    const carried = typeof u === 'string' ? u.trim() : ''
+    form.username = carried || remembered
+    form.remember = !carried && !!remembered
+    pwdForm.username = carried || remembered
+    // 回填后补拉策略（2026-11-04 修，FIRST_LOGIN 跳卡实测暴露）：路由变化的 flush 里
+    // mode watch 先于本 watch 触发（与注册顺序相反）——跳转进卡时 loadPwdPolicy 读到空
+    // 用户名早退、回填后再无人拉取；此处兜底（同名去重，与其余触发点不重复发请求）
+    if (mode.value === 'change-pwd') void loadPwdPolicy()
+  },
+  { immediate: true },
+)
+
+// 进入改密卡即拉一次：直接 URL 进入（immediate）与登录⇄改密手动切换等 query 不变的跳转由此覆盖；
+// FIRST_LOGIN 等带 query 跳转由上方 query.user watch 回填后补拉——两 watch 的 flush 先后
+// 与注册顺序相反（2026-11-04 实测），勿再依赖注册顺序保证时序
 watch(
   mode,
   (m) => {

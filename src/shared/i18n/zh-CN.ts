@@ -45,6 +45,7 @@ export default {
     opSuccess: '操作成功',
     opFailed: '操作失败',
     httpError: '请求失败（HTTP {code}）',
+    httpUnauthorized: '未授权：Token 缺失或已失效，请重新登录',
     requestTimeout: '请求超时，请稍后重试',
   },
   dialog: {

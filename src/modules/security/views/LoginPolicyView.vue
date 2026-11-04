@@ -20,8 +20,9 @@ import { BUILTIN_POLICY_ID, type PolicyDto } from '@/api/security-management/typ
 
 /**
  * 登录策略管理（模块 · 用户和安全，2026-10-20 页面定稿）：搜索卡片 + 表格卡片。
- * 读接口全量不分页（用户定稿）：一次拉全，keyword 客户端模糊匹配
- * policyId/policyName/description（大小写不敏感，同角色后端口径）；
+ * 读接口全量不分页（用户定稿）：进页一次拉全；**Search 与表格刷新钮（2026-11-04 用户定稿变更）
+ * 先重拉 list 再对拿到的数据客户端模糊过滤** policyId/policyName/description（大小写不敏感，
+ * 同角色后端口径），刷新钮行为与 Search 完全一致（FvTable refresh prop + @refresh=search）；
  * FvTable 不传 pageContent（隐藏分页条）、select-mode=single、insert=New、操作列=编辑+删除，
  * 皆按 security.login-policy.* 控件权限显隐。
  * 列（初版 11 列；2026-10-21 增补为 12 列、密码组收拢）：Policy ID / Policy Name / Description /
@@ -53,7 +54,8 @@ function actionDisabled(row: unknown): boolean {
   return (row as PolicyDto).policyId === BUILTIN_POLICY_ID
 }
 
-// ===== 搜索（全量拉取，输入值与已生效值分离：Enter/点击才生效） =====
+// ===== 搜索（输入值与已生效值分离：Enter/点击才生效；2026-11-04 用户定稿变更：
+// Search/刷新先经 list 接口重拉全量再客户端过滤，不再是纯内存过滤） =====
 const keywordInput = ref('')
 const keyword = ref('')
 
@@ -86,7 +88,15 @@ async function load() {
   }
 }
 
-function search() {
+/** Search 与表格刷新钮共用（2026-11-04 用户定稿）：先调 list 接口重拉全量（拿到别处
+ *  刚改过的最新数据），再对拿到的数据客户端模糊过滤；重拉失败不阻塞过滤——沿用内存现有
+ *  数据（错误呈现由 shared/http 全局收口） */
+async function search() {
+  try {
+    await load()
+  } catch {
+    /* 重拉失败沿用现有数据，过滤照常生效 */
+  }
   keyword.value = keywordInput.value.trim()
 }
 
@@ -156,7 +166,9 @@ async function remove(policy: PolicyDto) {
           :loading="loading"
           select-mode="single"
           v-model:selected="selectedPolicy"
+          refresh
           :insert="can('security.login-policy.new') ? onInsertPolicy : undefined"
+          @refresh="search"
           @edit="openEditor"
           @delete="remove"
         >

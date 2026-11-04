@@ -194,9 +194,17 @@ async function execute<T>(
     }
     const err = new ApiError(res.status, errMsg)
     err.transport = true
+    // 401 未授权（2026-11-04 优化，用户反馈「请求失败（HTTP 401）」语义不明）：
+    // ① 带会话时交壳层注册的全局处理器（清会话 + 回登录页，见 setUnauthorizedHandler）——
+    //    先清理再弹窗（clearSession 会收拢全部弹窗，顺序反了会把本条 401 提示一并关掉）；
+    // ② 文案不再落通用「请求失败」兜底，改专属「Token 缺失或已失效」（后端 errMsg 仍优先）
+    if (res.status === 401) unauthorizedHandler?.()
     // 非 200 全局呈现（用户定稿 2026-10-17）：错误 Dialog 直出 errMsg，无则状态码兜底；
     // silent 调用方（登出等）抑制；业务壳失败不在此列（调用方自呈现）
-    if (!opts.silent) void useModalDialog().error(errMsg ?? tShared('common.httpError', { code: res.status }))
+    if (!opts.silent)
+      void useModalDialog().error(
+        errMsg ?? (res.status === 401 ? tShared('common.httpUnauthorized') : tShared('common.httpError', { code: res.status })),
+      )
     throw err
   }
   return (await res.json()) as T
@@ -219,6 +227,14 @@ let runtimeConfig: RuntimeAppConfig | null = null
 let authTokenGetter: (() => string | null) | null = null
 export function setAuthTokenGetter(getter: () => string | null): void {
   authTokenGetter = getter
+}
+
+/** 401 未授权全局处理器（2026-11-04，注册式同 setAuthTokenGetter）：任何接口回 401 即调用——
+ *  main.ts 注册为「有会话则清会话（含 localStorage）+ 非公共路由回登录页 reason=expired」；
+ *  匿名场景（登录页/改密卡）无会话可清，处理器自行 no-op */
+let unauthorizedHandler: (() => void) | null = null
+export function setUnauthorizedHandler(handler: () => void): void {
+  unauthorizedHandler = handler
 }
 
 export async function loadRuntimeConfig(path = `${import.meta.env.BASE_URL}app-config.json`): Promise<void> {

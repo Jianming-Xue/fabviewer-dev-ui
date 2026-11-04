@@ -12,6 +12,25 @@ async function waitFor(expr, label, timeout = 15000) { const t0 = Date.now(); wh
 async function clickPos(x, y) { await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y }); await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }); await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }) }
 const results = []
 const check = (n, ok, d = '') => { results.push(ok); console.log(`${ok ? '✅' : '❌'} ${n}${d ? ' — ' + d : ''}`) }
+/* 探针角色唯一 ID（2026-11-04 加固）：固定 '${PROBE}' 已成后端幽灵记录（list 可见、POST 报
+   RoleIdExists、DELETE 报 RoleNotFound 删不掉——已上报），重跑=创建被拒+老角色沉页找不到行即崩。
+   每次跑新建 ZC-<ts>：创建必成功、新角色必在第 1 页、尾段清理可删（A-Z0-9- 字符集、≤20 位） */
+const PROBE = 'ZC-' + Date.now().toString(36).toUpperCase()
+/* 搜索过滤探针行（2026-11-04 加固）：角色表按 roleId 升序分页（10/页），ZC-* 探针沉底——
+   权限保存触发列表刷新后第 1 页找不到行（后端排序口径与脚本编写时不同，彼时新角色在首页）。
+   操作前一律经搜索卡过滤成单行视图，免疫排序/分页变化 */
+async function searchProbe() {
+  await ev(`(function(){var i=document.querySelector('.vui-roles-search input');i.focus();var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(i,'${PROBE}');i.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
+  await sleep(400)
+  const sb = await ev(`(function(){var b=document.querySelector('.vui-roles-search-btn');var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+  await clickPos(sb.x, sb.y)
+  await waitFor(`Array.from(document.querySelectorAll('tbody tr')).some(function(r){return r.innerText.indexOf('${PROBE}')>=0})`, '搜索过滤出探针行')
+  await sleep(600)
+}
+async function ensureProbeRow() {
+  if (await ev(`Array.from(document.querySelectorAll('tbody tr')).some(function(r){return r.innerText.indexOf('${PROBE}')>=0})`)) return
+  await searchProbe()
+}
 
 const t = await tp()
 await new Promise((res, rej) => { ws = new WebSocket(t.webSocketDebuggerUrl); ws.onopen = res; ws.onerror = rej; ws.onmessage = e2 => { const m = JSON.parse(e2.data); if (m.id && pn.has(m.id)) { const { res: r, rej: j } = pn.get(m.id); pn.delete(m.id); m.error ? j(new Error(m.error.message)) : r(m.result) } } })
@@ -79,20 +98,21 @@ check('UI-2 通配呈现：全树选中（' + TI.checked + '/' + TI.rows + ' 行
 await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dialog button')).find(function(x){return x.textContent.trim()==='取消'});if(b)b.click();return true})()`)
 await sleep(800)
 
-// ===== 4b · 新建探针角色：权限树「全部」交互全链路（非 readonly） =====
+// ===== 4b · 新建探针角色（PROBE 唯一 ID）：权限树「全部」交互全链路（非 readonly） =====
 const newBtn = await ev(`(function(){var b=Array.from(document.querySelectorAll('button')).find(function(x){return (x.getAttribute('aria-label')||'').indexOf('新增')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
 await clickPos(newBtn.x, newBtn.y)
 await waitFor(`!!document.querySelector('.vui-base-dialog') && Array.from(document.querySelectorAll('.vui-base-dialog input')).length>=2`, '角色新增弹窗')
-await ev(`(function(){var inp=Array.from(document.querySelectorAll('.vui-base-dialog input'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(inp[0],'ZC-E2E');inp[0].dispatchEvent(new Event('input',{bubbles:true}));s.call(inp[1],'端到端探针');inp[1].dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
+await ev(`(function(){var inp=Array.from(document.querySelectorAll('.vui-base-dialog input'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(inp[0],'${PROBE}');inp[0].dispatchEvent(new Event('input',{bubbles:true}));s.call(inp[1],'端到端探针');inp[1].dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
 await sleep(400)
 await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dialog button')).find(function(x){return x.textContent.trim()==='确认'||x.textContent.trim()==='确定'});if(b)b.click();return true})()`)
-await waitFor(`document.body.innerText.indexOf('ZC-E2E')>=0`, 'ZC-E2E 行出现')
+await waitFor(`Array.from(document.querySelectorAll('tbody tr')).some(function(r){return r.innerText.indexOf('${PROBE}')>=0})`, '探针角色行出现（行级断言，防创建被拒时弹窗文本假阳性）')
 await sleep(600)
-check('新建角色落库回显（ZC-E2E）', true)
-// 打开 ZC-E2E 权限弹窗（非 readonly）→ 默认全 off → 点「全部」→ 全 on → 取消 → 全 off → 再点回 → 保存 → 重开验证
-const zb = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('ZC-E2E')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+check('新建角色落库回显（' + PROBE + '）', true)
+await searchProbe()
+// 打开探针角色权限弹窗（非 readonly）→ 默认全 off → 点「全部」→ 全 on → 取消 → 全 off → 再点回 → 保存 → 重开验证
+const zb = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('${PROBE}')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
 await clickPos(zb.x, zb.y)
-await waitFor(`!!document.querySelector('.vui-base-dialog')`, 'ZC-E2E 权限弹窗')
+await waitFor(`!!document.querySelector('.vui-base-dialog')`, '探针角色权限弹窗')
 await sleep(1000)
 const T0 = JSON.parse(await treeStats())
 check('新角色权限树默认全空（0/' + T0.rows + '）', T0.checked === 0, JSON.stringify(T0))
@@ -129,7 +149,8 @@ await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dial
 await waitFor(`!document.querySelector('.vui-base-dialog')`, '保存关窗', 10000)
 await sleep(600)
 // 重开验证持久化：仍全选（存 ["*"]）
-const zb2 = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('ZC-E2E')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await ensureProbeRow()
+const zb2 = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('${PROBE}')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
 await clickPos(zb2.x, zb2.y)
 await waitFor(`!!document.querySelector('.vui-base-dialog')`, '重开权限弹窗')
 await sleep(1000)
@@ -139,7 +160,8 @@ await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dial
 await sleep(700)
 
 // ===== 4c · 手动勾齐全部模块 = 「全部」选中 → 提交收敛 ["*"]（2026-11-03 三次定稿） =====
-const zb3 = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('ZC-E2E')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await ensureProbeRow()
+const zb3 = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('${PROBE}')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return x.textContent.indexOf('权限')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
 await clickPos(zb3.x, zb3.y)
 await waitFor(`!!document.querySelector('.vui-base-dialog')`, '三开权限弹窗')
 await sleep(1000)
@@ -165,20 +187,21 @@ const lr = await fetch('http://127.0.0.1/security-management/api/v1/auth/login',
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ userName: 'FvAdmin', password: '123456', clientIp: '127.0.0.1', deviceId: 'zcode-e2e' }),
 }).then((r) => r.json())
-const rr = await fetch('http://127.0.0.1/security-management/api/v1/roles/page?pageIndex=1&pageSize=50&keyword=ZC-E2E', {
+const rr = await fetch(`http://127.0.0.1/security-management/api/v1/roles/page?pageIndex=1&pageSize=50&keyword=${PROBE}`, {
   headers: { Authorization: 'Bearer ' + (lr.data && lr.data.token) },
 }).then((r) => r.json())
 const savedPerms = rr.data && rr.data.data && rr.data.data[0] && rr.data.data[0].permissions
 check('提交收敛：手动全选保存后后端 permissions 恰为 ["*"]', JSON.stringify(savedPerms) === JSON.stringify(['*']), JSON.stringify(savedPerms))
 
 // 清理探针角色（新建默认停用，可直接删）
-const delBtn = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('ZC-E2E')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return (x.getAttribute('aria-label')||'').indexOf('删除')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await ensureProbeRow()
+const delBtn = await ev(`(function(){var tr=Array.from(document.querySelectorAll('tbody tr')).find(function(r){return r.innerText.indexOf('${PROBE}')>=0});var b=Array.from(tr.querySelectorAll('button')).find(function(x){return (x.getAttribute('aria-label')||'').indexOf('删除')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
 await clickPos(delBtn.x, delBtn.y)
 await waitFor(`!!document.querySelector('.vui-base-dialog')`, '删除确认')
 await sleep(600)
 await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dialog button')).find(function(x){return x.textContent.trim()==='OK'||x.textContent.trim()==='确认'||x.textContent.trim()==='确定'});if(b)b.click();return true})()`)
-await waitFor(`document.body.innerText.indexOf('ZC-E2E')<0`, 'ZC-E2E 已删')
-check('探针角色 ZC-E2E 清理完成', true)
+await waitFor(`document.body.innerText.indexOf('${PROBE}')<0`, '探针角色已删')
+check('探针角色 ' + PROBE + ' 清理完成', true)
 
 // ===== 5 · 策略页：真实数据 + UI-16 内置策略保护 =====
 await send('Page.navigate', { url: 'http://localhost:5173/security/login-policy' })
@@ -193,6 +216,14 @@ const DIS = JSON.parse(dis)
 check('UI-16 Admin-Policy 行编辑+删除钮置灰（' + DIS.length + ' 钮全禁）', DIS.length > 0 && DIS.every((d) => d.dis), dis)
 
 // ===== 5b · 出生即过期警告（2026-11-04 定稿）：到期早于今天 → 警告确认框，取消不提交 =====
+// 动态化加固（2026-11-04）：① 用户名唯一防后端残留重名拒收；② 日期写死 2019/2020 会撞手动
+// 双约束（到期 ≤ 激活+策略天数）——策略下拉第一项若为天数策略（如 Normal-Policy 365 天）即被
+// 校验拦截、警告框永不弹。改 激活=今天−12天 / 到期=今天−10天：任何策略（天数≥2 或 -1）下合法，
+// 且到期<今天必触发警告
+const WARNUSER = 'ZCW_' + Date.now().toString(36).toUpperCase()
+const segOf = (ms) => { const d = new Date(ms); return [String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')] }
+const ACT = segOf(Date.now() - 12 * 86400000)
+const EXP = segOf(Date.now() - 10 * 86400000)
 await send('Page.navigate', { url: 'http://localhost:5173/security/users' })
 await waitFor(`document.body.innerText.indexOf('FvAdmin')>=0`, 'users page for warn test')
 await sleep(800)
@@ -201,7 +232,7 @@ await clickPos(newBtn2.x, newBtn2.y)
 await waitFor(`!!document.querySelector('.vui-base-dialog') && Array.from(document.querySelector('.vui-base-dialog').querySelectorAll('input')).length>=4`, '创建弹窗')
 await sleep(800)
 // 填用户名/昵称/密码（前两个 text + 首个 password）
-await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var ti=Array.from(d.querySelectorAll('input[type=text]'));var pi=d.querySelector('input[type=password]');var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(ti[0],'ZCWarn');ti[0].dispatchEvent(new Event('input',{bubbles:true}));s.call(ti[1],'warn');ti[1].dispatchEvent(new Event('input',{bubbles:true}));s.call(pi,'Pass1234');pi.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var ti=Array.from(d.querySelectorAll('input[type=text]'));var pi=d.querySelector('input[type=password]');var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(ti[0],'${WARNUSER}');ti[0].dispatchEvent(new Event('input',{bubbles:true}));s.call(ti[1],'warn');ti[1].dispatchEvent(new Event('input',{bubbles:true}));s.call(pi,'Pass1234');pi.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
 await sleep(400)
 // 角色/策略下拉各选第一项
 for (let i = 0; i < 2; i++) {
@@ -210,11 +241,11 @@ for (let i = 0; i < 2; i++) {
   await ev(`(function(){var it=Array.from(document.querySelectorAll('.v-overlay--active .v-list-item')).filter(function(x){return x.getClientRects().length>0})[0];if(it)it.click();return true})()`)
   await sleep(600)
 }
-// 激活日期先填 2019-01-01（段=input.fv-timer__seg）；等策略联动重算落定后再填到期——
+// 激活日期先填（段=input.fv-timer__seg）；等策略联动重算落定后再填到期——
 // 同批同步填会被「激活变动重算到期（策略 -1 清空）」的微任务覆盖（既有产品行为，真实用户操作有间隔）
-await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var asegs=Array.from(timers[0].querySelectorAll('input.fv-timer__seg'));['2019','01','01'].forEach(function(v,i){s.call(asegs[i],v);asegs[i].dispatchEvent(new Event('input',{bubbles:true}));});return asegs.length})()`)
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var asegs=Array.from(timers[0].querySelectorAll('input.fv-timer__seg'));${JSON.stringify(ACT)}.forEach(function(v,i){s.call(asegs[i],v);asegs[i].dispatchEvent(new Event('input',{bubbles:true}));});return asegs.length})()`)
 await sleep(900)
-await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var segs=Array.from(timers[1].querySelectorAll('input.fv-timer__seg'));['2020','01','02'].forEach(function(v,i){s.call(segs[i],v);segs[i].dispatchEvent(new Event('input',{bubbles:true}));});return segs.length})()`)
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var segs=Array.from(timers[1].querySelectorAll('input.fv-timer__seg'));${JSON.stringify(EXP)}.forEach(function(v,i){s.call(segs[i],v);segs[i].dispatchEvent(new Event('input',{bubbles:true}));});return segs.length})()`)
 await sleep(500)
 // 提交 → 警告确认框应弹出（叠于创建弹窗之上）
 await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dialog button')).find(function(x){return x.textContent.trim()==='确认'||x.textContent.trim()==='确定'});if(b)b.click();return true})()`)
@@ -225,9 +256,9 @@ check('出生即过期：警告框弹出（过期文案+继续创建/取消二�
 // 取消 → 警告关、创建弹窗保留、不提交
 await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).find(function(x){return x.innerText.indexOf('继续创建')>=0});var b=Array.from(d.querySelectorAll('button')).find(function(x){return x.textContent.trim()==='取消'});if(b)b.click();return true})()`)
 await sleep(900)
-const afterCancel = await ev(`JSON.stringify({warnGone: !Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('继续创建')>=0}), createStill: Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('ZCWarn')>=0 || (d.querySelector('input[type=password]')!==null)}), noRow: document.body.innerText.indexOf('ZCWarn')<0})`)
+const afterCancel = await ev(`JSON.stringify({warnGone: !Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('继续创建')>=0}), createStill: Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('${WARNUSER}')>=0 || (d.querySelector('input[type=password]')!==null)}), noRow: document.body.innerText.indexOf('${WARNUSER}')<0})`)
 const AC = JSON.parse(afterCancel)
-check('警告取消：不提交（列表无 ZCWarn）且创建弹窗保留可调整', AC.warnGone && AC.createStill && AC.noRow, afterCancel)
+check('警告取消：不提交（列表无 ' + WARNUSER + '）且创建弹窗保留可调整', AC.warnGone && AC.createStill && AC.noRow, afterCancel)
 await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).find(function(x){return x.querySelector('input[type=password]')!==null});var b=d?Array.from(d.querySelectorAll('button')).find(function(x){return x.textContent.trim()==='取消'}):null;if(b)b.click();return true})()`)
 await sleep(700)
 
