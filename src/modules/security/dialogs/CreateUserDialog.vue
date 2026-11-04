@@ -9,6 +9,7 @@ import FvTextSelect from '@/shared/components/FvTextSelect.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
 import { showOpError } from '@/shared/api/opError'
+import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { createUser } from '@/api/security-management/requests/userRequest'
 import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 import {
@@ -41,6 +42,7 @@ const open = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ resolve: [saved: UserDto] }>()
 
 const { t } = useI18n()
+const dialog = useModalDialog()
 const formRef = ref()
 const saving = ref(false)
 const dateTouched = ref(false)
@@ -202,6 +204,16 @@ async function save() {
   dateTouched.value = true
   if (!valid || !form.accountActiveAt || saving.value) return
   if (expiresErrors.value.length) return // 到期日期违反激活/策略窗口约束（错误已经徽标呈现）
+  // 出生即过期警告（2026-11-04 定稿）：到期日早于今天 → 警告视觉确认框，
+  // 用户可继续创建（后端方案 B 落地后将被服务端拒收兜底）或取消回表单调整
+  if (form.accountExpiresAt && dayjs(form.accountExpiresAt).isBefore(dayjs().startOf('day'))) {
+    const go = await dialog.confirm({
+      message: t('security.users.createExpiredWarn', { date: form.accountExpiresAt }),
+      tone: 'warning',
+      okText: t('security.users.createAnyway'),
+    })
+    if (!go) return
+  }
   const ro: CreateUserRo = {
     userName: form.userName.trim(),
     password: form.password,

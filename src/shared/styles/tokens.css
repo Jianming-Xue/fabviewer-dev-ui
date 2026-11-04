@@ -175,6 +175,12 @@ body {
   color: #fff;
 }
 
+/* 字段问号提示多行文案（2026-11-04）：密码策略等 hint 以 \n 分行（每项一行、行首「* 」），
+   pre-line 保留换行渲染；单行 hint 不受影响。经 content-class="vui-field-hint-tip" 命中 */
+.vui-table-tip.vui-field-hint-tip {
+  white-space: pre-line;
+}
+
 /* ===== Vuetify 组件圆角对齐阶梯 ===== */
 .v-application {
   font-family: var(--vui-font-ui);

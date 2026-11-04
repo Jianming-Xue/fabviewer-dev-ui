@@ -97,6 +97,6 @@ export default {
     pwdNeedDigit: 'Password must contain at least one digit',
     pwdNeedUpper: 'Password must contain at least one uppercase letter',
     pwdNeedLower: 'Password must contain at least one lowercase letter',
-    pwdNeedSpecial: 'Password must contain at least one of the defined special characters',
+    pwdNeedSpecial: 'Password must contain at least one special character: {chars}',
   },
 }

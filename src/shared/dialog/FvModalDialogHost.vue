@@ -39,9 +39,14 @@ const { state, settle } = useModalDialog()
 
 const current = computed(() => state.current)
 const kind = computed<DialogKind | null>(() => current.value?.kind ?? null)
-const icon = computed(() => (kind.value ? ICONS[kind.value] : ''))
-const iconColor = computed(() => (kind.value ? ICON_COLORS[kind.value] : 'var(--vui-text)'))
-const buttons = computed(() => (kind.value ? BUTTONS[kind.value] : null))
+/** 确认类借警告视觉（2026-11-04 tone 选项）：图标/图标色/OK 钮色三处换警告档，按钮结构仍是 Cancel+OK */
+const toneWarn = computed(() => kind.value === 'confirm' && current.value?.options.tone === 'warning')
+const icon = computed(() => (toneWarn.value ? ICONS.warning : kind.value ? ICONS[kind.value] : ''))
+const iconColor = computed(() => (toneWarn.value ? ICON_COLORS.warning : kind.value ? ICON_COLORS[kind.value] : 'var(--vui-text)'))
+const buttons = computed(() => {
+  const base = kind.value ? BUTTONS[kind.value] : null
+  return base && toneWarn.value ? { ...base, okColor: 'warning' } : base
+})
 // 无队列项时 kind=null，跳过 t('dialog.null') 评估（避免 intlify 缺键告警）
 const title = computed(() => current.value?.options.title ?? (kind.value ? t(`dialog.${kind.value}`) : ''))
 const okText = computed(() => current.value?.options.okText ?? t('common.ok'))

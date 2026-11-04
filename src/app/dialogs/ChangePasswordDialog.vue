@@ -7,7 +7,7 @@ import FvLogo from '@/app/images/FvLogo.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { changePasswordRequest } from '@/api/security-management/requests/authRequest'
 import { useAuthStore } from '@/app/stores/auth'
-import { FALLBACK_PWD_MAX, FALLBACK_PWD_MIN, newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
+import { newPwdPolicyHint, newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
 import { ApiError } from '@/shared/api/errors'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
@@ -43,18 +43,9 @@ const pwdRules = {
   match: (v: string) => v === pwdForm.next || t('topbar.passwordMismatch'),
 }
 
-/** 新密码要求提示（问号 tooltip）：随策略动态生成，无策略时即基础 6~18 */
-const policyHint = computed(() => {
-  const p = auth.loginPolicy
-  const bits = [t('validation.pwdLen', { min: p?.passwdMinLength ?? FALLBACK_PWD_MIN, max: p?.passwdMaxLength ?? FALLBACK_PWD_MAX })]
-  if (p) {
-    if (p.passwdRequireDigit) bits.push(t('validation.pwdNeedDigit'))
-    if (p.passwdRequireUpperChar) bits.push(t('validation.pwdNeedUpper'))
-    if (p.passwdRequireLowerChar) bits.push(t('validation.pwdNeedLower'))
-    if (p.passwdRequireSpecialChar) bits.push(t('validation.pwdNeedSpecial'))
-  }
-  return bits.join('；')
-})
+/** 新密码要求提示（问号 tooltip）：共享生成器随策略动态产出（2026-11-04 统一口径），
+ *  每项一行、行首「* 」；与登录页改密卡同源同格式，无策略时即基础 6~18 */
+const policyHint = computed(() => newPwdPolicyHint(() => auth.loginPolicy, t))
 
 /**
  * 提交：成功 → 关窗 + 全局成功 Toast；失败 → 失败 Dialog 展示接口 errMsg（弹窗保留可重试）

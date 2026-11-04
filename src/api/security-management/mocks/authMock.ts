@@ -14,7 +14,7 @@ import type { UserDto } from '../types/userTypes'
  * - 登录失败（新壳 success:0）+ errMsg 机器码特殊口径，密码输触发词演示：
  *   `fail`=AUTH_FAILED（密码错误）/ `expired`=ACCOUNT_EXPIRED /
  *   `locked`=ACCOUNT_LOCKED / `pwdexpired`=PASSWORD_EXPIRED / `first`=FIRST_LOGIN（首次登录须改密）/
- *   `noteffective`=ACCOUNT_NOT_EFFECTIVE（账户未生效）
+ *   `noteffective`=ACCOUNT_NOT_EFFECTIVE（账户未生效）/ `notfound`=UserNotFound（用户不存在）
  * - 修改密码：旧密码输 `fail` 常规壳失败（success:0 + 文案）
  * - 权限清单：`admin` 全功能 / `test` 仅角色+服务挂起原因配置 / 其他用户名空清单（fail-closed 演示）
  */
@@ -31,6 +31,7 @@ const LOGIN_FAIL_TRIGGERS: Record<string, LoginFailCode> = {
   locked: 'ACCOUNT_LOCKED',
   pwdexpired: 'PASSWORD_EXPIRED',
   first: 'FIRST_LOGIN',
+  notfound: 'UserNotFound',
 }
 
 const p2 = (n: number) => String(n).padStart(2, '0')

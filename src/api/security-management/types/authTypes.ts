@@ -43,6 +43,7 @@ export type LoginFailCode =
   | 'ACCOUNT_LOCKED' // 账户锁定
   | 'PASSWORD_EXPIRED' // 密码过期
   | 'FIRST_LOGIN' // 首次登录须修改密码
+  | 'UserNotFound' // 用户不存在（2026-11-04 真实后端 code 通道实测为帕斯卡拼写，照码收录）
 
 const LOGIN_FAIL_CODES: readonly LoginFailCode[] = [
   'AUTH_FAILED',
@@ -51,6 +52,7 @@ const LOGIN_FAIL_CODES: readonly LoginFailCode[] = [
   'ACCOUNT_LOCKED',
   'PASSWORD_EXPIRED',
   'FIRST_LOGIN',
+  'UserNotFound',
 ]
 
 /** errMsg 是否为登录失败机器码 */

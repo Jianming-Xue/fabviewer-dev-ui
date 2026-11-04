@@ -192,6 +192,45 @@ const dis = await ev(`(function(){
 const DIS = JSON.parse(dis)
 check('UI-16 Admin-Policy 行编辑+删除钮置灰（' + DIS.length + ' 钮全禁）', DIS.length > 0 && DIS.every((d) => d.dis), dis)
 
+// ===== 5b · 出生即过期警告（2026-11-04 定稿）：到期早于今天 → 警告确认框，取消不提交 =====
+await send('Page.navigate', { url: 'http://localhost:5173/security/users' })
+await waitFor(`document.body.innerText.indexOf('FvAdmin')>=0`, 'users page for warn test')
+await sleep(800)
+const newBtn2 = await ev(`(function(){var b=Array.from(document.querySelectorAll('button')).find(function(x){return (x.getAttribute('aria-label')||'').indexOf('新增')>=0});var r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+await clickPos(newBtn2.x, newBtn2.y)
+await waitFor(`!!document.querySelector('.vui-base-dialog') && Array.from(document.querySelector('.vui-base-dialog').querySelectorAll('input')).length>=4`, '创建弹窗')
+await sleep(800)
+// 填用户名/昵称/密码（前两个 text + 首个 password）
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var ti=Array.from(d.querySelectorAll('input[type=text]'));var pi=d.querySelector('input[type=password]');var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(ti[0],'ZCWarn');ti[0].dispatchEvent(new Event('input',{bubbles:true}));s.call(ti[1],'warn');ti[1].dispatchEvent(new Event('input',{bubbles:true}));s.call(pi,'Pass1234');pi.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
+await sleep(400)
+// 角色/策略下拉各选第一项
+for (let i = 0; i < 2; i++) {
+  const sel = await ev(`(function(){var sels=Array.from(document.querySelector('.vui-base-dialog').querySelectorAll('.v-select'));var r=sels[${i}].getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
+  await clickPos(sel.x, sel.y); await sleep(900)
+  await ev(`(function(){var it=Array.from(document.querySelectorAll('.v-overlay--active .v-list-item')).filter(function(x){return x.getClientRects().length>0})[0];if(it)it.click();return true})()`)
+  await sleep(600)
+}
+// 激活日期先填 2019-01-01（段=input.fv-timer__seg）；等策略联动重算落定后再填到期——
+// 同批同步填会被「激活变动重算到期（策略 -1 清空）」的微任务覆盖（既有产品行为，真实用户操作有间隔）
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var asegs=Array.from(timers[0].querySelectorAll('input.fv-timer__seg'));['2019','01','01'].forEach(function(v,i){s.call(asegs[i],v);asegs[i].dispatchEvent(new Event('input',{bubbles:true}));});return asegs.length})()`)
+await sleep(900)
+await ev(`(function(){var d=document.querySelector('.vui-base-dialog');var timers=Array.from(d.querySelectorAll('.fv-timer__box'));var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;var segs=Array.from(timers[1].querySelectorAll('input.fv-timer__seg'));['2020','01','02'].forEach(function(v,i){s.call(segs[i],v);segs[i].dispatchEvent(new Event('input',{bubbles:true}));});return segs.length})()`)
+await sleep(500)
+// 提交 → 警告确认框应弹出（叠于创建弹窗之上）
+await ev(`(function(){var b=Array.from(document.querySelectorAll('.vui-base-dialog button')).find(function(x){return x.textContent.trim()==='确认'||x.textContent.trim()==='确定'});if(b)b.click();return true})()`)
+await waitFor(`Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('继续创建')>=0})`, '出生即过期警告框')
+await sleep(600)
+const warnTxt = await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).find(function(x){return x.innerText.indexOf('继续创建')>=0});return d?d.innerText:''})()`)
+check('出生即过期：警告框弹出（过期文案+继续创建/取消二选）', warnTxt.includes('过期') && warnTxt.includes('取消'), warnTxt.replace(/\n/g, '|').slice(0, 90))
+// 取消 → 警告关、创建弹窗保留、不提交
+await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).find(function(x){return x.innerText.indexOf('继续创建')>=0});var b=Array.from(d.querySelectorAll('button')).find(function(x){return x.textContent.trim()==='取消'});if(b)b.click();return true})()`)
+await sleep(900)
+const afterCancel = await ev(`JSON.stringify({warnGone: !Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('继续创建')>=0}), createStill: Array.from(document.querySelectorAll('.vui-base-dialog')).some(function(d){return d.innerText.indexOf('ZCWarn')>=0 || (d.querySelector('input[type=password]')!==null)}), noRow: document.body.innerText.indexOf('ZCWarn')<0})`)
+const AC = JSON.parse(afterCancel)
+check('警告取消：不提交（列表无 ZCWarn）且创建弹窗保留可调整', AC.warnGone && AC.createStill && AC.noRow, afterCancel)
+await ev(`(function(){var d=Array.from(document.querySelectorAll('.vui-base-dialog')).find(function(x){return x.querySelector('input[type=password]')!==null});var b=d?Array.from(d.querySelectorAll('button')).find(function(x){return x.textContent.trim()==='取消'}):null;if(b)b.click();return true})()`)
+await sleep(700)
+
 // ===== 6 · 登出 =====
 await ev(`(function(){var av=document.querySelector('header .v-avatar')||document.querySelector('.v-avatar');if(av)av.dispatchEvent(new MouseEvent('click',{bubbles:true}));return true})()`)
 await sleep(900)

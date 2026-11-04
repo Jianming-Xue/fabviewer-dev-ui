@@ -13,6 +13,9 @@ export interface DialogOptions {
   okText?: string
   /** 覆盖 Cancel 按钮文案（仅确认类，默认 取消） */
   cancelText?: string
+  /** 确认类专属（2026-11-04）：'warning' = 借警告视觉（警告图标+警告色 OK 钮）的确认框——
+   *  「警告后二选一」场景（如出生即过期账户仍要创建）；其余 kind 忽略本字段 */
+  tone?: 'warning'
 }
 
 interface PendingDialog {

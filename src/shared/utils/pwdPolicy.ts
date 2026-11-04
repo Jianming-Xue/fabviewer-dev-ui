@@ -38,8 +38,37 @@ export function newPwdPolicyRule(
           .split('')
           .some((c) => policy.passwdSpecials.includes(c))
       )
-        return t('validation.pwdNeedSpecial')
+        return t('validation.pwdNeedSpecial', { chars: policy.passwdSpecials.join('') })
     }
     return true
   }
+}
+
+/**
+ * 新密码要求提示文案（2026-11-04 统一口径）：与 newPwdPolicyRule 同源生成——
+ * 有策略按策略（长度上下限 + 四个开关逐项），无策略即基础长度限制；
+ * 每项一行、行首「* 」，行间以 \n 分隔（FvTextInput 问号 tooltip 经
+ * vui-field-hint-tip 的 white-space: pre-line 按行渲染）。
+ * 登录页改密卡与顶栏改密弹窗共用，保证两处提示一致。
+ */
+export function newPwdPolicyHint(
+  getPolicy: () => PolicyDto | null | undefined,
+  t: (key: string, named?: Record<string, unknown>) => string,
+): string {
+  const policy = getPolicy()
+  const bits = [
+    t('validation.pwdLen', {
+      min: policy?.passwdMinLength ?? FALLBACK_PWD_MIN,
+      max: policy?.passwdMaxLength ?? FALLBACK_PWD_MAX,
+    }),
+  ]
+  if (policy) {
+    if (policy.passwdRequireDigit) bits.push(t('validation.pwdNeedDigit'))
+    if (policy.passwdRequireUpperChar) bits.push(t('validation.pwdNeedUpper'))
+    if (policy.passwdRequireLowerChar) bits.push(t('validation.pwdNeedLower'))
+    // 特殊字符行带出策略字符集（2026-11-04 增强）：连排展示，同 PolicyEditDialog 的 SPECIAL_CHARS 惯例
+    if (policy.passwdRequireSpecialChar)
+      bits.push(t('validation.pwdNeedSpecial', { chars: policy.passwdSpecials.join('') }))
+  }
+  return bits.map((bit) => `* ${bit}`).join('\n')
 }

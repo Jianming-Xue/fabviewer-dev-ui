@@ -96,6 +96,6 @@ export default {
     pwdNeedDigit: '密码须包含至少一个数字',
     pwdNeedUpper: '密码须包含至少一个大写字母',
     pwdNeedLower: '密码须包含至少一个小写字母',
-    pwdNeedSpecial: '密码须包含至少一个指定的特殊字符',
+    pwdNeedSpecial: '密码须包含至少一个特殊字符：{chars}',
   },
 }

@@ -21,7 +21,18 @@ function brief(detail: unknown): string {
   return text.length > DETAIL_MAX ? `${text.slice(0, DETAIL_MAX)}…` : text
 }
 
+/**
+ * 浏览器良性噪音过滤（2026-11-04）：ResizeObserver loop 告警——布局观察回调在一帧内
+ * 未派发完，浏览器下一帧自动重试，无功能影响（窗口尺寸变化时 Vuetify 组件常见）。
+ * 命中即不弹用户 Toast，只留控制台痕迹。
+ */
+function isResizeObserverNoise(detail: unknown): boolean {
+  const text = detail instanceof Error ? detail.message : typeof detail === 'string' ? detail : ''
+  return text.includes('ResizeObserver loop')
+}
+
 function notify(detail: unknown) {
+  if (isResizeObserverNoise(detail)) return
   const now = Date.now()
   if (now - lastToastAt < TOAST_THROTTLE_MS) return
   lastToastAt = now

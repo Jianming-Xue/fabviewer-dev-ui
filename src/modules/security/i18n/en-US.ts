@@ -93,6 +93,8 @@ export default {
       deleteConfirm: 'Delete user "{name}"? The account will no longer be able to sign in.',
       deleteEnabledBlocked: 'User "{name}" is currently enabled and cannot be deleted. Disable it first, then try again.',
       builtinNoDisable: 'Built-in users cannot be disabled',
+      createExpiredWarn: 'The expiry date {date} is earlier than today. The account will be expired immediately after creation and unable to sign in. Create it anyway?',
+      createAnyway: 'Create anyway',
       enabledUpdated: 'Status updated',
       created: 'User created',
       updated: 'User updated',

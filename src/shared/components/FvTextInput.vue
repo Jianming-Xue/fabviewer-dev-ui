@@ -117,7 +117,7 @@ function onClearClick() {
     <template v-if="customLabel" #label>
       <span v-if="props.required" class="fv-field__required-star">*</span>
       <span>{{ label }}</span>
-      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip vui-field-hint-tip">
         <template #activator="{ props: tipProps }">
           <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
         </template>
@@ -153,7 +153,7 @@ function onClearClick() {
     <template v-if="customLabel" #label>
       <span v-if="props.required" class="fv-field__required-star">*</span>
       <span>{{ label }}</span>
-      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip">
+      <v-tooltip v-if="props.showHint && props.hint" :text="props.hint" content-class="vui-table-tip vui-field-hint-tip">
         <template #activator="{ props: tipProps }">
           <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
         </template>

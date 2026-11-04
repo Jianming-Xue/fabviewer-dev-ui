@@ -11,7 +11,7 @@ import LoginArtReport from '@/app/images/LoginArtReport.vue'
 import { changePasswordRequest } from '@/api/security-management/requests/authRequest'
 import { LoginFailError } from '@/api/security-management/types/authTypes'
 import { useAuthStore } from '@/app/stores/auth'
-import { newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
+import { newPwdPolicyHint, newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
 import { ApiError } from '@/shared/api/errors'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
@@ -26,6 +26,7 @@ const LOGIN_FAIL_TEXT: Record<LoginFailCode, string> = {
   ACCOUNT_LOCKED: 'login.failAccountLocked',
   PASSWORD_EXPIRED: 'login.failPasswordExpired',
   FIRST_LOGIN: 'login.failFirstLogin',
+  UserNotFound: 'login.failUserNotFound',
 }
 
 const REMEMBER_KEY = 'vui.rememberUser'
@@ -106,6 +107,10 @@ const rules = {
   match: (v: string) => v === pwdForm.newPassword || t('login.passwordMismatch'),
 }
 
+/** 新密码要求提示（问号 tooltip，2026-11-04）：与顶栏改密弹窗同一生成器、同格式
+ *  （每项一行、行首「* 」）；登录页为未登录场景通常无策略 → 基础长度 6~18 */
+const pwdHint = computed(() => newPwdPolicyHint(() => auth.loginPolicy, t))
+
 /** 模式切换 = 路由跳转（两个独立 URL） */
 function switchMode() {
   pwdFormRef.value?.resetValidation()
@@ -145,6 +150,16 @@ async function onLogin() {
         case 'AUTH_FAILED': // 密码错误：清空密码重输
           form.password = ''
           break
+        case 'UserNotFound': {
+          // 用户不存在（2026-11-04）：清空用户名+密码重输；「记住我」存的正是这个查无此人的
+          // 用户名时一并失效，避免刷新/切卡又回填幽灵用户名
+          const failed = form.username.trim()
+          if (localStorage.getItem(REMEMBER_KEY) === failed) localStorage.removeItem(REMEMBER_KEY)
+          form.username = ''
+          form.password = ''
+          pwdForm.username = ''
+          break
+        }
         case 'PASSWORD_EXPIRED': // 密码过期：自动跳转改密码（用户名经 query 带出）
         case 'FIRST_LOGIN': // 首次登录须改密（2026-10-28）：同跳转改密码
           void router.replace({ path: '/change-password', query: { user: form.username.trim() } })
@@ -284,6 +299,8 @@ const logoutReason = computed(() =>
           type="password"
           :label="t('login.newPassword')"
           :rules="[rules.required, rules.policy]"
+          :hint="pwdHint"
+          show-hint
           required
           autocomplete="new-password"
         />

@@ -93,6 +93,8 @@ export default {
       deleteConfirm: '确认删除用户「{name}」？删除后该账号将无法登录。',
       deleteEnabledBlocked: '用户「{name}」处于启用状态，无法删除。请先禁用该用户后再试。',
       builtinNoDisable: '内置用户不允许禁用',
+      createExpiredWarn: '账户到期日期 {date} 早于今天，创建后该账户将立即处于过期状态、无法登录。仍要继续创建吗？',
+      createAnyway: '继续创建',
       enabledUpdated: '状态已更新',
       created: '用户已创建',
       updated: '用户已更新',
