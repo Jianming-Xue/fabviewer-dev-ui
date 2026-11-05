@@ -5,9 +5,12 @@
  * - density=compact + hide-details 内置；inline 等其余属性经 attrs 透传（inheritAttrs:false）；
  * - v-model 泛型随调用方（字面量联合等精确回流）；初值由调用方提供（单选语义恒有选中项）；
  * - 子项用 FvRadio 声明（value 定选项）。
- * Label 按 FvTextInput 同套组织（2026-10-27 用户定稿）：`label` prop 渲染组标题（控件上方左对齐），
- * `required` 红星 / `hint`+`showHint` 问号 tooltip 同字段规范；**label 为空则整行不渲染**；
- * 需完全客制标题时仍可以 #label 插槽覆盖。
+ * Label 按 FvTextInput 同套组织（2026-10-27 用户定稿，2026-11-05 字体口径补齐）：`label` prop 渲染组标题
+ * （控件上方、与单选圆圈左缘对齐；字体 13px/次要文字色 = FvTextInput 浮动 label 同档，Vuetify v-input
+ * 默认 16px 高对比+16px 缩进由本组件 scoped 样式压回）；`required` 红星 / `hint`+`showHint` 问号 tooltip
+ * 同字段规范（hint 文案可由调用方随选中项动态换，tooltip 走 vui-field-hint-tip 支持多行）；
+ * **label 为空则整行不渲染**；需完全客制标题时仍可以 #label 插槽覆盖。
+ * inline 形态选项间距 column-gap 24px 内部收口（2026-11-05 用户定稿：Vuetify 默认 0 间距过挤）。
  * 悬停不变色 / 浅灰水波纹由 tokens.css 全局交互基线统一保证。
  */
 defineOptions({ inheritAttrs: false })
@@ -35,7 +38,7 @@ const model = defineModel<T>({ set: (v) => v as T })
       <slot name="label">
         <span v-if="required" class="fv-field__required-star">*</span>
         <span>{{ label }}</span>
-        <v-tooltip v-if="showHint && hint" :text="hint" content-class="vui-table-tip">
+        <v-tooltip v-if="showHint && hint" :text="hint" content-class="vui-table-tip vui-field-hint-tip">
           <template #activator="{ props: tipProps }">
             <span v-bind="tipProps" class="fv-field__hint-icon"><v-icon size="13">fas fa-circle-question</v-icon></span>
           </template>
@@ -45,3 +48,21 @@ const model = defineModel<T>({ set: (v) => v as T })
     <slot />
   </v-radio-group>
 </template>
+
+<style scoped>
+/* 组标题字体对齐 FvTextInput 浮动 label（用户定稿 2026-11-05）：13px/18px 行高 + --vui-text-secondary
+   （tokens.css 全局 .v-field-label 同档色源），压掉 Vuetify v-input 默认 16px 高对比与 16px 缩进、
+   补 6px 与单选圆圈左缘对齐 */
+.v-radio-group :deep(.v-input__control > .v-label) {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--vui-text-secondary);
+  margin-inline-start: 6px;
+}
+
+/* inline 形态选项间距拉大（用户定稿 2026-11-05）：Vuetify 默认 0 间距过挤；16px 为 420 弹窗
+   四选项单行放下的上限档（24px 实测末项换行） */
+.v-radio-group :deep(.v-selection-control-group--inline) {
+  column-gap: 16px;
+}
+</style>

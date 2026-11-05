@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
+import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvRadioGroup from '@/shared/components/FvRadioGroup.vue'
 import FvRadio from '@/shared/components/FvRadio.vue'
@@ -16,8 +17,12 @@ import type { ServerHangConfigDto } from '@/api/telemetry-hub/types/srvHangConfi
  * 经 openInteractiveDialog 打开；标题随进入方式切换；单列自上而下布局，宽度走基座默认 420）。
  * 提交收口在本组件（同 RoleEditDialog 模式）：Confirm 即调接口（新增 id=null / 编辑 id=选中行），
  * 成功 → emit('resolve', 落库后的 Dto) + 关窗（页面只做表格回显）；失败 → showOpError 留窗可重试。
- * 匹配方式四选单选（§4.2）：% 拼装提交 / 回显拆分（matchMode.ts）；任一组选「精确匹配」显现三后果警告条（§3）；
- * 5 分钟生效提示（§6）置弹窗正文尾部。
+ * 匹配方式四选单选（§4.2）：% 拼装提交 / 回显拆分（matchMode.ts）；精确匹配三后果说明（§3）改由
+ * 匹配方式 Hint 问号 tooltip 承载（2026-11-05 用户定稿移除底部警告条）；Start/End 标志行改 comment 多行形态（同日）；
+ * 编辑态禁改 Rule Name（输入框禁用，2026-11-05 定稿）；Hang Reason 维持自由文本输入
+ * （候选下拉 manualInput 方案同日回滚，用户另想办法；/hang_reason/list 请求函数保留在接口层备用）。
+ * 5 分钟生效提醒（§6，2026-11-05 用户定稿改版）：原正文尾部静态文案移除，改 Confirm 时先弹
+ * Warning 确认框（语义五件套 confirm + tone:'warning'，层叠于本弹窗之上）——确认才提交、取消不提交留窗。
  */
 const props = defineProps<{ row?: ServerHangConfigDto }>()
 
@@ -25,6 +30,7 @@ const open = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ resolve: [saved: ServerHangConfigDto] }>()
 
 const { t } = useI18n()
+const dialog = useModalDialog()
 const formRef = ref()
 const editing = !!props.row
 const saving = ref(false)
@@ -56,9 +62,6 @@ const lineLikeRules = [
   (v: string) => v.length <= 4000 || t('validation.lengthLimit', { n: 4000 }),
 ]
 
-/** 精确匹配三后果警告（§3）：任一标志行单选落在「精确匹配」即显现 */
-const showExactWarn = computed(() => form.startMode === 'exact' || form.endMode === 'exact')
-
 const matchOptions: { value: MatchMode; label: string }[] = [
   { value: 'leadingFuzzy', label: t('config.match.leading') },
   { value: 'trailingFuzzy', label: t('config.match.trailing') },
@@ -66,9 +69,26 @@ const matchOptions: { value: MatchMode; label: string }[] = [
   { value: 'exact', label: t('config.match.exact') },
 ]
 
+/** 匹配方式 Hint（用户定稿 2026-11-05）：问号 tooltip 说明当前选中方式的提交语义，随选择切换 */
+const MATCH_HINT_KEYS: Record<MatchMode, string> = {
+  leadingFuzzy: 'config.matchHint.leading',
+  trailingFuzzy: 'config.matchHint.trailing',
+  bothFuzzy: 'config.matchHint.both',
+  exact: 'config.matchHint.exact',
+}
+const matchHint = (mode: MatchMode): string => t(MATCH_HINT_KEYS[mode])
+
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid || saving.value) return
+  // 5 分钟生效提醒（2026-11-05 用户定稿）：Confirm 先弹 Warning 确认框——确认才提交，取消不提交、弹窗保留
+  const warned = await dialog.confirm({
+    title: t('config.warn.effectTitle'),
+    message: t('config.warn.effectMsg'),
+    okText: t('common.confirm'),
+    tone: 'warning',
+  })
+  if (!warned) return
   saving.value = true
   const input = {
     id: props.row?.id ?? null,
@@ -99,65 +119,55 @@ async function save() {
     <!-- 单列自上而下（用户定稿 2026-10-27）：Rule Name → Hang Reason → Start 输入 → Start 匹配方式
          → End 输入 → End 匹配方式；块级堆叠走 .vui-form-col（与栅格同节奏）；宽度走基座默认 420 -->
     <v-form ref="formRef" class="pt-1 vui-form-col" @submit.prevent="save">
+      <!-- 编辑态禁改 Rule Name（用户定稿 2026-11-05）：禁用输入框，仅新增可录 -->
       <FvTextInput
         v-model="form.ruleName"
-        :label="t('config.form.ruleName')"
+        :label="t('config.columns.ruleName')"
         :rules="ruleNameRules"
         :hint="t('config.form.ruleNameHint')"
         show-hint
         required
         counter="255"
+        :disabled="editing"
       />
       <FvTextInput
         v-model="form.hangReason"
-        :label="t('config.form.hangReason')"
+        :label="t('config.columns.hangReason')"
         :rules="hangReasonRules"
         :hint="t('config.form.hangReasonHint')"
         show-hint
         required
         counter="255"
       />
+      <!-- Start/End 标志行改多行（comment 形态，用户定稿 2026-11-05）：长日志文本软换行可视 -->
       <FvTextInput
         v-model="form.startText"
-        :label="t('config.form.startLine')"
+        :label="t('config.columns.startLineLike')"
         :rules="lineLikeRules"
         :hint="t('config.form.lineLikeHint')"
         show-hint
         required
         counter="4000"
+        type="comment"
       />
       <!-- 匹配方式单选（§4.2）：FvRadio 族（选中色/尺寸内部收口；label 走 FvTextInput 同套组织） -->
-      <FvRadioGroup v-model="form.startMode" inline :label="t('config.form.matchMode')">
+      <FvRadioGroup v-model="form.startMode" inline :label="t('config.form.matchMode')" show-hint :hint="matchHint(form.startMode)">
         <FvRadio v-for="opt in matchOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
       </FvRadioGroup>
       <FvTextInput
         v-model="form.endText"
-        :label="t('config.form.endLine')"
+        :label="t('config.columns.endLineLike')"
         :rules="lineLikeRules"
         :hint="t('config.form.lineLikeHint')"
         show-hint
         required
         counter="4000"
+        type="comment"
       />
-      <FvRadioGroup v-model="form.endMode" inline :label="t('config.form.matchMode')">
+      <FvRadioGroup v-model="form.endMode" inline :label="t('config.form.matchMode')" show-hint :hint="matchHint(form.endMode)">
         <FvRadio v-for="opt in matchOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
       </FvRadioGroup>
 
-      <!-- 精确匹配三后果警告（§3）：任一组选「精确匹配」即显现 -->
-      <div v-if="showExactWarn" class="shc-exact-warn" role="note">
-        <v-icon icon="fas fa-circle-exclamation" color="warning" size="small" />
-        <ul>
-          <li>{{ t('config.form.exactWarn1') }}</li>
-          <li>{{ t('config.form.exactWarn2') }}</li>
-          <li>{{ t('config.form.exactWarn3', { chars: '%…%' }) }}</li>
-        </ul>
-      </div>
-
-      <!-- 5 分钟生效提示（§6）：动作发生处告知 -->
-      <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
-        <v-icon icon="fas fa-clock" size="x-small" />
-        {{ t('config.delayHint') }}
-      </div>
     </v-form>
 
     <template #actions>
@@ -167,26 +177,3 @@ async function save() {
   </FvInteractiveDialog>
 </template>
 
-<style scoped>
-/* 精确匹配警告条：警告色 12% 混透明底 + 控件档圆角，颜色全走令牌 */
-.shc-exact-warn {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 4px 3px 7px;
-  padding: 8px 12px;
-  border-radius: var(--vui-radius-s);
-  background: color-mix(in srgb, var(--vui-warning) 12%, transparent);
-}
-
-.shc-exact-warn ul {
-  margin: 0;
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--vui-text);
-}
-</style>

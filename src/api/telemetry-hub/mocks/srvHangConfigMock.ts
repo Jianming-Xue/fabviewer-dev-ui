@@ -21,7 +21,7 @@ const cfgRows: ServerHangConfigDto[] = [
     startLineLike: '%CALL AMA SEND LOT HOLD%',
     endLineLike: '%AMA REPLY LOT HOLD%',
     enabled: true,
-    lastUpdatedAt: '2026-10-11 14:32:05',
+    lastUpdatedAt: '20261011143205',
     lastUpdatedBy: 'MORRISLI',
   },
   {
@@ -31,7 +31,7 @@ const cfgRows: ServerHangConfigDto[] = [
     startLineLike: 'EQP IF RETRY START%',
     endLineLike: 'EQP IF RETRY END%',
     enabled: true,
-    lastUpdatedAt: '2026-10-09 09:18:44',
+    lastUpdatedAt: '20261009091844',
     lastUpdatedBy: 'TANYU',
   },
   {
@@ -41,7 +41,7 @@ const cfgRows: ServerHangConfigDto[] = [
     startLineLike: '%MCS CARRIER SYNC BEGIN%',
     endLineLike: '%MCS CARRIER SYNC END',
     enabled: false,
-    lastUpdatedAt: '2026-10-02 17:41:12',
+    lastUpdatedAt: '20261002174112',
     lastUpdatedBy: 'MORRISLI',
   },
 ]
@@ -57,10 +57,11 @@ function uniqueConflict(input: ServerHangConfigRo, excludeId: string | null): st
   return dup ? '相同 Rule 名称与挂起原因的配置已存在' : null
 }
 
+/** 审计时间：Mock 扮演后端直接说 wire（YYYYMMDDHHmmss，2026-11-04 真实后端联调口径），入站解码归请求层 */
 function now(): string {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
 }
 
 /** 审计用户（演示口径）：取登录会话持久化的用户名，未登录回落 MOCK_USER */
@@ -89,10 +90,11 @@ registerMock('GET', '/telemetry-hub/api/v1/srv_hang_cfg/page', ({ params }) => {
   return ok(page)
 })
 
-registerMock('POST', '/telemetry-hub/api/v1/srv_hang_cfg/state', ({ body }) => {
-  const row = cfgRows.find((r) => r.id === body?.id)
+// state/delete 走 URL query 传参（2026-11-04 晚真实后端口径，body 形态报 RequireParameterMissing）
+registerMock('POST', '/telemetry-hub/api/v1/srv_hang_cfg/state', ({ params }) => {
+  const row = cfgRows.find((r) => r.id === String(params?.id ?? ''))
   if (!row) return fail('配置不存在或已被删除')
-  row.enabled = Boolean(body?.enabled)
+  row.enabled = params?.enabled === true || params?.enabled === 'true'
   row.lastUpdatedAt = now()
   row.lastUpdatedBy = currentUser()
   return ok(null)
@@ -133,8 +135,13 @@ registerMock('PUT', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
   return ok(row)
 })
 
-registerMock('DELETE', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
-  const idx = cfgRows.findIndex((r) => r.id === body?.id)
+// 6 · Hang Reason 候选字典（活引用 cfgRows：增改原因即时反映；真实后端接口未部署，mock 先行）
+registerMock('GET', '/telemetry-hub/api/v1/srv_hang_cfg/hang_reason/list', () =>
+  ok({ hangReason: [...new Set(cfgRows.map((r) => r.hangReason))].sort() }),
+)
+
+registerMock('DELETE', '/telemetry-hub/api/v1/srv_hang_cfg', ({ params }) => {
+  const idx = cfgRows.findIndex((r) => r.id === String(params?.id ?? ''))
   if (idx < 0) return fail('配置不存在或已被删除')
   cfgRows.splice(idx, 1)
   return ok(null)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { showOpError } from '@/shared/api/opError'
@@ -48,9 +48,28 @@ async function loadPage(page = pageContent.pageIndex) {
 
 onMounted(() => loadPage(1))
 
-/** Enabled 开关：FvTable 先写回行再抛 switch-change；失败回拨该格（§4.1 就地改不重拉） */
+/** 分页组件触发重查（角色页同定式，2026-11-05 修：此前漏挂 watch，点页码/换每页条数只回写
+ *  pageContent 不发请求）：FvTable 经 v-model 回写 pageIndex/pageSize，取数归消费方；
+ *  换 pageSize 回第 1 页由 FvTable 内部 setPageSize 处理，此处无需重复 */
+watch(
+  () => [pageContent.pageIndex, pageContent.pageSize] as const,
+  () => loadPage(),
+)
+
+/** Enabled 开关：FvTable 先写回行再抛 switch-change；失败回拨该格（§4.1 就地改不重拉）。
+ *  2026-11-05 用户定稿：提交前先弹 Warning 确认框（5 分钟生效提醒）——取消=回拨开关不提交 */
 async function onSwitchChange({ item, value }: { item: ServerHangConfigDto; key: string; value: boolean }) {
   const prev = !value
+  const ok = await dialog.confirm({
+    title: t('config.warn.effectTitle'),
+    message: t('config.warn.toggleMsg'),
+    okText: t('common.confirm'),
+    tone: 'warning',
+  })
+  if (!ok) {
+    item.enabled = prev
+    return
+  }
   try {
     await toggleSrvHangConfigState(item.id, value)
   } catch {
@@ -80,12 +99,13 @@ async function onEdit(row: ServerHangConfigDto) {
   rows.value = rows.value.map((r) => (r.id === updated.id ? updated : r))
 }
 
-// ===== 删除（§4.1：弹框确认后调用；公共确认 Dialog） =====
+// ===== 删除（§4.1：弹框确认后调用；2026-11-05 改 Warning 调确认框：生效延迟+历史不回算口径入文案） =====
 async function onDelete(row: ServerHangConfigDto) {
   const ok = await dialog.confirm({
     title: t('common.delete'),
-    message: t('common.deleteConfirm'),
+    message: t('config.warn.deleteMsg'),
     okText: t('common.delete'),
+    tone: 'warning',
   })
   if (!ok) return
   try {
@@ -100,7 +120,10 @@ async function onDelete(row: ServerHangConfigDto) {
 </script>
 
 <template>
-  <section class="shc-page">
+  <!-- vui-fill（tokens.css 满高页面约定）：根元素允许收缩到内容区高——Body 区（.vui-content）不出滚动条，
+       纵向滚动交给 FvTable 内部（工具行/分页条固定）。2026-11-05 修：此前漏挂该类，根节点吃
+       .vui-content>* 默认 flex:1 0 auto 不收缩，真实数据 20 行把内容区撑出页面级滚动条 -->
+  <section class="shc-page vui-fill">
     <!-- 单卡铺满（角色页同构布局链）：卡不描边（FvTable 自带框），表格区内部滚动 -->
     <v-card elevation="0" class="shc-result">
       <div class="shc-table">
