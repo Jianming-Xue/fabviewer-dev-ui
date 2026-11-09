@@ -56,10 +56,11 @@ export function deleteSrvHangConfig(id: string): Promise<null> {
 }
 
 /** 6 · Hang Reason 候选字典（GET，srv_hang_cfg 加后缀 /hang_reason/list，2026-11-05 用户定稿接口口径；
- *  后端尚未部署（实测 404）。UI 候选下拉方案同日回滚（用户另想办法）——本函数与 mock handler 暂为
- *  备用无人调用；silent 抑制全局错误 Dialog，将来接入时调用方失败自行降级） */
-export function fetchHangReasonList(): Promise<{ hangReason: string[] }> {
-  return telemetryRequest<{ hangReason: string[] }>('fetchHangReasonList', 'GET', '/api/v1/srv_hang_cfg/hang_reason/list', {
+ *  **后端已部署（2026-11-05 傍晚实测 200）**——实测 data 为裸字符串数组（如 ["Lock-Lot"]），
+ *  非早前预留的 {hangReason:[...]} 对象形态，签名随实测对齐；编辑弹窗 FvTextSelect(allowCreate)
+ *  消费；silent 抑制全局错误 Dialog，调用方失败自行降级纯手输 */
+export function fetchHangReasonList(): Promise<string[]> {
+  return telemetryRequest<string[]>('fetchHangReasonList', 'GET', '/api/v1/srv_hang_cfg/hang_reason/list', {
     silent: true,
   })
 }

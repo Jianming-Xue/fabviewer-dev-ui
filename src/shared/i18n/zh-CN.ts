@@ -35,6 +35,7 @@ export default {
     operation: '操作',
     empty: '暂无数据',
     emptyHint: '未查询到符合条件的记录',
+    selectCreateSuffix: '按 Enter 或点击创建并选择',
     loading: '加载中…',
     loadError: '加载失败',
     deleteConfirm: '确认删除该条配置？已产出的历史记录不受影响。',

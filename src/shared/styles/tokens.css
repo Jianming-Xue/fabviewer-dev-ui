@@ -479,9 +479,11 @@ html.vui-light .v-application {
   color: rgb(var(--v-theme-on-primary));
 }
 
-/* ===== 用户弹窗两列栅格（CreateUserDialog / EditUserDialog 共用，2026-10-19 定稿） =====
+/* ===== 两列表单栅格（CreateUserDialog / EditUserDialog 共用，2026-10-19 定稿；
+   2026-11-05 增通用名 .vui-form-grid——Server Hang Config 弹窗两列化引入，旧名同源别名保留） =====
    DOM 顺序即行分配；跨两列元素挂 .vui-user-form--span；
    FvTimer 拉满所在列（框左右缘与首行控件对齐），时钟钮贴框右缘 */
+.vui-form-grid,
 .vui-user-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

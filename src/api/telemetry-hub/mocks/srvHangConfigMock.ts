@@ -135,9 +135,9 @@ registerMock('PUT', '/telemetry-hub/api/v1/srv_hang_cfg', ({ body }) => {
   return ok(row)
 })
 
-// 6 · Hang Reason 候选字典（活引用 cfgRows：增改原因即时反映；真实后端接口未部署，mock 先行）
+// 6 · Hang Reason 候选字典（活引用 cfgRows：增改原因即时反映；出参形态对齐真实后端=裸字符串数组，2026-11-05 实测）
 registerMock('GET', '/telemetry-hub/api/v1/srv_hang_cfg/hang_reason/list', () =>
-  ok({ hangReason: [...new Set(cfgRows.map((r) => r.hangReason))].sort() }),
+  ok([...new Set(cfgRows.map((r) => r.hangReason))].sort()),
 )
 
 registerMock('DELETE', '/telemetry-hub/api/v1/srv_hang_cfg', ({ params }) => {

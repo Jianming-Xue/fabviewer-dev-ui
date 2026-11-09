@@ -88,5 +88,7 @@ export default createVuetify({
     VTextField: { variant: 'outlined', density: 'compact' },
     VSelect: { variant: 'outlined', density: 'compact' },
     VAutocomplete: { variant: 'outlined', density: 'compact' },
+    // FvTextSelect 2026-11-05 换核：allowCreate=true 走 VCombobox，与其余字段控件同口径
+    VCombobox: { variant: 'outlined', density: 'compact' },
   },
 })

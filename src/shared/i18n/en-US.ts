@@ -35,6 +35,7 @@ export default {
     operation: 'Actions',
     empty: 'No data',
     emptyHint: 'No records match the given criteria',
+    selectCreateSuffix: 'Press Enter or click to create and select',
     loading: 'Loading…',
     loadError: 'Failed to load',
     deleteConfirm: 'Delete this configuration? Historical records are not affected.',
