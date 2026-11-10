@@ -3,6 +3,8 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { copyText } from '@/shared/utils/clipboard'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import FvBaseDialog from './FvBaseDialog.vue'
 import { useModalDialog, type DialogKind } from './useModalDialog'
 
@@ -109,15 +111,16 @@ watch(current, () => {
 
     <template #actions>
       <!-- 复制/取消均为普通按钮（无色 → 全局透明底 + 主色边框，见 tokens.css） -->
-      <v-btn v-if="buttons?.copy" @click="copyContent">
+      <FvNormalButton v-if="buttons?.copy" @click="copyContent">
         {{ copied ? t('common.copied') : t('common.copy') }}
-      </v-btn>
-      <v-btn v-if="buttons?.cancel" @click="settle(false)">
+      </FvNormalButton>
+      <FvNormalButton v-if="buttons?.cancel" @click="settle(false)">
         {{ current?.options.cancelText ?? t('common.cancel') }}
-      </v-btn>
-      <v-btn v-if="buttons" :color="buttons.okColor" @click="settle(true)">
+      </FvNormalButton>
+      <!-- ok 恒带语义色（success/error/warning/info/primary，见 BUTTONS）→ 主操作钮 color 透传 -->
+      <FvPrimaryButton v-if="buttons" :color="buttons.okColor" @click="settle(true)">
         {{ okText }}
-      </v-btn>
+      </FvPrimaryButton>
     </template>
   </FvBaseDialog>
 </template>

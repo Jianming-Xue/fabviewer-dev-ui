@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
+import FvIconButton from './FvIconButton.vue'
+
 /**
  * 圆形头像裁剪器（2026-10-22）：图片模式选图后在预览区框圆裁剪——
  * 圆内拖拽平移 + 缩放滑杆（cover 基准 1~3×），松手/拖动结束即自动裁剪提交；
@@ -170,9 +172,7 @@ function nudge(delta: number) {
     </div>
     <!-- 缩放行：真实 ± 小按钮贴两端但留边距（padding 12px），中缝滑杆 -->
     <div class="fv-cropper__zoom">
-      <v-btn icon variant="text" size="x-small" :aria-label="'zoom -'" @click="nudge(-0.25)">
-        <v-icon size="12" icon="fas fa-minus" />
-      </v-btn>
+      <FvIconButton icon="fas fa-minus" :icon-size="12" size="x-small" label="zoom -" @click="nudge(-0.25)" />
       <v-slider
         v-model="zoom"
         :min="1"
@@ -184,9 +184,7 @@ function nudge(delta: number) {
         @update:model-value="onZoomMove"
         @end="commit"
       />
-      <v-btn icon variant="text" size="x-small" :aria-label="'zoom +'" @click="nudge(0.25)">
-        <v-icon size="12" icon="fas fa-plus" />
-      </v-btn>
+      <FvIconButton icon="fas fa-plus" :icon-size="12" size="x-small" label="zoom +" @click="nudge(0.25)" />
     </div>
   </div>
 </template>

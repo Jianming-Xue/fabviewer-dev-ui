@@ -6,6 +6,7 @@ import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import { fetchRuleInfoDetail } from '@/api/telemetry-hub/requests/ruleInfo'
 import type { RuleInfoDto } from '@/api/telemetry-hub/types/types'
 import { downloadBlob } from '@/shared/utils/download'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
 
 /**
  * Rule Info Detail 弹窗（§4.2，经 openInteractiveDialog 打开）：游标式按需加载
@@ -93,7 +94,7 @@ function downloadAll() {
         class="vui-mono vui-log-line"
       >{{ line }}</div>
       <div v-if="loading" class="text-center py-3">
-        <v-progress-circular indeterminate size="20" width="2" color="primary" />
+        <FvSpinner :size="20" />
       </div>
       <div v-if="finished" class="text-center text-body-2 text-medium-emphasis py-3">
         {{ t('ruleSearch.ruleLog.finished') }}
@@ -105,15 +106,15 @@ function downloadAll() {
       <v-tooltip location="top">
         <template #activator="{ props: tipProps }">
           <span v-bind="tipProps" class="fv-rule-log__cause">
-            <v-btn variant="text" disabled>{{ t('ruleSearch.ruleLog.rootCause') }}</v-btn>
+            <FvNormalButton variant="text" disabled>{{ t('ruleSearch.ruleLog.rootCause') }}</FvNormalButton>
           </span>
         </template>
         {{ t('ruleSearch.hang.disabledTip') }}
       </v-tooltip>
-      <v-btn v-if="finished" variant="outlined" @click="downloadAll">
+      <FvNormalButton v-if="finished" variant="outlined" @click="downloadAll">
         {{ t('common.fullDownload') }}
-      </v-btn>
-      <v-btn @click="open = false">{{ t('common.close') }}</v-btn>
+      </FvNormalButton>
+      <FvNormalButton @click="open = false">{{ t('common.close') }}</FvNormalButton>
     </template>
   </FvInteractiveDialog>
 </template>

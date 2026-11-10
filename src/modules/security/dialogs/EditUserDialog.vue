@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import { updateUser } from '@/api/security-management/requests/userRequest'
 import type {
   UserDto,
@@ -99,8 +101,8 @@ async function save() {
       />
     </v-form>
     <template #actions>
-      <v-btn @click="open = false">{{ t('common.cancel') }}</v-btn>
-      <v-btn color="primary" :loading="saving" @click="save">{{ t('common.confirm') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
+      <FvPrimaryButton :loading="saving" @click="save">{{ t('common.confirm') }}</FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

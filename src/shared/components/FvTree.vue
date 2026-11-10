@@ -2,6 +2,7 @@
 import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import FvIconButton from './FvIconButton.vue'
 import FvTreeList from './FvTreeList.vue'
 
 /**
@@ -174,26 +175,22 @@ defineExpose({ expandAll, collapseAll, checkAll })
     <div class="fv-tree-box__divider" />
     <div class="fv-tree-box__actions">
       <!-- 只读态隐藏全选钮（折叠钮保留供浏览） -->
-      <v-btn
+      <FvIconButton
         v-if="!readonly"
-        icon
-        variant="text"
         size="x-small"
         :class="`fv-tree-box__check--${checkState}`"
-        :aria-label="checkState === 'on' ? t('common.unselectAll') : t('common.selectAll')"
+        :label="checkState === 'on' ? t('common.unselectAll') : t('common.selectAll')"
         @click="onCheckAllToggle"
       >
         <v-icon :icon="checkAllIcon" size="16" />
-      </v-btn>
-      <v-btn
-        icon
-        variant="text"
+      </FvIconButton>
+      <FvIconButton
         size="x-small"
-        :aria-label="collapseState === 'expanded' ? t('common.collapseAll') : t('common.expandAll')"
+        :label="collapseState === 'expanded' ? t('common.collapseAll') : t('common.expandAll')"
         @click="onCollapseToggle"
       >
         <v-icon :icon="collapseAllIcon" size="15" />
-      </v-btn>
+      </FvIconButton>
     </div>
   </div>
 </template>

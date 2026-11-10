@@ -11,6 +11,8 @@ import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
+import FvCard from '@/shared/components/FvCard.vue'
 import RoleEditDialog from '../dialogs/RoleEditDialog.vue'
 import RolePermissionDialog from '../dialogs/RolePermissionDialog.vue'
 import {
@@ -156,7 +158,7 @@ async function remove(role: RoleDto) {
 <template>
   <section class="vui-roles-page vui-fill">
     <!-- 上：搜索卡片（Enter / 点击查询） -->
-    <v-card elevation="0" border class="vui-roles-search">
+    <FvCard border class="vui-roles-search">
       <v-form class="d-flex align-end ga-3 pa-4" @submit.prevent="search">
         <FvTextInput
           v-model="keywordInput"
@@ -168,11 +170,11 @@ async function remove(role: RoleDto) {
         />
         <FvSearchButton class="vui-roles-search-btn" @click="search" />
       </v-form>
-    </v-card>
+    </FvCard>
 
     <!-- 下：结果卡片（仅表格 + New Role；向下铺满，表格区内部滚动）；
          边框由 FvTable 自带（2026-10-16），卡片不再描边避免双重框 -->
-    <v-card elevation="0" class="vui-roles-result">
+    <FvCard class="vui-roles-result">
       <div class="vui-roles-table">
 
       <FvTable
@@ -207,15 +209,15 @@ async function remove(role: RoleDto) {
         />
         <FvTableHeader :title="t('security.roles.col.permissions')" data-key="permissions" header-type="custom">
           <template #default="{ item }">
-            <v-btn
+            <FvPrimaryButton
               variant="text"
               size="small"
-              color="primary"
+             
               prepend-icon="fas fa-key"
               @click.stop="openPermissions(item as RoleDto)"
             >
               {{ t('security.roles.permCount', { n: (item as RoleDto).permissions.length }) }}
-            </v-btn>
+            </FvPrimaryButton>
           </template>
         </FvTableHeader>
         <!-- 受控按钮按控件权限显隐（用户定稿）：全无权时不声明操作列（FvTable 无 actions 即无此列） -->
@@ -228,7 +230,7 @@ async function remove(role: RoleDto) {
         />
       </FvTable>
       </div>
-    </v-card>
+    </FvCard>
   </section>
 </template>
 

@@ -4,6 +4,8 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 
 import FvCheckbox from '@/shared/components/FvCheckbox.vue'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 
 import { useSearchStore, type ColumnSettings } from '../stores/search'
 
@@ -80,10 +82,10 @@ function confirm() {
 
       <v-spacer />
       <div class="d-flex justify-end ga-3 mt-6">
-        <v-btn @click="emit('update:modelValue', false)">
+        <FvNormalButton @click="emit('update:modelValue', false)">
           {{ t('common.cancel') }}
-        </v-btn>
-        <v-btn color="primary" @click="confirm">{{ t('common.confirm') }}</v-btn>
+        </FvNormalButton>
+        <FvPrimaryButton @click="confirm">{{ t('common.confirm') }}</FvPrimaryButton>
       </div>
     </div>
   </v-navigation-drawer>

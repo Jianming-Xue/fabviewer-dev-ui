@@ -12,6 +12,7 @@ import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
+import FvCard from '@/shared/components/FvCard.vue'
 import CreateUserDialog from '../dialogs/CreateUserDialog.vue'
 import EditUserDialog from '../dialogs/EditUserDialog.vue'
 import ChangeUserStateDialog from '../dialogs/ChangeUserStateDialog.vue'
@@ -278,7 +279,7 @@ async function remove(user: UserDto) {
 <template>
   <section class="vui-users-page vui-fill">
     <!-- 上：搜索卡片（Enter / 点击查询） -->
-    <v-card elevation="0" border class="vui-users-search">
+    <FvCard border class="vui-users-search">
       <v-form class="d-flex align-end ga-3 pa-4" @submit.prevent="search">
         <FvTextInput
           v-model="keywordInput"
@@ -290,11 +291,11 @@ async function remove(user: UserDto) {
         />
         <FvSearchButton class="vui-users-search-btn" @click="search" />
       </v-form>
-    </v-card>
+    </FvCard>
 
     <!-- 下：结果卡片（仅表格 + New User；向下铺满，表格区内部滚动）；
          边框由 FvTable 自带，卡片不再描边避免双重框 -->
-    <v-card elevation="0" class="vui-users-result">
+    <FvCard class="vui-users-result">
       <div class="vui-users-table">
         <FvTable
           v-model:page-index="pageIndex"
@@ -436,7 +437,7 @@ async function remove(user: UserDto) {
           <FvTableHeader header-type="action" :actions="rowActions" :more-menu="moreMenu" />
         </FvTable>
       </div>
-    </v-card>
+    </FvCard>
   </section>
 </template>
 

@@ -5,6 +5,10 @@ import { useI18n } from 'vue-i18n'
 
 import FvMultiValueCell from '@/shared/components/FvMultiValueCell.vue'
 import { formatThousands, msToSeconds } from '@/shared/utils/time'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
+import FvCard from '@/shared/components/FvCard.vue'
+import FvAlertStrip from '@/shared/components/FvAlertStrip.vue'
 import { useSearchStore } from '../stores/search'
 import { buildResultColumns, type ResultColumn } from './resultColumns'
 import type { RuleInfoDto } from '@/api/telemetry-hub/types/types'
@@ -110,20 +114,18 @@ const pageSizeItems = [20, 50, 100] // 档位（§3.1）
 </script>
 
 <template>
-  <v-card elevation="0" border>
+  <FvCard border>
     <!-- 错误态：请求失败 + 重试（05 §4.3 六件套） -->
-    <v-alert
+    <FvAlertStrip
       v-if="loadError"
-      type="error"
-      variant="tonal"
-      density="compact"
+      kind="error"
       class="ma-4"
       :title="t('ruleSearch.states.errorTitle')"
     >
-      <v-btn size="small" color="error" variant="text" @click="store.changePage(pageIndex)">
+      <FvNormalButton size="small" color="error" variant="text" @click="store.changePage(pageIndex)">
         {{ t('common.retry') }}
-      </v-btn>
-    </v-alert>
+      </FvNormalButton>
+    </FvAlertStrip>
 
     <v-data-table
       :headers="headerList"
@@ -175,9 +177,9 @@ const pageSizeItems = [20, 50, 100] // 档位（§3.1）
         <v-tooltip location="top">
           <template #activator="{ props }">
             <span v-bind="props">
-              <v-btn size="small" variant="tonal" color="error" disabled @click="emit('open-hang')">
+              <FvNormalButton size="small" variant="tonal" color="error" disabled @click="emit('open-hang')">
                 Hang ({{ item.hangCount }})
-              </v-btn>
+              </FvNormalButton>
             </span>
           </template>
           {{ t('ruleSearch.hang.disabledTip') }}
@@ -215,21 +217,21 @@ const pageSizeItems = [20, 50, 100] // 档位（§3.1）
     <!-- 下方操作按钮（§四）：次按钮组 | 主按钮组（不超过 2 个主按钮，05 §4.7） -->
     <v-divider />
     <div class="d-flex align-center ga-3 pa-3">
-      <v-btn variant="outlined" :disabled="!hasRows || loading" @click="emit('export')">
+      <FvNormalButton variant="outlined" :disabled="!hasRows || loading" @click="emit('export')">
         Export
-      </v-btn>
-      <v-btn variant="outlined" :disabled="loading" @click="emit('open-columns')">
+      </FvNormalButton>
+      <FvNormalButton variant="outlined" :disabled="loading" @click="emit('open-columns')">
         {{ t('common.optionalColumns') }}
-      </v-btn>
+      </FvNormalButton>
       <v-divider vertical class="mx-2 my-1" />
-      <v-btn color="primary" :disabled="!canAct" @click="emit('open-rule-log')">
+      <FvPrimaryButton :disabled="!canAct" @click="emit('open-rule-log')">
         {{ t('ruleSearch.buttons.ruleLog') }}
-      </v-btn>
-      <v-btn color="primary" :disabled="!canAct" @click="emit('full-log')">
+      </FvPrimaryButton>
+      <FvPrimaryButton :disabled="!canAct" @click="emit('full-log')">
         {{ t('ruleSearch.buttons.fullLog') }}
-      </v-btn>
+      </FvPrimaryButton>
     </div>
-  </v-card>
+  </FvCard>
 </template>
 
 <style scoped>

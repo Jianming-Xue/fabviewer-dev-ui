@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
+import FvIconButton from '@/shared/components/FvIconButton.vue'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import ChangeUserAvatarDialog from './ChangeUserAvatarDialog.vue'
@@ -100,10 +102,8 @@ async function editAvatar() {
           <v-list-item-title class="text-body-2 text-medium-emphasis font-regular">{{ row.label }}</v-list-item-title>
           <template #append>
             <span class="vui-profile__value text-body-2">{{ row.value || '—' }}</span>
-            <v-btn
+            <FvIconButton
               v-if="row.att"
-              icon
-              variant="text"
               size="x-small"
               color="primary"
               class="ml-1"
@@ -111,14 +111,14 @@ async function editAvatar() {
               @click="editRow(row.att)"
             >
               <v-icon size="14">fas fa-pen</v-icon>
-            </v-btn>
+            </FvIconButton>
           </template>
         </v-list-item>
       </v-list>
     </div>
     <template #actions>
       <!-- 关闭 = 普通按钮（项目约定 2026-10-18：关闭/取消/重置不指定颜色与变体） -->
-      <v-btn @click="open = false">{{ t('common.close') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.close') }}</FvNormalButton>
     </template>
   </FvInteractiveDialog>
 </template>

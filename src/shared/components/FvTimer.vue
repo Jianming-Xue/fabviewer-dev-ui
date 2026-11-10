@@ -2,6 +2,9 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import FvIconButton from './FvIconButton.vue'
+import FvNormalButton from './FvNormalButton.vue'
+
 /**
  * 全局日期时间输入（shared，2026-10-18 v2 定稿）：全系统日期/时间选择统一入口。
  * - 单一输入框分段呈现：年/月/日 与 时/分/秒 各自独立可选段，键盘直接输入、满位自动跳格、
@@ -660,51 +663,43 @@ watch(menu, (open) => {
               >
                 <div class="vui-cal-ctrl">
                   <div class="vui-cal-ctrl__group">
-                    <v-btn
-                      icon
-                      variant="text"
+                    <FvIconButton
+                      icon="fas fa-angles-left"
+                      :icon-size="14"
                       size="x-small"
                       density="default"
-                      :aria-label="t('timer.prevYear')"
+                      :label="t('timer.prevYear')"
                       @click="prevYear()"
-                    >
-                      <v-icon icon="fas fa-angles-left" size="14" />
-                    </v-btn>
-                    <v-btn
-                      icon
-                      variant="text"
+                    />
+                    <FvIconButton
+                      icon="fas fa-chevron-left"
+                      :icon-size="14"
                       size="x-small"
                       density="default"
-                      :aria-label="t('timer.prevMonth')"
+                      :label="t('timer.prevMonth')"
                       @click="prevMonth()"
-                    >
-                      <v-icon icon="fas fa-chevron-left" size="14" />
-                    </v-btn>
+                    />
                   </div>
                   <span class="vui-cal-ctrl__text">{{
                     calYearMonthText(monthText, yearText)
                   }}</span>
                   <div class="vui-cal-ctrl__group">
-                    <v-btn
-                      icon
-                      variant="text"
+                    <FvIconButton
+                      icon="fas fa-chevron-right"
+                      :icon-size="14"
                       size="x-small"
                       density="default"
-                      :aria-label="t('timer.nextMonth')"
+                      :label="t('timer.nextMonth')"
                       @click="nextMonth()"
-                    >
-                      <v-icon icon="fas fa-chevron-right" size="14" />
-                    </v-btn>
-                    <v-btn
-                      icon
-                      variant="text"
+                    />
+                    <FvIconButton
+                      icon="fas fa-angles-right"
+                      :icon-size="14"
                       size="x-small"
                       density="default"
-                      :aria-label="t('timer.nextYear')"
+                      :label="t('timer.nextYear')"
                       @click="nextYear()"
-                    >
-                      <v-icon icon="fas fa-angles-right" size="14" />
-                    </v-btn>
+                    />
                   </div>
                 </div>
               </template>
@@ -744,14 +739,14 @@ watch(menu, (open) => {
             </template>
             <!-- 面板下方确认钮（用户定稿 2026-10-18）：确认前日历/滚轮选择只进草稿不回显；confirmDisabled 可在定义处禁用 -->
             <div class="fv-timer__foot">
-              <v-btn
+              <FvNormalButton
                 variant="text"
                 size="small"
                 :disabled="props.confirmDisabled || props.disabled"
                 @click="confirmPanel"
               >
                 {{ t('timer.confirm') }}
-              </v-btn>
+              </FvNormalButton>
             </div>
           </div>
         </v-menu>

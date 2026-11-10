@@ -8,6 +8,8 @@ import type { FvFeature } from '@/shared/module'
 import FvLogo from '@/app/images/FvLogo.vue'
 import FvNavItem from '@/shared/components/FvNavItem.vue'
 import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
+import FvIconButton from '@/shared/components/FvIconButton.vue'
+import FvMenuList from '@/shared/components/FvMenuList.vue'
 import FvSupportBot from '@/app/layouts/FvSupportBot.vue'
 import { useLocale } from '@/app/composables/useLocale'
 import { useAuthStore } from '@/app/stores/auth'
@@ -33,6 +35,11 @@ const languageItems = [
   { title: '中文', value: 'zh-CN' },
   { title: 'English', value: 'en-US' },
 ]
+
+/** 语言菜单项（FvMenuList 声明式，2026-11-10 收敛批）：当前项挂 active 勾选 */
+const languageMenuItems = computed(() =>
+  languageItems.map((l) => ({ key: l.value, label: l.title, active: locale.value === l.value })),
+)
 
 const rail = ref(false)
 
@@ -198,6 +205,19 @@ async function onLogout() {
   await auth.logout()
   router.replace('/login')
 }
+
+/** 用户菜单项（FvMenuList 声明式，2026-11-10 收敛批） */
+const userMenuItems = computed(() => [
+  { key: 'profile', icon: 'fas fa-address-card', label: t('topbar.profileMenu') },
+  { key: 'password', icon: 'fas fa-key', label: t('topbar.changePassword') },
+  { key: 'logout', icon: 'fas fa-arrow-right-from-bracket', label: t('topbar.logout') },
+])
+
+function onUserMenuSelect(key: string) {
+  if (key === 'profile') onShowProfile()
+  else if (key === 'password') onChangePassword()
+  else void onLogout()
+}
 </script>
 
 <template>
@@ -239,65 +259,52 @@ async function onLogout() {
 
     <!-- 顶部栏：吸顶 + 毛玻璃（高度 48px，用户调优 2026-10-14） -->
     <v-app-bar flat :height="48" class="vui-topbar">
-      <v-app-bar-nav-icon :title="rail ? t('app.title') : ''" size="small" @click="toggleRail">
+      <!-- 汉堡钮：保留 v-app-bar-nav-icon 类（Vuetify app-bar 自带样式钩子），基座收敛 FvIconButton -->
+      <FvIconButton
+        class="v-app-bar-nav-icon"
+        :title="rail ? t('app.title') : ''"
+        size="small"
+        @click="toggleRail"
+      >
         <v-icon icon="fas fa-bars" size="18" />
-      </v-app-bar-nav-icon>
+      </FvIconButton>
       <v-breadcrumbs :items="breadcrumbs" class="pa-0" />
       <v-spacer />
 
       <!-- 右侧操作组：语言 / 主题 / 用户，统一间距（ga-4）、垂直居中、距右 24px（用户定稿 2026-10-14） -->
       <div class="vui-topbar-actions">
         <!-- 语言选择：图标按钮 + 弹出菜单（中文 / English，当前项带勾选） -->
-        <v-menu location="bottom end">
+        <FvMenuList :items="languageMenuItems" @select="setLocale($event as AppLocale)">
           <template #activator="{ props: menuProps }">
             <v-tooltip location="bottom" open-delay="300" :text="t('topbar.language')">
               <template #activator="{ props: tipProps }">
-                <v-btn
+                <FvIconButton
                   v-bind="{ ...menuProps, ...tipProps }"
-                  icon
-                  variant="text"
-                  size="small"
-                  :aria-label="t('topbar.language')"
+                  :label="t('topbar.language')"
                 >
                   <v-icon icon="fas fa-language" size="18" />
-                </v-btn>
+                </FvIconButton>
               </template>
             </v-tooltip>
           </template>
-          <v-list density="compact" class="py-1" min-width="150">
-            <v-list-item
-              v-for="lang in languageItems"
-              :key="lang.value"
-              :title="lang.title"
-              :active="locale === lang.value"
-              @click="setLocale(lang.value as AppLocale)"
-            >
-              <template #append>
-                <v-icon v-if="locale === lang.value" icon="fas fa-check" size="14" />
-              </template>
-            </v-list-item>
-          </v-list>
-        </v-menu>
+        </FvMenuList>
 
         <v-tooltip location="bottom" :text="t('topbar.theme')">
           <template #activator="{ props }">
-            <v-btn
+            <FvIconButton
               v-bind="props"
-              icon
-              variant="text"
-              size="small"
-              :aria-label="t('topbar.theme')"
+              :label="t('topbar.theme')"
               @click="toggleTheme"
             >
               <v-icon :icon="themeIcon" size="18" />
-            </v-btn>
+            </FvIconButton>
           </template>
         </v-tooltip>
 
         <!-- 用户图像：点击弹出菜单（修改密码 / 登出） -->
-        <v-menu v-model="userMenu" location="bottom end">
+        <FvMenuList v-model="userMenu" :items="userMenuItems" :min-width="180" @select="onUserMenuSelect">
           <template #activator="{ props: menuProps }">
-            <v-btn v-bind="menuProps" icon variant="text" size="small" :aria-label="t('topbar.user')">
+            <FvIconButton v-bind="menuProps" :label="t('topbar.user')">
               <!-- 头像统一渲染（2026-10-22）：JSON 配置（字母/表情）或图片，空=退化首字母 -->
               <FvUserAvatar
                 :avatar="auth.profile.avatar"
@@ -305,26 +312,9 @@ async function onLogout() {
                 :fallback-name="auth.profile.nickName || auth.profile.name"
                 :size="24"
               />
-            </v-btn>
+            </FvIconButton>
           </template>
-          <v-list density="compact" class="py-1" min-width="180">
-            <v-list-item
-              prepend-icon="fas fa-address-card"
-              :title="t('topbar.profileMenu')"
-              @click="onShowProfile"
-            />
-            <v-list-item
-              prepend-icon="fas fa-key"
-              :title="t('topbar.changePassword')"
-              @click="onChangePassword"
-            />
-            <v-list-item
-              prepend-icon="fas fa-arrow-right-from-bracket"
-              :title="t('topbar.logout')"
-              @click="onLogout"
-            />
-          </v-list>
-        </v-menu>
+        </FvMenuList>
       </div>
     </v-app-bar>
 

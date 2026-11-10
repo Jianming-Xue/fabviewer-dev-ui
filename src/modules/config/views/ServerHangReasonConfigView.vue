@@ -7,6 +7,7 @@ import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { openInteractiveDialog } from '@/shared/dialog/openInteractiveDialog'
 import FvTable from '@/shared/components/FvTable.vue'
 import FvTableHeader from '@/shared/components/FvTableHeader.vue'
+import FvCard from '@/shared/components/FvCard.vue'
 import ServerHangReasonConfigEditDialog from '../dialogs/ServerHangReasonConfigEditDialog.vue'
 import {
   deleteSrvHangConfig,
@@ -125,7 +126,7 @@ async function onDelete(row: ServerHangConfigDto) {
        .vui-content>* 默认 flex:1 0 auto 不收缩，真实数据 20 行把内容区撑出页面级滚动条 -->
   <section class="shc-page vui-fill">
     <!-- 单卡铺满（角色页同构布局链）：卡不描边（FvTable 自带框），表格区内部滚动 -->
-    <v-card elevation="0" class="shc-result">
+    <FvCard class="shc-result">
       <div class="shc-table">
         <FvTable
           v-model:page-index="pageContent.pageIndex"
@@ -152,7 +153,7 @@ async function onDelete(row: ServerHangConfigDto) {
           <FvTableHeader header-type="action" :actions="['edit', 'delete']" />
         </FvTable>
       </div>
-    </v-card>
+    </FvCard>
   </section>
 </template>
 

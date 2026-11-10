@@ -8,6 +8,8 @@ import FvTextSelect from '@/shared/components/FvTextSelect.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
 import { showOpError } from '@/shared/api/opError'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import { updateUserRolePolicy } from '@/api/security-management/requests/userRequest'
 import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 import {
@@ -228,8 +230,8 @@ async function save() {
       />
     </v-form>
     <template #actions>
-      <v-btn @click="open = false">{{ t('common.cancel') }}</v-btn>
-      <v-btn color="primary" :loading="saving" @click="save">{{ t('common.confirm') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
+      <FvPrimaryButton :loading="saving" @click="save">{{ t('common.confirm') }}</FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

@@ -10,6 +10,8 @@ import FvUserAvatar from '@/shared/components/FvUserAvatar.vue'
 
 import type { FvTabItem } from '@/shared/components/FvTab.vue'
 import { showOpError } from '@/shared/api/opError'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import { updateUserAttribute } from '@/api/security-management/requests/userRequest'
 import { useAuthStore } from '@/app/stores/auth'
 
@@ -310,13 +312,13 @@ async function save() {
             <input ref="fileInput" type="file" accept="image/*" hidden @change="onImageFile" />
             <template v-if="sourceData">
               <!-- 重新选择钮居中、置圆窗上方（不压圆面、不碍拖拽选位）；恢复无需钮——Cancel 即弃稿 -->
-              <v-btn size="small" @click="pickImage">{{ t('topbar.avatarPickAgain') }}</v-btn>
+              <FvNormalButton size="small" @click="pickImage">{{ t('topbar.avatarPickAgain') }}</FvNormalButton>
               <FvImageCropper :src="sourceData" :max-bytes="2048" @cropped="onCropped" />
             </template>
             <template v-else>
-              <v-btn size="small" @click="pickImage">
+              <FvNormalButton size="small" @click="pickImage">
                 {{ imgData ? t('topbar.avatarPickAgain') : t('topbar.avatarPick') }}
-              </v-btn>
+              </FvNormalButton>
               <div class="text-caption text-medium-emphasis vui-avatar__image-name">
                 {{ imgName || t('topbar.avatarPickHint') }}
               </div>
@@ -328,8 +330,8 @@ async function save() {
     </div>
     <template #actions>
       <!-- 取消 = 普通按钮（项目约定 2026-10-18：关闭/取消不指定颜色与变体） -->
-      <v-btn :disabled="saving" @click="open = false">{{ t('common.cancel') }}</v-btn>
-      <v-btn color="primary" :loading="saving" @click="save">{{ t('common.confirm') }}</v-btn>
+      <FvNormalButton :disabled="saving" @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
+      <FvPrimaryButton :loading="saving" @click="save">{{ t('common.confirm') }}</FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

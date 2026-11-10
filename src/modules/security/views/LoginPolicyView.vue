@@ -11,6 +11,7 @@ import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { usePermissionStore } from '@/app/stores/permission'
 import { showOpError } from '@/shared/api/opError'
+import FvCard from '@/shared/components/FvCard.vue'
 import PolicyEditDialog from '../dialogs/PolicyEditDialog.vue'
 import {
   fetchLoginPolicies,
@@ -143,7 +144,7 @@ async function remove(policy: PolicyDto) {
 <template>
   <section class="vui-policy-page vui-fill">
     <!-- 上：搜索卡片（Enter / 点击查询） -->
-    <v-card elevation="0" border class="vui-policy-search">
+    <FvCard border class="vui-policy-search">
       <v-form class="d-flex align-end ga-3 pa-4" @submit.prevent="search">
         <FvTextInput
           v-model="keywordInput"
@@ -155,11 +156,11 @@ async function remove(policy: PolicyDto) {
         />
         <FvSearchButton class="vui-policy-search-btn" @click="search" />
       </v-form>
-    </v-card>
+    </FvCard>
 
     <!-- 下：结果卡片（仅表格 + New；向下铺满，表格区内部滚动）；
          边框由 FvTable 自带，卡片不描边避免双重框 -->
-    <v-card elevation="0" class="vui-policy-result">
+    <FvCard class="vui-policy-result">
       <div class="vui-policy-table">
         <FvTable
           :data="rows"
@@ -228,7 +229,7 @@ async function remove(policy: PolicyDto) {
           />
         </FvTable>
       </div>
-    </v-card>
+    </FvCard>
   </section>
 </template>
 

@@ -2,6 +2,7 @@
 import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import FvSpinner from '@/shared/components/FvSpinner.vue'
 import { loadingVisible } from './loadingState'
 
 /**
@@ -22,7 +23,7 @@ watch(loadingVisible, (visible) => {
     <Transition name="fv-loading">
       <div v-if="loadingVisible" class="fv-loading-host" role="status" aria-live="polite">
         <div class="fv-loading-inner">
-          <v-progress-circular indeterminate :size="44" :width="4" color="primary" />
+          <FvSpinner :size="44" :width="4" />
           <span>{{ t('common.loading') }}</span>
         </div>
       </div>

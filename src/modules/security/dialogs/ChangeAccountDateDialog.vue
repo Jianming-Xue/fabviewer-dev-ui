@@ -6,6 +6,8 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import { showOpError } from '@/shared/api/opError'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import { extendUserExpire } from '@/api/security-management/requests/userRequest'
 import { fetchPolicyDetail } from '@/api/security-management/requests/policyRequest'
 
@@ -111,10 +113,10 @@ async function save() {
       <FvTextInput :model-value="newText" :label="t('security.users.expireNew')" disabled />
     </v-form>
     <template #actions>
-      <v-btn :disabled="saving" @click="open = false">{{ t('common.cancel') }}</v-btn>
-      <v-btn color="primary" :loading="saving" :disabled="!canConfirm" @click="save">
+      <FvNormalButton :disabled="saving" @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
+      <FvPrimaryButton :loading="saving" :disabled="!canConfirm" @click="save">
         {{ t('common.confirm') }}
-      </v-btn>
+      </FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

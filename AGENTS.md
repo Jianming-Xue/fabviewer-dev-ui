@@ -25,6 +25,23 @@ FvBaseDialog（全局基座：三区布局/拖动/开合动画/尺寸上限）
 - 语义弹窗（成功/错误/警告/信息/确认）一律 `useModalDialog()` 五件套；非关键提示一律 `useAlertToast()`。禁止各页面自建 `v-snackbar` / 裸 `v-dialog` / alert。
 - **Dialog 组件一律放在 `dialogs/` 文件夹下**：应用级放 `src/app/dialogs/`，模块级放 `src/modules/<模块>/dialogs/`；不得散落在 `components/`、`views/` 等其他目录。
 
+## 按钮体系（2026-11-10 用户定稿）
+
+全局**禁止裸 `v-btn`**（仅三基座组件内部允许），按钮一律走三基座：
+
+```
+FvIconButton      纯图标钮（预设 icon + variant=text + size=small；icon/iconSize 内置渲染，label→aria-label，复杂内容走默认插槽）
+FvPrimaryButton   主操作钮（预设 color=primary 实底；语义弹窗 ok 钮经 color 覆盖为 success/error/warning/info）
+FvNormalButton    普通文字钮（不指定颜色 → tokens.css 透明底+主色边框档；取消/关闭/重置/次按钮）
+```
+
+专用钮基于三件套换基、对外 API 不变：`FvNewButton`（FvIconButton 芯）、`FvSearchButton`（FvPrimaryButton 芯）、`FvRefreshButton`（FvIconButton 芯）。
+
+- 语义色（error/success/warning/info）不另立组件，一律 `color` prop 透传；variant/size/block 同可覆盖。
+- 三基座为单根薄包装：未声明 attrs（tooltip/menu activator 的 v-bind、`type="submit"`、`to`、class 等）自动落到 v-btn；**包装组件自身不得挂含 `bg-`/`text-` 子串的 class**——tokens.css 普通钮守卫按类名子串匹配，误中会丢透明底+主色边框档。
+- 全局按钮视觉（6px 圆角 !important、涟漪令牌、普通钮描边档）都挂在 tokens.css 的 `.v-btn` 规则上，基座包装后像素不变；改按钮视觉一律改 tokens.css，不改基座。
+- **原生 `<button>` 仅限非按钮语义控件**（色块/轮播圆点/列表行/tab/拖拽浮球等「视觉可点击但不是按钮」者）：它们是正确的无障碍原语，套三件套反会被 tokens.css 的 `.v-btn` 全局规则（普通钮描边档/6px 圆角/悬停不变底基线）误伤、与各自定稿设计冲突；必须带 `type="button"` + aria-label（或 title）。现状九处属此类定稿形态——FvSupportBot 拖拽浮球、LoginView 轮播圆点、ChangeUserAvatarDialog 色块×5、FvStringListEditor 添加条、FvSideList 行、FvTab 项——**禁止为收敛而改套三件套**。
+
 ## 后端交互对象命名（2026-10-17 定稿，2026-10-20 晚目录化补注）
 
 与后端交互的对象：**请求体以 `Ro` 结尾**（Request Object，如 `RoleRo` / `SrvHangCfgRo` / `RuleSearchRo`），

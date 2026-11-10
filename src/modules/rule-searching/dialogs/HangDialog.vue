@@ -9,6 +9,7 @@ import type {
   RuleInfoDto,
 } from '@/api/telemetry-hub/types/types'
 import { msToSeconds } from '@/shared/utils/time'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
 
 /**
  * Server Hang 弹框（§3.6，经 openInteractiveDialog 打开）：本期 Hang 未落库，
@@ -74,7 +75,7 @@ const headers = [
     </v-data-table>
     <template #actions>
       <!-- 弹框只有「关闭」按钮（§3.6） -->
-      <v-btn @click="open = false">{{ t('common.close') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.close') }}</FvNormalButton>
     </template>
   </FvInteractiveDialog>
 </template>

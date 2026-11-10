@@ -16,6 +16,9 @@ import { newPwdPolicyHint, newPwdPolicyRule } from '@/shared/utils/pwdPolicy'
 import { ApiError } from '@/shared/api/errors'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
+import FvCard from '@/shared/components/FvCard.vue'
+import FvAlertStrip from '@/shared/components/FvAlertStrip.vue'
 
 import type { LoginFailCode } from '@/api/security-management/types/authTypes'
 import type { PolicyDto } from '@/api/security-management/types/policyTypes'
@@ -320,21 +323,14 @@ const logoutReason = computed(() =>
 
     <div class="vui-login__stage">
       <transition :name="flipName" mode="out-in">
-        <v-card :key="mode" elevation="0" class="vui-login__card">
+        <FvCard :key="mode" class="vui-login__card">
       <!-- 品牌区：logo 居中放大 + 欢迎语 -->
       <div class="vui-login__brand">
         <FvLogo :size="88" />
         <h1 class="text-h6 font-weight-bold mt-4">{{ mode === 'login' ? t('login.hello') : t('login.changePasswordMode') }}</h1>
       </div>
 
-      <v-alert
-        v-if="logoutReason"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-        :text="logoutReason"
-      />
+      <FvAlertStrip v-if="logoutReason" class="mb-4" :text="logoutReason" />
 
       <!-- 登录模式 -->
       <v-form v-if="mode === 'login'" ref="formRef" class="vui-form-col" @submit.prevent="onLogin">
@@ -356,9 +352,9 @@ const logoutReason = computed(() =>
         />
         <FvCheckbox v-model="form.remember" :label="t('login.rememberMe')" class="mt-1"
         />
-        <v-btn block color="primary" type="submit" :loading="loading" class="mt-6">
+        <FvPrimaryButton block type="submit" :loading="loading" class="mt-6">
           {{ t('login.signIn') }}
-        </v-btn>
+        </FvPrimaryButton>
       </v-form>
 
       <!-- 修改密码模式 -->
@@ -398,9 +394,9 @@ const logoutReason = computed(() =>
           required
           autocomplete="new-password"
         />
-        <v-btn block color="primary" type="submit" :loading="loading" class="mt-2">
+        <FvPrimaryButton block type="submit" :loading="loading" class="mt-2">
           {{ t('login.confirmChange') }}
-        </v-btn>
+        </FvPrimaryButton>
       </v-form>
 
       <!-- 右下角：登录 ⇄ 修改密码 超链接切换（登录态箭头在后向右；修改态箭头在前向左） -->
@@ -414,7 +410,7 @@ const logoutReason = computed(() =>
           {{ t('login.backToLogin') }}
         </a>
       </div>
-    </v-card>
+    </FvCard>
       </transition>
     </div>
   </v-main>

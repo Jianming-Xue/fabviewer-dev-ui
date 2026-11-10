@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import FvIconButton from './FvIconButton.vue'
 
 /**
- * 全局刷新按钮（shared，2026-10-27 抽自 FvTable refresh 内联实现）：
- * 图标钮（fa-rotate-right）+ 悬浮提示，表格/卡片顶刷新等场景通用。
+ * 全局刷新按钮（shared，2026-10-27 抽自 FvTable refresh 内联实现；2026-11-10 换基 FvIconButton，
+ * 对外 API/视觉不变）：图标钮（fa-rotate-right）+ 悬浮提示，表格/卡片顶刷新等场景通用。
  * `loading` 随调用方取数态原地转圈；tooltip 与 aria-label 默认 common.refresh，label 可覆盖。
  * 水波纹走全局图标按钮口径（浅灰涟漪，tokens 基线）。
  */
@@ -24,18 +25,14 @@ const { t } = useI18n()
 <template>
   <v-tooltip location="bottom" content-class="vui-table-tip">
     <template #activator="{ props: tipProps }">
-      <v-btn
+      <FvIconButton
         v-bind="tipProps"
-        icon
-        variant="text"
-        size="small"
+        icon="fas fa-rotate-right"
+        :icon-size="14"
         :loading="loading"
-        :aria-label="label ?? t('common.refresh')"
+        :label="label ?? t('common.refresh')"
         @click="emit('click')"
-      >
-        <!-- 图标 14px（用户定稿 2026-11-04：稍小于默认，与 FvNewButton 加号 12px 同档节奏） -->
-        <v-icon icon="fas fa-rotate-right" size="14" />
-      </v-btn>
+      />
     </template>
     {{ label ?? t('common.refresh') }}
   </v-tooltip>

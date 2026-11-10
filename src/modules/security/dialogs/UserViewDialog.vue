@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
 import { roleNameOf, policyNameOf } from '@/api/security-management/rolePolicyNameCollection'
 
 import type { UserDto } from '@/api/security-management/types/userTypes'
@@ -61,7 +62,7 @@ const rows = computed(() => [
       </div>
     </div>
     <template #actions>
-      <v-btn @click="open = false">{{ t('common.close') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.close') }}</FvNormalButton>
     </template>
   </FvInteractiveDialog>
 </template>

@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import FvNotFoundArt from '@/app/images/FvNotFoundArt.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 
 /**
  * 404 页（2026-10-27）：壳层外全屏独立页（与 LoginView 同级待遇，不进 FvMainLayout）。
@@ -22,12 +23,12 @@ const router = useRouter()
       <p class="nf-desc">{{ t('notFound.description') }}</p>
       <div class="nf-actions">
         <!-- 普通按钮全局规范：透明底 + 主色边框（outlined primary 即是） -->
-        <v-btn variant="outlined" color="primary" to="/" size="large">
+        <FvPrimaryButton variant="outlined" to="/" size="large">
           {{ t('notFound.backHome') }}
-        </v-btn>
-        <v-btn variant="text" color="primary" size="large" @click="router.back()">
+        </FvPrimaryButton>
+        <FvPrimaryButton variant="text" size="large" @click="router.back()">
           {{ t('notFound.goBack') }}
-        </v-btn>
+        </FvPrimaryButton>
       </div>
     </div>
   </div>

@@ -13,6 +13,9 @@ import { useAlertToast } from '@/shared/toast/useAlertToast'
 import FvSwitch from '@/shared/components/FvSwitch.vue'
 import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvTimer from '@/shared/components/FvTimer.vue'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
+import FvCard from '@/shared/components/FvCard.vue'
 import { useSearchStore } from '../stores/search'
 
 const { t } = useI18n()
@@ -127,7 +130,7 @@ function onReset() {
 </script>
 
 <template>
-  <v-card elevation="0" border class="mb-6">
+  <FvCard border class="mb-6">
     <div class="pa-6">
       <!-- 栅格 5 列 × N 行（§2.1：平铺 12 项排 5/5/2） -->
       <div class="vui-filter-grid">
@@ -245,15 +248,15 @@ function onReset() {
 
       <!-- 操作行：底部右对齐，展开更多（幽灵）最左（05 §4.1） -->
       <div class="d-flex justify-end ga-3 mt-4">
-        <v-btn variant="text" color="primary" @click="store.toggleMore()">
+        <FvPrimaryButton variant="text" @click="store.toggleMore()">
           <v-icon :icon="moreShown ? 'fas fa-angles-up' : 'fas fa-angles-down'" start size="14" />
           {{ moreShown ? t('common.collapseMore') : t('common.expandMore') }}
-        </v-btn>
-        <v-btn @click="onReset">{{ t('common.reset') }}</v-btn>
-        <v-btn color="primary" @click="onSearch">{{ t('common.search') }}</v-btn>
+        </FvPrimaryButton>
+        <FvNormalButton @click="onReset">{{ t('common.reset') }}</FvNormalButton>
+        <FvPrimaryButton @click="onSearch">{{ t('common.search') }}</FvPrimaryButton>
       </div>
     </div>
-  </v-card>
+  </FvCard>
 </template>
 
 <style scoped>

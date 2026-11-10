@@ -12,6 +12,8 @@ import { ApiError } from '@/shared/api/errors'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import { useModalDialog } from '@/shared/dialog/useModalDialog'
 import { useAlertToast } from '@/shared/toast/useAlertToast'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 
 /**
  * 修改密码弹窗（主界面顶栏入口）：继承业务弹窗基类 FvInteractiveDialog（2026-10-16 定稿，
@@ -135,10 +137,10 @@ function reset() {
     </v-form>
     <template #actions>
       <!-- 取消 = 普通按钮（关窗）、确认 = 主题色按钮（提交） -->
-      <v-btn :disabled="saving" @click="open = false">{{ t('common.cancel') }}</v-btn>
-      <v-btn color="primary" :loading="saving" @click="submit">
+      <FvNormalButton :disabled="saving" @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
+      <FvPrimaryButton :loading="saving" @click="submit">
         {{ t('common.confirm') }}
-      </v-btn>
+      </FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

@@ -7,6 +7,9 @@ import FvSwitch from './FvSwitch.vue'
 import FvNewButton from './FvNewButton.vue'
 import FvRefreshButton from './FvRefreshButton.vue'
 import FvMultiValueCell from './FvMultiValueCell.vue'
+import FvIconButton from './FvIconButton.vue'
+import FvNormalButton from './FvNormalButton.vue'
+import FvMenuList, { type FvMenuListItem } from './FvMenuList.vue'
 
 /**
  * 全局表格（shared，2026-10-15 声明式版）：组件库表格 + 定制分页条。
@@ -209,6 +212,17 @@ function isActionDisabled(col: ColDef, item: unknown, a: FvTableAction): boolean
 /** more 菜单项禁用解析：布尔=整列禁、谓词=逐行禁（同 headerDisabled 口径） */
 function isMenuItemDisabled(mi: FvTableMenuItem, item: unknown): boolean {
   return typeof mi.disabled === 'function' ? mi.disabled(item) : !!mi.disabled
+}
+
+/** more 菜单项 → FvMenuList 声明式（2026-11-10 收敛批）：disabled 逐行解析为布尔 */
+function moreMenuItems(col: ColDef, item: Row): FvMenuListItem[] {
+  return (col.moreMenu ?? []).map((mi) => ({
+    key: mi.key,
+    label: mi.label,
+    icon: mi.icon,
+    color: mi.color,
+    disabled: isMenuItemDisabled(mi, item),
+  }))
 }
 
 /* ===== 数据展示（insert 回显：本地副本，data 变更即重置） ===== */
@@ -508,7 +522,12 @@ onBeforeUnmount(() => {
           <template v-for="a in col.actions" :key="a">
             <!-- more：「…」下拉菜单入口（FvShell 顶栏同款 v-menu+v-tooltip 合并 activator 模式）；
                  @click.stop 挂 span 而非钮：menu 激活 prop 在 span 上，钮上 stop 会掐断冒泡致菜单不开 -->
-            <v-menu v-if="a === 'more'" location="bottom end">
+            <FvMenuList
+              v-if="a === 'more'"
+              :items="moreMenuItems(col, item as Row)"
+              :min-width="140"
+              @select="(k: string) => emit('more-select', { item: item as Row, key: k })"
+            >
               <template #activator="{ props: menuProps }">
                 <v-tooltip
                   :text="col.actionDisabledHint ?? ''"
@@ -518,31 +537,18 @@ onBeforeUnmount(() => {
                 >
                   <template #activator="{ props: tipProps }">
                     <span v-bind="{ ...menuProps, ...tipProps }" class="fv-table__action-wrap" @click.stop>
-                      <v-btn
-                        icon
-                        variant="text"
+                      <FvIconButton
                         size="x-small"
                         :disabled="isActionDisabled(col, item, a)"
-                        :aria-label="t(ACTION_META.more.label)"
+                        :label="t(ACTION_META.more.label)"
                       >
                         <v-icon :icon="ACTION_META.more.icon" size="14" class="fv-table__more-icon" />
-                      </v-btn>
+                      </FvIconButton>
                     </span>
                   </template>
                 </v-tooltip>
               </template>
-              <v-list density="compact" class="py-1" min-width="140">
-                <v-list-item
-                  v-for="mi in col.moreMenu"
-                  :key="mi.key"
-                  :title="mi.label"
-                  :prepend-icon="mi.icon"
-                  :color="mi.color"
-                  :disabled="isMenuItemDisabled(mi, item)"
-                  @click="emit('more-select', { item: item as Row, key: mi.key })"
-                />
-              </v-list>
-            </v-menu>
+            </FvMenuList>
 
             <!-- edit/delete/view：逐行禁用（内置行保护等）按钮置灰；禁用钮不抛鼠标事件，tooltip 挂外层 span -->
             <v-tooltip
@@ -554,17 +560,15 @@ onBeforeUnmount(() => {
             >
               <template #activator="{ props: tipProps }">
                 <span v-bind="tipProps" class="fv-table__action-wrap">
-                  <v-btn
-                    icon
-                    variant="text"
+                  <FvIconButton
+                    :icon="ACTION_META[a].icon"
+                    :icon-size="14"
                     size="x-small"
                     :color="ACTION_META[a].color"
                     :disabled="isActionDisabled(col, item, a)"
-                    :aria-label="t(ACTION_META[a].label)"
+                    :label="t(ACTION_META[a].label)"
                     @click.stop="(emit as (e: FvTableAction, item: Row) => void)(a, item as Row)"
-                  >
-                    <v-icon :icon="ACTION_META[a].icon" size="14" />
-                  </v-btn>
+                  />
                 </span>
               </template>
             </v-tooltip>
@@ -622,28 +626,25 @@ onBeforeUnmount(() => {
           class="fv-table__size"
           @update:model-value="(v: number) => onPageSize(v)"
         />
-        <v-btn
-          icon
-          variant="text"
+        <FvIconButton
+          icon="fas fa-angles-left"
+          :icon-size="14"
           size="x-small"
           :disabled="pageIndex <= 1"
-          :aria-label="t('common.firstPage')"
+          :label="t('common.firstPage')"
           @click="go(1)"
-        >
-          <v-icon icon="fas fa-angles-left" size="14" />
-        </v-btn>
-        <v-btn
-          icon
-          variant="text"
+        />
+        <FvIconButton
+          icon="fas fa-chevron-left"
+          :icon-size="14"
           size="x-small"
           :disabled="pageIndex <= 1"
-          :aria-label="t('common.prevPage')"
+          :label="t('common.prevPage')"
           @click="go(pageIndex - 1)"
-        >
-          <v-icon icon="fas fa-chevron-left" size="14" />
-        </v-btn>
+        />
         <div class="fv-table__pages">
-          <v-btn
+          <!-- 页码钮非图标钮：当前页 flat+primary、余页 text 无色（吃全局透明底+主色边框档），动态 prop 原样透传 -->
+          <FvNormalButton
             v-for="p in pages"
             :key="p"
             :variant="p === pageIndex ? 'flat' : 'text'"
@@ -653,28 +654,24 @@ onBeforeUnmount(() => {
             @click="go(p)"
           >
             {{ p }}
-          </v-btn>
+          </FvNormalButton>
         </div>
-        <v-btn
-          icon
-          variant="text"
+        <FvIconButton
+          icon="fas fa-chevron-right"
+          :icon-size="14"
           size="x-small"
           :disabled="pageIndex >= totalPage"
-          :aria-label="t('common.nextPage')"
+          :label="t('common.nextPage')"
           @click="go(pageIndex + 1)"
-        >
-          <v-icon icon="fas fa-chevron-right" size="14" />
-        </v-btn>
-        <v-btn
-          icon
-          variant="text"
+        />
+        <FvIconButton
+          icon="fas fa-angles-right"
+          :icon-size="14"
           size="x-small"
           :disabled="pageIndex >= totalPage"
-          :aria-label="t('common.lastPage')"
+          :label="t('common.lastPage')"
           @click="go(totalPage)"
-        >
-          <v-icon icon="fas fa-angles-right" size="14" />
-        </v-btn>
+        />
       </div>
     </template>
   </div>

@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n'
 import FvInteractiveDialog from '@/shared/dialog/FvInteractiveDialog.vue'
 import PermissionTree from '../components/PermissionTree.vue'
 import { showOpError } from '@/shared/api/opError'
+import FvNormalButton from '@/shared/components/FvNormalButton.vue'
+import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
 import { assignRolePermissions } from '@/api/security-management/requests/roleRequest'
 import type { RoleDto } from '@/api/security-management/types/roleTypes'
 
@@ -49,9 +51,9 @@ async function save() {
   >
     <PermissionTree v-model="permissions" :readonly="props.readonly" />
     <template #actions>
-      <v-btn @click="open = false">{{ t('common.cancel') }}</v-btn>
+      <FvNormalButton @click="open = false">{{ t('common.cancel') }}</FvNormalButton>
       <!-- 只读查看态：Confirm 隐藏（用户定稿 2026-10-16，仅保留取消/关闭路径） -->
-      <v-btn v-if="!props.readonly" color="primary" :loading="saving" @click="save">{{ t('common.confirm') }}</v-btn>
+      <FvPrimaryButton v-if="!props.readonly" :loading="saving" @click="save">{{ t('common.confirm') }}</FvPrimaryButton>
     </template>
   </FvInteractiveDialog>
 </template>

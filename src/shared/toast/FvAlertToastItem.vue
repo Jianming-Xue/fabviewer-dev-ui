@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { copyText } from '@/shared/utils/clipboard'
+import FvIconButton from '@/shared/components/FvIconButton.vue'
 import type { ToastItem } from './useAlertToast'
 
 /** 前缀图标（用户定稿 2026-10-14）：FA 圆形实体图标，颜色随语义色（--vui-toast-accent）；15px 与侧栏菜单图标同档 */
@@ -44,31 +45,25 @@ onUnmounted(() => window.clearTimeout(copiedTimer))
     <div class="vui-toast__actions">
       <v-tooltip v-if="item.copyable" location="top" open-delay="300">
         <template #activator="{ props: tipProps }">
-          <v-btn
+          <FvIconButton
             v-bind="tipProps"
-            icon
-            variant="text"
-            size="small"
-            :aria-label="t('common.copy')"
+            :label="t('common.copy')"
             @click="copyMessage"
           >
             <v-icon :icon="copied ? 'fas fa-check' : 'fas fa-copy'" size="15" />
-          </v-btn>
+          </FvIconButton>
         </template>
         {{ copied ? t('common.copied') : t('common.copy') }}
       </v-tooltip>
       <v-tooltip location="top" open-delay="300">
         <template #activator="{ props: tipProps }">
-          <v-btn
+          <FvIconButton
             v-bind="tipProps"
-            icon
-            variant="text"
-            size="small"
-            :aria-label="t('common.close')"
+            :label="t('common.close')"
             @click="emit('close')"
           >
             <v-icon icon="fas fa-xmark" size="15" />
-          </v-btn>
+          </FvIconButton>
         </template>
         {{ t('common.close') }}
       </v-tooltip>
