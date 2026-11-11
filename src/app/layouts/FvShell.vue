@@ -244,13 +244,14 @@ function onUserMenuSelect(key: string) {
           :prepend-icon="homeItem.icon"
           :title="t(homeItem.key)"
           rounded="lg"
+          class="vui-nav-l1"
           @click="router.push(homeItem.path ?? '/')"
         />
 
         <!-- 模块一级（带图标）由壳渲染；功能层递归 FvNavItem（核心模型 FvModule/FvFeature 直消费） -->
         <v-list-group v-for="m in navModules" :key="m.id" :value="m.id">
           <template #activator="{ props: groupProps }">
-            <v-list-item v-bind="groupProps" :prepend-icon="m.icon" :title="t(m.key)" rounded="lg" />
+            <v-list-item v-bind="groupProps" :prepend-icon="m.icon" :title="t(m.key)" rounded="lg" class="vui-nav-l1" />
           </template>
           <FvNavItem v-for="f in m.features" :key="f.id" :feature="f" />
         </v-list-group>
@@ -435,12 +436,35 @@ function onUserMenuSelect(key: string) {
   opacity: 0;
 }
 
-/* 二级菜单：不带图标、缩进对齐一级文字、标准字号 14px、行高与一级一致（44px，用户定稿 2026-10-14） */
-.vui-sidebar__list :deep(.v-list-group__items .v-list-item.vui-nav-child) {
-  height: 44px;
-  min-height: 44px;
-  padding-block: 0;
+/* ===== 菜单层级台阶（2026-11-11 用户定稿）：一级字重加重 → 二级缩进对齐一级文字 →
+   三级再进一档 + 字号降 13px + 字色减淡。高度全层级维持统一 44px（2026-10-14 定稿不动）。 ===== */
+
+/* 一级（Home + 模块组头）：字重加重一档，与二三级拉开 */
+.vui-sidebar__list :deep(.v-list-item.vui-nav-l1) {
+  font-weight: 600;
+}
+
+/* 二级（叶子 + 组头）：不带图标、缩进对齐一级文字、标准字号 14px */
+.vui-sidebar__list :deep(.v-list-item.vui-nav-l2) {
   padding-inline-start: 56px !important;
+}
+
+/* 二级组头：字重微加重，作小节标题与同级叶子区分 */
+.vui-sidebar__list :deep(.v-list-item.vui-nav-group) {
+  font-weight: 500;
+}
+
+/* 三级：缩进再进一步、字号降一档、字色减淡一档（深浅主题随 --vui-sidebar-text 自适应） */
+.vui-sidebar__list :deep(.v-list-item.vui-nav-l3) {
+  padding-inline-start: 72px !important;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--vui-sidebar-text) 78%, transparent);
+}
+
+/* 三级悬停/选中：回到主题色全强度（覆盖上方减淡色；通用 hover/active 规则特异性低于深度类，须在此显式补） */
+.vui-sidebar__list :deep(.v-list-item.vui-nav-l3:hover),
+.vui-sidebar__list :deep(.v-list-item.vui-nav-l3.v-list-item--active) {
+  color: var(--vui-sidebar-active);
 }
 
 /* 顶栏毛玻璃 */
