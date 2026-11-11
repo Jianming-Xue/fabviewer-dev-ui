@@ -559,10 +559,11 @@ html.vui-light .v-application {
   padding-block: 0 !important;
 }
 
-/* ===== 字段错误气泡 + 提示问号（FvTextInput / FvTextSelect 共用，2026-10-20 用户定稿） =====
+/* ===== 字段错误徽标 + 提示问号（徽标=shared FvFieldErrorBadge 单一事实源，2026-11-12 四消费方统一；
+   FvTextInput / FvTextSelect 共用段源自 2026-10-20 用户定稿） =====
    口径：底部 hint/错误 detail 行不再占布局——
    ① hint 文案改挂 label 后问号图标的 tooltip（组件 showHint 开关控制图标显隐）；
-   ② 出现校验错误时，detail 行整体绝对定位悬浮到控件右上角成气泡：
+   ② 出现校验错误时，detail 行整体绝对定位悬浮到控件右上角成角标：
       底=错误色 10% 混浮起色、文字=错误色 12px；无错误消息时整块隐藏（:has 门控） */
 .fv-text-input,
 .fv-text-select {
@@ -593,19 +594,28 @@ html.vui-light .v-application {
   gap: 4px;
 }
 
-/* 错误徽标（用户定稿 2026-10-20 由文字气泡改版）：气球/泡状圆徽——
-   底色沿用错误色 10% 混浮起色配方不变、仍在右上角；悬停 tooltip 显错误信息 */
+/* 错误徽标（用户定稿 2026-10-20 由文字气泡改版；2026-11-12 再定稿去底色/投影=裸图标）：
+   错误色 fa-comment-dots 图标（12px）+ 20px 悬停热区（tooltip 激活用，无底无影不占视觉）；
+   悬停 tooltip 显错误信息 */
 .fv-field__err-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--vui-error) 10%, var(--vui-bg-elevated));
   color: var(--vui-error);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--vui-text) 18%, transparent);
   flex: 0 0 auto;
+}
+
+/* 徽标绝对锚定档（直渲染场景，FvStringListEditor；经 FvFieldErrorBadge 的 anchor prop 启用）：
+   右下角=最近定位祖先（消费方提供 position:relative 容器）右上角——与上两段 .v-input__details
+   锚定（top:24px=label 区高）同一落点口径，只是锚在徽标本体；消费方不自写定位（2026-11-12 统一） */
+.fv-field__err-badge--anchored {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  transform: translateY(-100%);
 }
 
 /* tooltip 错误信息红字：vui-table-tip 深底上走亮红档（正文错误色压深底对比不足，

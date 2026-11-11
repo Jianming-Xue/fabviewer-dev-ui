@@ -10,7 +10,7 @@ import type { ServerHangMonitorCfgDto, ServerHangMonitorCfgRo } from '../types/s
  * list 全量无分页（env 升序）；environment 唯一键——POST 已存在即拒（SrvHangMonitorCfgExists）、
  * PUT/DELETE 不存在即拒（SrvHangMonitorCfgNotFound）；DELETE 走 URL query（srv_hang_cfg 实测口径）。
  * 阈值校验：maxDelay/maxRuleCost 整数 >0 且 ≤65535；通知配置校验与 logMonitorCfgMock 同源
- * （间隔 1~99999 整数 / 邮箱格式 / 飞书 webhook 前缀）。审计时间说 wire（YYYYMMDDHHmmss），解码归请求层。
+ * （间隔 1~99999 整数 / 邮箱格式）。审计时间说 wire（YYYYMMDDHHmmss），解码归请求层。
  */
 const ok = <T>(data: T): TelemetryReplyDto<T> => ({ code: 'OK', success: true, errMsg: '', data, txId: '' })
 const fail = (errMsg: string): TelemetryReplyDto<null> => ({ code: 'FAIL', success: false, errMsg, data: null, txId: '' })
@@ -24,7 +24,6 @@ interface Row extends ServerHangMonitorCfgDto {
 const ENVS = ['PIRUN', 'PROD'] // 与 systemMiscMock 种子 mes.global.environments 同源
 const PRIORITIES = ['P1', 'P2', 'P3', 'P4'] // 与 system.global.priority 种子同源
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const WEBHOOK_RE = /^https:\/\/open\.feishu\.cn\/open-apis\/bot\/v2\/hook\//
 
 let seq = 0
 function mk(environment: string, maxDelay: number, maxRuleCost: number, priority: string, alarmCfg: AlarmCfgRo, updatedAt: string, updatedBy: string): Row {
@@ -47,15 +46,13 @@ const cfgRows: Row[] = [
   mk('PROD', 120, 1800, 'P1', {
     mailToUsers: ['mes-oncall@example.com'],
     mailCCUsers: ['it-manager@example.com'],
-    feishuWebhooks: ['https://open.feishu.cn/open-apis/bot/v2/hook/3f7a1c92-8b4e-4d21-9c57-0a6f5e4d3c2b'],
-    feishuAtUsers: ['ou_1a2b3c4d5e6f'],
+    feishuGroups: { 'MES On-call Group': ['ou_1a2b3c4d5e6f'] },
     notifyInterval: 5,
   }, '20261109103312', 'MORRISLI'),
   mk('PIRUN', 300, 3600, 'P3', {
     mailToUsers: ['mes-dev@example.com'],
     mailCCUsers: [],
-    feishuWebhooks: [],
-    feishuAtUsers: [],
+    feishuGroups: {},
     notifyInterval: 15,
   }, '20261108154421', 'TANYU'),
 ]
@@ -80,8 +77,7 @@ function normAlarm(a: AlarmCfgRo): AlarmCfgRo {
   return {
     mailToUsers: [...(a.mailToUsers ?? [])],
     mailCCUsers: [...(a.mailCCUsers ?? [])],
-    feishuWebhooks: [...(a.feishuWebhooks ?? [])],
-    feishuAtUsers: [...(a.feishuAtUsers ?? [])],
+    feishuGroups: Object.fromEntries(Object.entries(a.feishuGroups ?? {}).map(([k, v]) => [k, [...v]])),
     notifyInterval: a.notifyInterval,
   }
 }
@@ -119,8 +115,6 @@ function validateRo(input: ServerHangMonitorCfgRo): string | null {
   if (!Number.isInteger(iv) || iv < 1 || iv > 99999) return '通知间隔须为 1~99999 的整数（ParameterInvalid）'
   const badMail = [...(input.alarmCfg.mailToUsers ?? []), ...(input.alarmCfg.mailCCUsers ?? [])].filter((m) => !EMAIL_RE.test(m))
   if (badMail.length) return `邮箱格式不合法（ParameterInvalid）：${badMail.join('、')}`
-  const badHook = (input.alarmCfg.feishuWebhooks ?? []).filter((u) => !WEBHOOK_RE.test(u))
-  if (badHook.length) return `飞书 webhook 地址不合法（ParameterInvalid）：${badHook.join('、')}`
   return null
 }
 

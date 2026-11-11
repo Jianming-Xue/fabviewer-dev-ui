@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+import FvFieldErrorBadge from './FvFieldErrorBadge.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
 // 动态核必须显式持组件对象传 :is——autoImport 只认模板字面标签，字符串形态空渲染（实坑留档 d64a42a）
@@ -17,9 +19,9 @@ type PageLoader = (
 
 /**
  * 字段外观契约（2026-10-20 与 FvTextInput 同批定稿）：label / hint / showHint / required——
- * 底部 detail 行不展示 hint（tokens.css「字段错误气泡」段），hint 文案走 label 后问号图标
+ * 底部 detail 行不展示 hint（tokens.css「字段错误徽标」段），hint 文案走 label 后问号图标
  * tooltip（showHint 开关控显隐）；required=true 时 label 前红星；校验错误由 detail 渲染、
- * 全局样式浮成控件右上角气泡。
+ * 全局样式浮成控件右上角角标。
  *
  * 可输入化换核（2026-11-05 用户定稿，同日三批修订 blur 口径）：控件一律可键入——
  * allowCreate=false（默认）走 VAutocomplete 核，键入文本对下拉项逐步过滤（大小写不敏感
@@ -416,13 +418,9 @@ function commitCreateFromRow() {
         </template>
       </v-tooltip>
     </template>
-    <!-- 校验错误：右上角气球徽标（同 FvTextInput 口径，样式在 tokens.css 字段气泡段） -->
+    <!-- 校验错误：右上角图标徽标（同 FvTextInput 口径，样式在 tokens.css 字段错误徽标段） -->
     <template #message="{ message }">
-      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
-        <template #activator="{ props: tipProps }">
-          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
-        </template>
-      </v-tooltip>
+      <FvFieldErrorBadge :message="message" />
     </template>
     <!-- 多选 chip 定制：首项显真实标签（关闭行为经 chip props 透传），第二位显 [+剩余数]，其余不渲染 -->
     <template v-if="isMulti" #chip="{ item, index, props: chipProps }">

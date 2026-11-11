@@ -100,16 +100,17 @@ export default {
       mailTo: 'To',
       mailCc: 'CC',
       feishuSection: 'Feishu Notification',
-      feishuWebhooks: 'Feishu Groups',
-      webhookHint: 'One webhook URL per line (https://open.feishu.cn/open-apis/bot/v2/hook/…)',
+      // feishuGroups Key-Value (2026-11-12 backend merge): Key=group name / Value=open_ids to mention
+      feishuGroupKey: 'Group Name',
+      feishuGroupValue: 'Special Reminder Members (open_id)',
+      feishuGroupValueHint: 'open_id format: ou_ prefix + alphanumerics (e.g. ou_7d3a91c2e4f6); mentioned users must be in the target group, otherwise the mention has no effect (the message is still sent)',
       feishuAtHint: 'Mentioned users must be in the target group, otherwise the mention has no effect (the message is still sent)',
       // Literal @ must be escaped as {'@'} — bare @ is vue-i18n linked-message syntax (compilation SyntaxError)
       // 2026-11-11 user-finalized rename: @ Users -> Special Reminder; former standing gray hint moved to this field's question-mark hint
-      feishuAtUsers: 'Special Reminder',
       validation: {
         intervalRange: 'Integer between 1 and 99999 only',
         emailInvalid: 'Invalid email address: {list}',
-        webhookInvalid: 'Invalid Feishu webhook URL: {list}',
+        openIdRule: 'open_id must be ou_ prefix + alphanumerics (e.g. ou_7d3a91c2e4f6)',
         serializedTooLong: 'Serialized list exceeds 4000 characters',
       },
     },

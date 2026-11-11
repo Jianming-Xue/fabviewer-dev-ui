@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { ComponentPublicInstance } from 'vue'
 
+import FvFieldErrorBadge from './FvFieldErrorBadge.vue'
 import FvIconButton from './FvIconButton.vue'
 
 /**
@@ -31,7 +32,7 @@ import FvIconButton from './FvIconButton.vue'
  * - v-model string[] = **固化行**集合（编辑行草稿不入出参），提交/删除时同步；`maxRows` 到顶隐藏添加行；
  * - **外部变更自动重播种**：v-model 被外部改写成与「最近一次本组件出参」不同的内容时固化行重建
  *   （快照对比防自激回环；在编草稿丢弃属预期）——跨页签/跨 Map key 复用实例不串染（2026-11-09 实测坑）。
- * 消费点：System Misc 编辑弹窗 Json List 页签、模块件 SystemMiscJsonMapEditor（modules/config/components/）右列值区。
+ * 消费点：System Misc 编辑弹窗 Json List 页签、shared FvKeyValueEditor 右列值区（System Misc Json Map 页签 + monitor-alarm 飞书组）。
  */
 const props = withDefaults(
   defineProps<{
@@ -56,6 +57,12 @@ const props = withDefaults(
     hint?: string
     /** 带提示词开关：true 且 hint 非空时 label 后显示问号图标 */
     showHint?: boolean
+    /** 行提交初校验（2026-11-12 飞书 open_id 初校验需求下沉）：返回空串=通过、非空=错误文案——
+     *  不过关则**不固化**（行留编辑态）+ 右上徽标；成功提交/删除/外部重播种清徽标 */
+    rowRule?: (v: string) => string
+    /** 外部错误文案（调用方校验结果下发，2026-11-12 用户定稿：列表字段错误一律右上角图标徽标，
+     *  与 FvTextInput 同款式，取代编辑器下方红字 <p>）；与内部 ruleError 同徽标位、内部优先 */
+    error?: string
   }>(),
   {
     disabled: false,
@@ -69,6 +76,8 @@ const props = withDefaults(
     label: undefined,
     hint: undefined,
     showHint: false,
+    rowRule: undefined,
+    error: undefined,
   },
 )
 
@@ -76,7 +85,7 @@ const model = defineModel<string[]>({ required: true })
 /** 单选选中值（按值匹配；未绑 v-model:selected 时组件内自持） */
 const selected = defineModel<string | null>('selected', { default: null })
 /** 自定义事件四件套（2026-11-10 用户定稿）：select 选中/反选（null）；add/edit/remove 均在**出参同步之后**
- *  抛（调用方在事件里读 v-model 已是最新态）——SystemMiscJsonMapEditor 靠这组事件驱动 Map 增删改 */
+ *  抛（调用方在事件里读 v-model 已是最新态）——FvKeyValueEditor 靠这组事件驱动 Map 增删改 */
 const emit = defineEmits<{
   select: [value: string | null]
   /** 新增行提交固化（原空白行落名） */
@@ -100,6 +109,10 @@ interface Row {
 const rows = ref<Row[]>(model.value.map((text) => ({ id: seed++, text, editing: false, draft: '' })))
 
 const bodyEl = ref<HTMLElement | null>(null)
+/** 行提交初校验错误（rowRule 不过关） */
+const ruleError = ref('')
+/** 徽标文案：内部初校验优先、外部 error 兜底（同右上角徽标位） */
+const activeError = computed(() => ruleError.value || props.error || '')
 
 /** 操作列显隐：既无编辑又无删除（或只读）= 整列隐藏（用户定稿） */
 const showOps = computed(() => !props.disabled && (props.editable || props.deletable))
@@ -122,6 +135,7 @@ watch(model, (v) => {
   if (snap === lastEmitted) return
   lastEmitted = snap
   rows.value = v.map((text) => ({ id: seed++, text, editing: false, draft: '' }))
+  ruleError.value = ''
 })
 
 /** 行内 input 元素登记（ref 回调）：供编辑/添加后自动聚焦（2026-11-10 用户定稿：点编辑钮
@@ -147,6 +161,14 @@ async function add() {
  *  并按「原空白行=新增 / 原固化行=修改」抛对应自定义事件 */
 function submit(row: Row) {
   if (row.draft === '') return
+  if (props.rowRule) {
+    const err = props.rowRule(row.draft)
+    if (err) {
+      ruleError.value = err
+      return // 初校验不过：不固化、行留编辑态（blur 同普通编辑态取消输入，2026-11-12 用户三批定稿）
+    }
+  }
+  ruleError.value = ''
   const isNew = row.text === ''
   row.text = row.draft
   row.editing = false
@@ -155,10 +177,17 @@ function submit(row: Row) {
   else emit('edit', row.text)
 }
 
+/** 清除钮：清草稿 + 清初校验红角标（草稿已变、旧判定失效），行留编辑态 */
+function clearDraft(row: Row) {
+  row.draft = ''
+  ruleError.value = ''
+}
+
 /** blur 自动取消编辑（用户定稿 2026-11-10）：弃草稿回只读显示；新增空白行（固化文本恒空——
  *  空提交 no-op 保证）整行回收。操作钮 mousedown.prevent 保证点钮不先触发本取消 */
 function cancelEdit(row: Row) {
   if (!row.editing) return
+  ruleError.value = ''
   if (row.text === '') {
     rows.value = rows.value.filter((r) => r.id !== row.id)
     return
@@ -177,6 +206,7 @@ async function edit(row: Row) {
 function remove(row: Row) {
   const committed = row.text !== '' // 空白编辑行本就不在出参里，删除不抛事件
   rows.value = rows.value.filter((r) => r.id !== row.id)
+  ruleError.value = ''
   sync()
   if (committed) emit('remove', row.text)
 }
@@ -204,6 +234,11 @@ function onRowClick(row: Row, e: MouseEvent) {
         </template>
       </v-tooltip>
     </div>
+    <!-- boxwrap：错误角标锚定层（徽标 anchor 档的定位祖先，须 position:relative） -->
+    <div class="fv-str-list-boxwrap">
+    <!-- 行提交初校验/外部错误：FvFieldErrorBadge 右上角图标徽标+红字 tooltip（2026-11-12 用户定稿；
+         anchor 档锚到 boxwrap 右上角——徽标样式/锚定单一事实源在徽标件+tokens.css，本件零徽标样式） -->
+    <FvFieldErrorBadge :message="activeError" anchor />
     <div
       class="fv-str-list"
       :class="{ 'fv-str-list--selectable': selectable }"
@@ -220,16 +255,29 @@ function onRowClick(row: Row, e: MouseEvent) {
         @click="onRowClick(row, $event)"
       >
         <!-- 编辑行：行内裸 input（用户定稿不用 FvTextInput）+ 提交（Enter 同效）；blur 自动取消编辑 -->
-        <input
-          v-if="row.editing"
-          :ref="setInputRef(row.id)"
-          v-model="row.draft"
-          class="fv-str-list__input"
-          type="text"
-          :maxlength="maxlength"
-          @keydown.enter.prevent="submit(row)"
-          @blur="cancelEdit(row)"
-        />
+        <!-- 编辑行：行内裸 input + **框内右侧清除钮**（FvTextInput 同款位置，2026-11-12 用户二批定稿移入框内；
+             清草稿+清初校验角标、留编辑态；mousedown.prevent 保焦点不触发 blur 丢弃） -->
+        <span v-if="row.editing" class="fv-str-list__inputbox">
+          <input
+            :ref="setInputRef(row.id)"
+            v-model="row.draft"
+            class="fv-str-list__input"
+            type="text"
+            :maxlength="maxlength"
+            @keydown.enter.prevent="submit(row)"
+            @blur="cancelEdit(row)"
+          />
+          <FvIconButton
+            v-if="row.draft"
+            icon="fas fa-times-circle"
+            :icon-size="13"
+            :size="20"
+            class="fv-str-list__clear"
+            :label="t('common.clear')"
+            @mousedown.prevent
+            @click="clearDraft(row)"
+          />
+        </span>
         <!-- 固化行：只读文本单行省略（title 悬停读全文） -->
         <span v-else class="fv-str-list__text" :title="row.text">{{ row.text }}</span>
         <!-- 操作列：编辑行=提交(+删除)、固化行=编辑(+删除)；整列显隐见 showOps。
@@ -272,6 +320,7 @@ function onRowClick(row: Row, e: MouseEvent) {
     <button v-if="showAdd" type="button" class="fv-str-list__add" :aria-label="t('common.add')" @click="add">
       <v-icon icon="fas fa-plus" size="14" />
     </button>
+    </div>
     </div>
   </div>
 </template>
@@ -374,7 +423,7 @@ function onRowClick(row: Row, e: MouseEvent) {
   gap: 2px;
 }
 
-/* 提交=主题绿 / 编辑=信息蓝 / 删除=灰（SystemMiscJsonMapEditor key 图标同族口径）；
+/* 提交=主题绿 / 编辑=信息蓝 / 删除=灰（FvKeyValueEditor key 图标同族口径）；
    提交勾描粗一档（text-stroke 作用于 FA 字形，2026-11-10 用户定稿） */
 .fv-str-list__submit {
   color: var(--vui-primary);
@@ -389,6 +438,37 @@ function onRowClick(row: Row, e: MouseEvent) {
 }
 
 .fv-str-list__remove {
+  color: var(--vui-text-secondary);
+}
+
+/* boxwrap：错误角标锚定层（徽标 anchor 档的定位祖先，须 position:relative；
+   徽标本体/锚定配方在 FvFieldErrorBadge+tokens.css 单一事实源，本件不自写徽标样式） */
+.fv-str-list-boxwrap {
+  position: relative;
+  min-width: 0;
+}
+
+/* 编辑行输入盒：清除钮定位锚（框内右侧，FvTextInput 同款位置） */
+.fv-str-list__inputbox {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fv-str-list__inputbox .fv-str-list__input {
+  width: 100%;
+  /* border-box 必须：基样式未设 box-sizing，width:100%+内边距会溢出输入盒、
+     边框伸到操作列底下造成「对号在框内」错觉（2026-11-12 实测） */
+  box-sizing: border-box;
+  padding-right: 26px; /* 给框内清除钮让位 */
+}
+
+/* 编辑行清除钮灰（FvTextInput clear 同族观感）：绝对定位贴框内右缘垂直居中 */
+.fv-str-list__clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--vui-text-secondary);
 }
 

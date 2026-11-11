@@ -1,4 +1,6 @@
 <script setup lang="ts">
+
+import FvFieldErrorBadge from './FvFieldErrorBadge.vue'
 import { computed, nextTick, ref } from 'vue'
 
 /**
@@ -30,9 +32,9 @@ import { computed, nextTick, ref } from 'vue'
  *   注：与 FvTextSelect 的禁用（attrs 透传核组件原生 disabled，完全不可点击）方案不同属有意——
  *   输入框保留可选中复制能力，下拉无此诉求。
  * - label / hint / showHint / required（2026-10-20 用户定稿）：底部 detail 行不再展示 hint
- *   （样式收口 tokens.css「字段错误气泡」段）——hint 文案改挂 label 后问号图标的 tooltip，
+ *   （样式收口 tokens.css「字段错误徽标」段）——hint 文案改挂 label 后问号图标的 tooltip，
  *   showHint 开关控制图标显隐；required=true（规则含必填的字段由调用点标注）时 label 前红星；
- *   错误消息经 #message 槽渲染为右上角气球徽标（每错一枚，悬停出红字 tooltip）。
+ *   错误消息经 #message 槽渲染为右上角图标徽标（每错一枚，悬停出红字 tooltip）。
  */
 const props = withDefaults(
   defineProps<{
@@ -138,13 +140,9 @@ function onClearClick() {
         </template>
       </v-tooltip>
     </template>
-    <!-- 校验错误：右上角气球徽标（每条消息一枚，颜色/锚点配方在 tokens.css 字段气泡段），悬停出红字 tooltip -->
+    <!-- 校验错误：右上角图标徽标（每条消息一枚，样式/锚点配方在 tokens.css 字段错误徽标段），悬停出红字 tooltip -->
     <template #message="{ message }">
-      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
-        <template #activator="{ props: tipProps }">
-          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
-        </template>
-      </v-tooltip>
+      <FvFieldErrorBadge :message="message" />
     </template>
   </v-textarea>
   <v-text-field
@@ -175,13 +173,9 @@ function onClearClick() {
         </template>
       </v-tooltip>
     </template>
-    <!-- 校验错误：右上角气球徽标（每条消息一枚，颜色/锚点配方在 tokens.css 字段气泡段），悬停出红字 tooltip -->
+    <!-- 校验错误：右上角图标徽标（每条消息一枚，样式/锚点配方在 tokens.css 字段错误徽标段），悬停出红字 tooltip -->
     <template #message="{ message }">
-      <v-tooltip :text="message" content-class="vui-table-tip vui-field-err-tip">
-        <template #activator="{ props: tipProps }">
-          <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
-        </template>
-      </v-tooltip>
+      <FvFieldErrorBadge :message="message" />
     </template>
   </v-text-field>
 </template>

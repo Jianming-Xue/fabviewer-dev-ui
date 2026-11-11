@@ -4,8 +4,10 @@ import { ref, watch } from 'vue'
 import FvStringListEditor from '@/shared/components/FvStringListEditor.vue'
 
 /**
- * System Misc Json Map 形态编辑器（模块级组件；2026-11-10 更名 **SystemMiscJsonMapEditor**（原 JsonMapEditor，
- * 用户定稿）；同日二改：**Key/Value 双列全部换用 shared FvStringListEditor**，事件驱动 Map 变更——用户定稿口径）：
+ * Key-Value Map 形态编辑器（shared Fv 族；2026-11-10 以 shared/FvKeyValueEditor 首抽→降级模块件 JsonMapEditor→
+ * 更名 SystemMiscJsonMapEditor→**2026-11-12 升回 shared/FvKeyValueEditor**：飞书组 feishuGroups 成为第二个
+ * 跨模块消费方（monitor-alarm AlarmCfgEditor），达 shared 门槛；Key/Value 双列 shared FvStringListEditor、
+ * 事件驱动 Map 变更——用户定稿口径）：
  * - **左列 = Key List**：FvStringListEditor `selectable` + `:editable="false"`（**支持新增/删除/选择、不支持编辑改名**）；
  * - **右列 = Value List**：FvStringListEditor `:selectable="false"`（**支持新增/修改/删除、不支持选择**）；
  * - **事件接线**（FvStringListEditor 自定义事件四件套，均在出参同步后抛）：
@@ -29,8 +31,34 @@ withDefaults(
     keyMaxlength?: number
     /** value 行输入字符上限 */
     valueMaxlength?: number
+    /** 左列 Key 列表标题（透传 FvStringListEditor label；空=不渲染标题行） */
+    keyLabel?: string
+    /** 右列 Value 列表标题 */
+    valueLabel?: string
+    /** 左列问号 hint（非空即显图标） */
+    keyHint?: string
+    /** 右列问号 hint（非空即显图标） */
+    valueHint?: string
+    /** 两列列表固定高度（透传 FvStringListEditor height） */
+    height?: string
+    /** 右列 Value 行提交初校验（透传 FvStringListEditor rowRule；左列 Key 不挂） */
+    valueRowRule?: (v: string) => string
+    /** 外部错误文案（透传右列 Value 编辑器徽标位） */
+    error?: string
   }>(),
-  { disabled: false, maxKeys: undefined, keyMaxlength: 255, valueMaxlength: undefined },
+  {
+    disabled: false,
+    maxKeys: undefined,
+    keyMaxlength: 255,
+    valueMaxlength: undefined,
+    keyLabel: undefined,
+    valueLabel: undefined,
+    keyHint: undefined,
+    valueHint: undefined,
+    height: '240px',
+    valueRowRule: undefined,
+    error: undefined,
+  },
 )
 
 const model = defineModel<Record<string, string[]>>({ required: true })
@@ -82,6 +110,10 @@ function onKeyAdd(key: string) {
     return
   }
   map.value[key] = []
+  // 新组自动选中（2026-11-12 实测缺陷修：不选中则右列 addable=!!selectedKey 锁死，
+  // 加了组却要手点一下组名才能录值）；右列清空待录
+  selectedKey.value = key
+  valueRows.value = []
   syncModel()
 }
 
@@ -117,6 +149,10 @@ function onValueMutate() {
         :deletable="!disabled"
         :maxlength="keyMaxlength"
         :max-rows="maxKeys"
+        :label="keyLabel"
+        :hint="keyHint"
+        :height="height"
+        :show-hint="!!keyHint"
         @select="onKeySelect"
         @add="onKeyAdd"
         @remove="onKeyRemove"
@@ -132,6 +168,12 @@ function onValueMutate() {
         :editable="!disabled"
         :deletable="!disabled"
         :maxlength="valueMaxlength"
+        :label="valueLabel"
+        :hint="valueHint"
+        :height="height"
+        :show-hint="!!valueHint"
+        :row-rule="valueRowRule"
+        :error="error"
         @add="onValueMutate"
         @edit="onValueMutate"
         @remove="onValueMutate"

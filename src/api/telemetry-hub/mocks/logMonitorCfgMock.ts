@@ -10,7 +10,7 @@ import type { LogMonitorCfgDto, LogMonitorCfgRo } from '../types/logMonitorCfgTy
  * 内存态即 wire 视角：审计时间说 wire（YYYYMMDDHHmmss，入站解码归请求层）；内部键 id/alarmCfgId
  * 不出参（文档 §2.1），响应前经 toDto 剥除并深拷贝（防消费方改动污染内存态）。
  * page 实现 keyword 四列模糊（item/description/environment/keyword，大小写不敏感子串）+ env→item 升序 + 服务端切片；
- * POST/PUT 按文档 §4.3 八条校验规则演练（候选集/唯一键/长度/序列化 4000/交叉两项/间隔/邮箱/webhook），
+ * POST/PUT 按文档 §4.3 八条校验规则演练（候选集/唯一键/长度/序列化 4000/交叉两项/间隔/邮箱），
  * 业务失败以 success:false + errMsg（含错误码注记）返回。候选集与 systemMiscMock 种子对齐
  * （env=mes.global.environments、priority=system.global.priority）；真实后端源 Misc，Mock 硬编码同源值。
  */
@@ -27,17 +27,15 @@ interface Row extends LogMonitorCfgDto {
 const ENVS = ['PIRUN', 'PROD']
 const PRIORITIES = ['P1', 'P2', 'P3', 'P4']
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const WEBHOOK_RE = /^https:\/\/open\.feishu\.cn\/open-apis\/bot\/v2\/hook\//
 
-const HOOK_MES_ONCALL = 'https://open.feishu.cn/open-apis/bot/v2/hook/3f7a1c92-8b4e-4d21-9c57-0a6f5e4d3c2b'
-const HOOK_DBA_TEAM = 'https://open.feishu.cn/open-apis/bot/v2/hook/b2c4e6f8-1a3d-4e5f-8b7a-9c0d2e4f6a8b'
+const GROUP_MES_ONCALL = 'MES On-call Group'
+const GROUP_DBA_TEAM = 'DBA Team Group'
 
 function alarm(over: Partial<AlarmCfgRo> = {}): AlarmCfgRo {
   return {
     mailToUsers: [],
     mailCCUsers: [],
-    feishuWebhooks: [],
-    feishuAtUsers: [],
+    feishuGroups: {},
     notifyInterval: 5,
     ...over,
   }
@@ -74,17 +72,17 @@ function mk(
 const cfgRows: Row[] = [
   mk('PROD', 'PROD-ORA-EXCEPTION', 'ORA-00600', 'P1', {
     description: 'Oracle 内部错误，DBA 立即介入',
-    alarmCfg: alarm({ mailToUsers: ['mes-dba@example.com'], mailCCUsers: ['it-manager@example.com'], feishuWebhooks: [HOOK_DBA_TEAM], feishuAtUsers: ['ou_7d3a91c2e4f6'], notifyInterval: 5 }),
+    alarmCfg: alarm({ mailToUsers: ['mes-dba@example.com'], mailCCUsers: ['it-manager@example.com'], feishuGroups: { [GROUP_DBA_TEAM]: ['ou_7d3a91c2e4f6'] }, notifyInterval: 5 }),
     lastUpdatedAt: '20261108093012', lastUpdatedBy: 'MORRISLI',
   }),
   mk('PROD', 'PROD-OOM-KILLER', 'OutOfMemoryError', 'P1', {
     description: 'JVM 内存溢出，服务可能已不可用',
-    alarmCfg: alarm({ mailToUsers: ['mes-oncall@example.com'], feishuWebhooks: [HOOK_MES_ONCALL], feishuAtUsers: ['ou_1a2b3c4d5e6f', 'ou_7d3a91c2e4f6'], notifyInterval: 5 }),
+    alarmCfg: alarm({ mailToUsers: ['mes-oncall@example.com'], feishuGroups: { [GROUP_MES_ONCALL]: ['ou_1a2b3c4d5e6f', 'ou_7d3a91c2e4f6'] }, notifyInterval: 5 }),
     lastUpdatedAt: '20261107184530', lastUpdatedBy: 'TANYU',
   }),
   mk('PROD', 'PROD-DISK-FULL', 'No space left on device', 'P1', {
     description: '磁盘写满：日志归档与落库都会失败',
-    alarmCfg: alarm({ mailToUsers: ['infra-alert@example.com'], feishuWebhooks: [HOOK_MES_ONCALL], notifyInterval: 10 }),
+    alarmCfg: alarm({ mailToUsers: ['infra-alert@example.com'], feishuGroups: { [GROUP_MES_ONCALL]: [] }, notifyInterval: 10 }),
     lastUpdatedAt: '20261105112233', lastUpdatedBy: 'MORRISLI',
   }),
   mk('PROD', 'PROD-CONN-REFUSED', 'Connection refused', 'P2', {
@@ -101,7 +99,7 @@ const cfgRows: Row[] = [
   }),
   mk('PROD', 'PROD-TNS-TIMEOUT', 'TNS-12535', 'P2', {
     description: 'Oracle 连接超时（网络或监听过载）',
-    alarmCfg: alarm({ mailToUsers: ['mes-dba@example.com'], feishuWebhooks: [HOOK_DBA_TEAM], notifyInterval: 10 }),
+    alarmCfg: alarm({ mailToUsers: ['mes-dba@example.com'], feishuGroups: { [GROUP_DBA_TEAM]: [] }, notifyInterval: 10 }),
     lastUpdatedAt: '20261102103344', lastUpdatedBy: 'MORRISLI',
   }),
   mk('PROD', 'PROD-EQP-IFERROR', 'EQP IF ERROR', 'P2', {
@@ -113,7 +111,7 @@ const cfgRows: Row[] = [
   mk('PROD', 'PROD-MCS-REJECT', 'MCS REJECT', 'P3', {
     description: 'MCS 拒单：天车调度异常',
     followRuleNames: ['LOTHOLDRULE', 'EQPSTATUSRULE', 'CARRIERBINDRULE'],
-    alarmCfg: alarm({ feishuWebhooks: [HOOK_MES_ONCALL], feishuAtUsers: ['ou_9f8e7d6c5b4a'], notifyInterval: 30 }),
+    alarmCfg: alarm({ feishuGroups: { [GROUP_MES_ONCALL]: ['ou_9f8e7d6c5b4a'] }, notifyInterval: 30 }),
     lastUpdatedAt: '20261030114512', lastUpdatedBy: 'TANYU',
   }),
   mk('PROD', 'PROD-SPC-LINKDOWN', 'SPC LINK DOWN', 'P3', {
@@ -131,7 +129,7 @@ const cfgRows: Row[] = [
   mk('PROD', 'PROD-RETRY-STORM', 'RETRY STORM', 'P3', {
     description: '重试风暴：短时间同错误高频重试',
     excludeRuleNames: ['LOTHOLDRULE'],
-    alarmCfg: alarm({ feishuWebhooks: [HOOK_MES_ONCALL], notifyInterval: 5 }),
+    alarmCfg: alarm({ feishuGroups: { [GROUP_MES_ONCALL]: [] }, notifyInterval: 5 }),
     lastUpdatedAt: '20261027172233', lastUpdatedBy: 'TANYU',
   }),
   mk('PROD', 'PROD-NULL-POINTER', 'NullPointerException', 'P4', {
@@ -156,7 +154,7 @@ const cfgRows: Row[] = [
   }),
   mk('PIRUN', 'PIRUN-OOM-KILLER', 'OutOfMemoryError', 'P2', {
     description: '试运行 JVM 内存溢出',
-    alarmCfg: alarm({ mailToUsers: ['mes-oncall@example.com'], feishuWebhooks: [HOOK_MES_ONCALL], notifyInterval: 10 }),
+    alarmCfg: alarm({ mailToUsers: ['mes-oncall@example.com'], feishuGroups: { [GROUP_MES_ONCALL]: [] }, notifyInterval: 10 }),
     lastUpdatedAt: '20261108162233', lastUpdatedBy: 'TANYU',
   }),
   mk('PIRUN', 'PIRUN-DISK-FULL', 'No space left on device', 'P2', {
@@ -183,7 +181,7 @@ const cfgRows: Row[] = [
   mk('PIRUN', 'PIRUN-MCS-REJECT', 'MCS REJECT', 'P4', {
     description: '试运行 MCS 拒单观察',
     followRuleNames: ['CARRIERBINDRULE'],
-    alarmCfg: alarm({ feishuWebhooks: [HOOK_MES_ONCALL], notifyInterval: 60 }),
+    alarmCfg: alarm({ feishuGroups: { [GROUP_MES_ONCALL]: [] }, notifyInterval: 60 }),
     lastUpdatedAt: '20261101153312', lastUpdatedBy: 'MORRISLI',
   }),
   mk('PIRUN', 'PIRUN-LOGIN-FAIL', 'LOGIN FAILED', 'P4', {
@@ -224,8 +222,7 @@ function normAlarm(a: AlarmCfgRo): AlarmCfgRo {
   return {
     mailToUsers: [...(a.mailToUsers ?? [])],
     mailCCUsers: [...(a.mailCCUsers ?? [])],
-    feishuWebhooks: [...(a.feishuWebhooks ?? [])],
-    feishuAtUsers: [...(a.feishuAtUsers ?? [])],
+    feishuGroups: Object.fromEntries(Object.entries(a.feishuGroups ?? {}).map(([k, v]) => [k, [...v]])),
     notifyInterval: a.notifyInterval,
   }
 }
@@ -279,8 +276,6 @@ function validateRo(input: LogMonitorCfgRo): string | null {
   if (!Number.isInteger(iv) || iv < 1 || iv > 99999) return '通知间隔须为 1~99999 的整数（ParameterInvalid）'
   const badMail = [...(input.alarmCfg.mailToUsers ?? []), ...(input.alarmCfg.mailCCUsers ?? [])].filter((m) => !EMAIL_RE.test(m))
   if (badMail.length) return `邮箱格式不合法（ParameterInvalid）：${badMail.join('、')}`
-  const badHook = (input.alarmCfg.feishuWebhooks ?? []).filter((u) => !WEBHOOK_RE.test(u))
-  if (badHook.length) return `飞书 webhook 地址不合法（ParameterInvalid）：${badHook.join('、')}`
   return null
 }
 

@@ -8,7 +8,7 @@ import FvTextInput from '@/shared/components/FvTextInput.vue'
 import FvSwitch from '@/shared/components/FvSwitch.vue'
 import FvTab from '@/shared/components/FvTab.vue'
 import FvStringListEditor from '@/shared/components/FvStringListEditor.vue'
-import SystemMiscJsonMapEditor from '../components/SystemMiscJsonMapEditor.vue'
+import FvKeyValueEditor from '@/shared/components/FvKeyValueEditor.vue'
 import { showOpError } from '@/shared/api/opError'
 import FvNormalButton from '@/shared/components/FvNormalButton.vue'
 import FvPrimaryButton from '@/shared/components/FvPrimaryButton.vue'
@@ -317,7 +317,7 @@ async function cancel() {
       <!-- Json：单选已上移页签之上（同时控制两页签形态）；v-show 双编辑器常驻保草稿。
            页签切换时 listModel/mapModel 代理换绑草稿，编辑器组件内部 watch 自动重播种
            （2026-11-09 实测坑：两页签/两 key 复用实例拿旧行态互相污染，契约已收进组件）；
-           Map 编辑器=模块件 SystemMiscJsonMapEditor（2026-11-10 自 shared/FvKeyValueEditor 降级迁入） -->
+           Map 编辑器=shared FvKeyValueEditor（2026-11-12 升回 shared：飞书组第二消费方） -->
       <template v-else>
         <!-- 查看态：String 编辑器增/改/删全取消（List 三钮门控置 false 后操作列自动隐藏）；
              Map 经 JsonMapEditor disabled 收口（左列禁增删、**Key 选择保留**、右列三钮全隐） -->
@@ -331,7 +331,7 @@ async function cancel() {
           />
         </div>
         <div v-show="jsonForm === 'Map'" class="sm-edit__json">
-          <SystemMiscJsonMapEditor v-model="mapModel" :max-keys="100" :disabled="view" />
+          <FvKeyValueEditor v-model="mapModel" :max-keys="100" :disabled="view" />
         </div>
       </template>
 

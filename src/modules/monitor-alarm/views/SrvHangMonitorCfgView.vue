@@ -91,7 +91,7 @@ const INT_RE = /^\d+$/
 const form = reactive({ environment: '', priority: '', maxDelay: '', maxRuleCost: '' })
 
 function emptyAlarm(): AlarmCfgRo {
-  return { mailToUsers: [], mailCCUsers: [], feishuWebhooks: [], feishuAtUsers: [], notifyInterval: 5 }
+  return { mailToUsers: [], mailCCUsers: [], feishuGroups: {}, notifyInterval: 5 }
 }
 const alarmDraft = ref<AlarmCfgRo>(emptyAlarm())
 
@@ -105,8 +105,7 @@ function fillFrom(row: ServerHangMonitorCfgDto) {
   alarmDraft.value = {
     mailToUsers: [...(a?.mailToUsers ?? [])],
     mailCCUsers: [...(a?.mailCCUsers ?? [])],
-    feishuWebhooks: [...(a?.feishuWebhooks ?? [])],
-    feishuAtUsers: [...(a?.feishuAtUsers ?? [])],
+    feishuGroups: Object.fromEntries(Object.entries(a?.feishuGroups ?? {}).map(([k, v]) => [k, [...v]])),
     notifyInterval: a?.notifyInterval ?? 5,
   }
 }

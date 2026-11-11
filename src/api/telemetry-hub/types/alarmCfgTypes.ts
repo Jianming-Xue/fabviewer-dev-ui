@@ -8,10 +8,10 @@ export interface AlarmCfgRo {
   mailToUsers: string[]
   /** 邮件抄送（不替代收件人；逐条 email 格式校验） */
   mailCCUsers: string[]
-  /** 飞书群机器人 webhook（逐条 https://open.feishu.cn/open-apis/bot/v2/hook/… 前缀校验） */
-  feishuWebhooks: string[]
-  /** 飞书 @ 人（open_id，ou_ 前缀；@ 的人须在对应群里否则不生效） */
-  feishuAtUsers: string[]
+  /** 飞书组（2026-11-12 后端契约合并：feishuWebhooks+feishuAtUsers → feishuGroups，Json Map）：
+   *  Key=飞书组名（**webhook 地址前端不再经手**、原前缀校验退役，后端侧解析组→机器人）、
+   *  Value=该组内需 @ 的人 open_id 列表（@ 的人须在对应群里否则不生效）；空 Map=不推飞书 */
+  feishuGroups: Record<string, string[]>
   notifyInterval: number
 }
 

@@ -100,17 +100,18 @@ export default {
       mailTo: '收件人',
       mailCc: '抄送',
       feishuSection: '飞书通知',
-      feishuWebhooks: '飞书群',
-      webhookHint: '一行一个 webhook 地址（https://open.feishu.cn/open-apis/bot/v2/hook/…）',
+      // feishuGroups Key-Value（2026-11-12 后端合并契约）：Key=组名 / Value=@ 的人 open_id
+      feishuGroupKey: '组名',
+      feishuGroupValue: '特别提醒人（open_id）',
       // 字面 @ 须转义为 {'@'}——vue-i18n 的 @ 是链接消息语法，裸 @ 会致消息编译 SyntaxError（2026-11-10 实测坑）
+      feishuGroupValueHint: "open_id 格式：ou_ 前缀 + 字母数字（如 ou_7d3a91c2e4f6）；{'@'} 的人必须在对应群里，否则 {'@'} 不生效（消息照发）",
       feishuAtHint: "{'@'} 的人必须在对应群里，否则 {'@'} 不生效（消息照发）",
       // 2026-11-11 用户定稿更名：@ 人 → 特别提醒（飞书官方术语）；原常驻灰提示转本字段问号 Hint
-      feishuAtUsers: '特别提醒',
       validation: {
         intervalRange: '仅限 1 ~ 99999 的整数',
         emailInvalid: '邮箱格式不合法：{list}',
-        webhookInvalid: '飞书 webhook 地址不合法：{list}',
         serializedTooLong: '列表序列化超长（≤4000 字符）',
+        openIdRule: 'open_id 须为 ou_ 前缀 + 字母数字（如 ou_7d3a91c2e4f6）',
       },
     },
   },

@@ -68,8 +68,7 @@ function seedAlarm(): AlarmCfgRo {
   return {
     mailToUsers: [...(a?.mailToUsers ?? [])],
     mailCCUsers: [...(a?.mailCCUsers ?? [])],
-    feishuWebhooks: [...(a?.feishuWebhooks ?? [])],
-    feishuAtUsers: [...(a?.feishuAtUsers ?? [])],
+    feishuGroups: Object.fromEntries(Object.entries(a?.feishuGroups ?? {}).map(([k, v]) => [k, [...v]])),
     notifyInterval: a?.notifyInterval ?? 5,
   }
 }
@@ -130,6 +129,22 @@ const followSerErr = computed(() => serErr(form.followRuleNames))
 const exKwSerErr = computed(() => serErr(form.excludeKeywords))
 const exRuleSerErr = computed(() => serErr(form.excludeRuleNames))
 const hasListErrors = computed(() => Boolean(followSerErr.value || exKwSerErr.value || exRuleSerErr.value))
+
+/** 列表字段错误合并下发 FvStringListEditor `error` prop（2026-11-12 用户定稿：
+ *  列表错误一律右上角图标徽标，编辑器下方红字 <p> 退役；交叉错误同挂两侧） */
+const ruleNameConflictMsg = computed(() =>
+  ruleNameConflicts.value.length
+    ? t('monitorAlarm.logMonitor.validation.ruleNameConflict', { list: ruleNameConflicts.value.join('、') })
+    : '',
+)
+const excludeSubstringMsg = computed(() =>
+  excludeKeywordViolations.value.length
+    ? t('monitorAlarm.logMonitor.validation.excludeSubstring', { list: excludeKeywordViolations.value.join('、') })
+    : '',
+)
+const followError = computed(() => [followSerErr.value, ruleNameConflictMsg.value].filter(Boolean).join('；'))
+const exKwError = computed(() => [exKwSerErr.value, excludeSubstringMsg.value].filter(Boolean).join('；'))
+const exRuleError = computed(() => [exRuleSerErr.value, ruleNameConflictMsg.value].filter(Boolean).join('；'))
 
 /** 交叉校验一（文档 §4.3-7a）：排除词为 Keyword 子串或相等（大小写敏感，与运行侧匹配一致） */
 const excludeKeywordViolations = computed(() =>
@@ -308,11 +323,8 @@ async function cancel() {
             show-hint
             height="140px"
             :disabled="view"
+            :error="followError"
           />
-          <p v-if="followSerErr" class="lmc-edit__error">{{ followSerErr }}</p>
-          <p v-if="ruleNameConflicts.length" class="lmc-edit__error">
-            {{ t('monitorAlarm.logMonitor.validation.ruleNameConflict', { list: ruleNameConflicts.join('、') }) }}
-          </p>
         </div>
         <div>
           <FvStringListEditor
@@ -322,11 +334,8 @@ async function cancel() {
             show-hint
             height="140px"
             :disabled="view"
+            :error="exRuleError"
           />
-          <p v-if="exRuleSerErr" class="lmc-edit__error">{{ exRuleSerErr }}</p>
-          <p v-if="ruleNameConflicts.length" class="lmc-edit__error">
-            {{ t('monitorAlarm.logMonitor.validation.ruleNameConflict', { list: ruleNameConflicts.join('、') }) }}
-          </p>
         </div>
 <!-- Exclude Keywords：词级黑名单；为 Keyword 子串=规则永不触发，实时红字；**单独一行跨两列**（2026-11-11 用户定稿） -->
         <div class="lmc-edit__span2">
@@ -337,11 +346,8 @@ async function cancel() {
             show-hint
             height="140px"
             :disabled="view"
+            :error="exKwError"
           />
-          <p v-if="exKwSerErr" class="lmc-edit__error">{{ exKwSerErr }}</p>
-          <p v-if="excludeKeywordViolations.length" class="lmc-edit__error">
-            {{ t('monitorAlarm.logMonitor.validation.excludeSubstring', { list: excludeKeywordViolations.join('、') }) }}
-          </p>
         </div>
       </v-form>
     </div>
@@ -406,12 +412,6 @@ async function cancel() {
 }
 
 /* 交叉校验实时红字（文档 §3.3：inline red error text） */
-.lmc-edit__error {
-  margin: 2px 0 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--vui-error);
-}
 
 .lmc-edit__alarm {
   padding: 10px 3px 0;

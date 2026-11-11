@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import FvFieldErrorBadge from './FvFieldErrorBadge.vue'
 import FvIconButton from './FvIconButton.vue'
 import FvNormalButton from './FvNormalButton.vue'
 
@@ -27,7 +28,7 @@ import FvNormalButton from './FvNormalButton.vue'
  * - 两位段（月/日/时/分/秒）唯一解时自动补全两位并跳格（如分输 '6' → '06'）；
  *   年不补零，离开时不足 4 位或越界 → 自动修正为当年；
  * - 尾部图标统一 fas fa-clock，颜色随字段文本色（与 FvTextInput 字段图标一致）；
- * - errorMessages（外部跨字段校验，与内部红提示同走右上角错误气泡、红描边）/ hint+showHint
+ * - errorMessages（外部跨字段校验，与内部红提示同走右上角错误图标徽标、红描边）/ hint+showHint
  *   （2026-10-20 与 FvTextInput 统一：提示词经 label 后问号图标 tooltip，底部消息行废止）/
  *   clearable+clear 事件（清空全部段并通知父级联动默认值）——供检索表单等场景替换自建时间控件（2026-10-19）。
  * 表格展示变体 FvTimerCell 待验收后派生。
@@ -312,7 +313,7 @@ const extErr = computed(() =>
     .filter((x): x is string => !!x)
     .join(' · '),
 )
-/** 错误气泡与红描边统一取「内部错误优先，其次外部消息」（2026-10-20：底部消息行废止改气泡，hint 改问号 tooltip） */
+/** 错误徽标与红描边统一取「内部错误优先，其次外部消息」（2026-10-20：底部消息行废止改徽标，hint 改问号 tooltip） */
 const shownError = computed(() => error.value || extErr.value)
 const hasContent = computed(() => activeSegs.value.some((s) => (segs[s.key] ?? '') !== ''))
 function onClear() {
@@ -563,15 +564,10 @@ watch(menu, (open) => {
       </v-tooltip>
     </div>
     <div class="fv-timer__line">
-      <!-- 校验错误徽标（内部错误优先、其次外部消息合并一枚）：右下角贴盒右上角，
-           悬停出红字 tooltip；徽标/tooltip 样式在 tokens.css 字段气泡段 -->
-      <div v-if="shownError" class="fv-timer__bubble">
-        <v-tooltip :text="shownError" content-class="vui-table-tip vui-field-err-tip">
-          <template #activator="{ props: tipProps }">
-            <span v-bind="tipProps" class="fv-field__err-badge"><v-icon size="12">fas fa-comment-dots</v-icon></span>
-          </template>
-        </v-tooltip>
-      </div>
+      <!-- 校验错误徽标（内部错误优先、其次外部消息合并一枚）：FvFieldErrorBadge anchor 档
+           锚到 line 右上角（徽标右下角=盒右上角），悬停出红字 tooltip；
+           样式/锚定单一事实源在徽标件+tokens.css（2026-11-12 收编，原手搓 span+气泡层退役） -->
+      <FvFieldErrorBadge :message="shownError" anchor />
       <!-- 分段输入框（点击聚焦首个未填段；键盘逐段编辑；尾部图标开面板，规格同 FvTextInput 字段图标 15px） -->
       <div
         ref="boxEl"
@@ -770,20 +766,12 @@ watch(menu, (open) => {
   margin-bottom: 3px;
 }
 
+/* 定位锚：错误徽标 anchor 档的包含块（须 position:relative） */
 .fv-timer__line {
   display: flex;
   align-items: center;
   gap: 4px;
-  position: relative; /* 错误气泡定位锚 */
-}
-
-/* 错误徽标锚点（本体视觉=fv-field__err-badge 全局类）：右下角=盒右上角（2026-10-20 由文字气泡改版） */
-.fv-timer__bubble {
-  position: absolute;
-  top: 0;
-  right: 0;
-  transform: translate(0, -100%);
-  z-index: 6;
+  position: relative;
 }
 
 .fv-timer__box {
