@@ -1,4 +1,4 @@
-/** Config 模块词典（Server Hang Reason Config） */
+/** Config 模块词典（Server Hang Reason Config + System Misc + MES日志监控配置 + MES服务挂起监控配置） */
 export default {
   config: {
     nav: {
@@ -6,6 +6,38 @@ export default {
       rootDesc: '系统管理配置',
       label: '服务挂起原因配置',
       labelDesc: '维护服务挂起原因判定配置：Rule × 原因 × 起止标志行',
+    },
+    misc: {
+      nav: {
+        label: '系统杂项配置',
+        labelDesc: '维护平台级全局变量（环境/IP 清单等）：仅可编辑，不可增删',
+      },
+      control: {
+        edit: '编辑配置值',
+      },
+      all: '全部',
+      editable: '可编辑',
+      searchPlaceholder: '搜索 项目 / 描述',
+      on: '开',
+      off: '关',
+      value: '值',
+      defaultValue: '默认值',
+      // 查看态标题（2026-11-10：查看并入编辑弹窗 view 态，Json 查看弹窗退役）
+      viewTitle: '配置值查看',
+      editTitle: '编辑配置项',
+      nullValue: '（未设置）',
+      confirm: {
+        title: '确认修改',
+        toggleMsg: '确认将 {item} 切换为「{state}」？修改将立即写库生效。',
+        discardTitle: '放弃修改？',
+        discardMsg: '当前修改尚未提交，确认放弃并关闭？',
+      },
+      validation: {
+        integer: '仅限整数',
+        float: '仅限数字（可含小数）',
+        jsonTooLong: 'Json 序列化超长（≤4000 字符）',
+        jsonTooMany: '顶层条目超限（≤100）',
+      },
     },
     warn: {
       // 5 分钟生效提醒（2026-11-05 用户定稿）：由弹窗底部静态文案改为提交时 Warning 确认框——确认才提交、取消不提交；新增编辑/启停/删除三场景

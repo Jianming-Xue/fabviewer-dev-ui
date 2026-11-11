@@ -12,15 +12,23 @@ import { computed, nextTick, ref } from 'vue'
  *   且**拦截 Enter**——值永远是不含换行符的单行字符串，语义与单行输入完全一致。
  *   （浏览器硬约束：原生 input 无法换行，故 comment 形态借 textarea 作渲染内核，
  *   外观逐项对齐 text-field：字体、内边距、定高、去除 VTextarea 自带的 mask 渐隐遮罩。）
+ *   例外：allowNewline=true（2026-11-10 增，模块2 · 01 §3.4 飞书 webhook「一行一地址」诉求）——
+ *   Enter 放行插入换行符，值为真多行文本；仅 comment 形态生效（text 形态原生 input 无换行能力）。
  * - password：密码形态——前后图标组件自带且托管：前缀 fa-lock，后缀 fa-eye/fa-eye-slash
  *   点击切换明文（内部状态，随组件卸载自动重置）；调用方无需再传图标与切换逻辑。
  *
  * 通用入参：
  * - clear = true：后置图标覆盖为清空图标（仅在有内容时显示，点击清空值）。
- *   仅 text 形态生效：comment 形态不渲染清空图标（保持与 text-field 视觉一致，
- *   2026-10-16 用户定稿）；password 形态后缀为明文切换，同样不适用。
+ *   仅 text 形态生效：comment 形态不渲染清空图标（2026-10-16 用户定稿；2026-11-11 曾随
+ *   「输入框加清除钮」短暂解除、**同日用户追加定稿收回——comment 不加清除按钮**）；
+ *   password 形态后缀为明文切换，同样不适用。
  * - disabled = true：禁用态。原生 disabled 会禁止选字（无法复制），故用 readonly 模拟；
  *   置灰只作用于输入框本体的文字与边框，label 与 hint 保持原色，内容可选中复制。
+ *   readonly 仍可聚焦，而 Vuetify 默认 validate-on='input' 含 blur 档——点击禁用框再松手
+ *   会误跑校验弹红气泡（2026-11-11 用户报障修复）：禁用时 validate-on 收敛为 'submit'，
+ *   交互全程不触发校验，规则只在表单提交时执行（提交口径与非禁用一致）。
+ *   注：与 FvTextSelect 的禁用（attrs 透传核组件原生 disabled，完全不可点击）方案不同属有意——
+ *   输入框保留可选中复制能力，下拉无此诉求。
  * - label / hint / showHint / required（2026-10-20 用户定稿）：底部 detail 行不再展示 hint
  *   （样式收口 tokens.css「字段错误气泡」段）——hint 文案改挂 label 后问号图标的 tooltip，
  *   showHint 开关控制图标显隐；required=true（规则含必填的字段由调用点标注）时 label 前红星；
@@ -46,6 +54,9 @@ const props = withDefaults(
     showHint?: boolean
     /** 必填标志（rules 含必填的字段由调用点标注）：label 前红星 */
     required?: boolean
+    /** 多行换行（仅 comment 形态生效，2026-11-10 增）：false（默认）=拦截 Enter、值恒单行；
+     *  true=Enter 插入换行符、值可为多行文本（飞书 webhook 一行一地址等） */
+    allowNewline?: boolean
   }>(),
   {
     type: 'text',
@@ -57,6 +68,7 @@ const props = withDefaults(
     hint: undefined,
     showHint: false,
     required: false,
+    allowNewline: false,
   },
 )
 
@@ -77,8 +89,10 @@ const effectiveAppend = computed(() => {
   return props.clear ? undefined : props.appendIcon
 })
 
-/** comment 形态 Enter 键：拦截换行符写入，转为表单提交（与单行 input 的 Enter 语义一致） */
+/** comment 形态 Enter 键：拦截换行符写入，转为表单提交（与单行 input 的 Enter 语义一致）；
+ *  allowNewline=true 放行——Enter 即插入换行（真多行文本，2026-11-10 增） */
 function onCommentEnter(event: KeyboardEvent) {
+  if (props.allowNewline) return
   event.preventDefault()
   const form = (event.target as HTMLElement).closest('form')
   if (form && typeof form.requestSubmit === 'function') form.requestSubmit()
@@ -108,6 +122,7 @@ function onClearClick() {
     no-resize
     :readonly="props.disabled"
     :aria-disabled="props.disabled || undefined"
+    :validate-on="props.disabled ? 'submit' : undefined"
     :indent-details="false"
     :prepend-inner-icon="effectivePrepend"
     :append-inner-icon="effectiveAppend"
@@ -142,6 +157,7 @@ function onClearClick() {
     :type="isPwd ? (pwdVisible ? 'text' : 'password') : 'text'"
     :readonly="props.disabled"
     :aria-disabled="props.disabled || undefined"
+    :validate-on="props.disabled ? 'submit' : undefined"
     :clearable="props.clear && !props.disabled && !isPwd"
     :indent-details="false"
     :prepend-inner-icon="effectivePrepend"

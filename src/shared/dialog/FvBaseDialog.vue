@@ -31,7 +31,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 /**
  * 全局基础 Dialog（公共组件）：上（标题）/ 中（正文）/ 下（按钮区）三区布局。
  * 内置能力（语义弹窗与各页面直接复用）：按住标题拖动、尺寸上限（宽默认 420 / 高 80vh，
- * 超长内容正文区内部滚动、标题与按钮恒显）、10px 圆角、Esc/遮罩关闭（v-model）。
+ * 超长内容正文区内部滚动、标题与按钮恒显；bodyScroll=false 可改消费方自管滚动，2026-11-11）、
+ * 10px 圆角、Esc/遮罩关闭（v-model）。
  * 开合动画（2026-10-16）：打开=从最后一次鼠标按下点 scale 展开（无点击记录回退视口中心）；
  * 关闭=四周向中心快速淡出（径向遮罩收拢 + 微缩 + 淡出）。动画在内建，所有基座弹窗自动获得。
  * 语义弹窗（成功/错误/警告/信息/确认）见同目录 FvModalDialogHost，基于本组件实现。
@@ -55,12 +56,17 @@ const props = withDefaults(
     /** 整卡最大高度（CSS 长度，2026-10-20 增）：缺省 = scoped 类规则 80vh（定稿默认档，其余弹窗零影响）；
         传入则内联覆写——字段多的表单弹窗放大自适应范围用，滚动兜底逻辑（超高时正文内滚）不变 */
     maxHeight?: string
+    /** 正文区滚动（2026-11-11 增）：true（默认）=超长内容正文区整体滚动（标题/按钮恒显）；
+        false=正文不自滚、变 flex 列容器（overflow:hidden），滚动下放给消费方内容区自管——
+        Tab 弹窗（FvTab 条恒显、仅页签内容区内部滚动）用，消费方根节点自挂
+        flex:1+min-height:0 满高链、滚动子区挂 overflow-y:auto（LogMonitorCfgEditDialog 定式） */
+    bodyScroll?: boolean
     /** Esc 由宿主栈仲裁器独占（2026-10-22 定稿）：FvInteractiveDialogHost 装载的业务弹窗
         一律 true——基座不自挂 window 监听，杜绝「仲裁器+实例监听」双头决策产生的
         一次 Esc 连穿多层/栈底僵尸吞按键；语义五件套与独立基座不传，走自听兜底 */
     escHandledByHost?: boolean
   }>(),
-  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined, escHandledByHost: false },
+  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined, bodyScroll: true, escHandledByHost: false },
 )
 
 const visible = defineModel<boolean>({ required: true })
@@ -266,7 +272,7 @@ defineExpose({ resetDrag })
           {{ title }}
         </slot>
       </div>
-      <div class="vui-base-dialog__body">
+      <div class="vui-base-dialog__body" :class="{ 'vui-base-dialog__body--fill': !bodyScroll }">
         <slot />
       </div>
       <div class="vui-base-dialog__actions">
@@ -380,6 +386,14 @@ defineExpose({ resetDrag })
   font-size: 14px;
   line-height: 1.6;
   color: var(--vui-text);
+}
+
+/* 正文填充档（bodyScroll=false，2026-11-11 增）：正文不自滚、变 flex 列容器，
+   滚动下放消费方内容区自管——Tab 弹窗页签条恒显、仅内容区内部滚动 */
+.vui-base-dialog__body--fill {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* 按钮区：右对齐 */

@@ -17,6 +17,8 @@ export default {
     more: '更多',
     refresh: '刷新',
     close: '关闭',
+    next: '下一步',
+    prev: '上一步',
     copy: '复制信息',
     copied: '已复制',
     retry: '重试',

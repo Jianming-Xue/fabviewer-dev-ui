@@ -17,6 +17,8 @@ export default {
     more: 'More',
     refresh: 'Refresh',
     close: 'Close',
+    next: 'Next',
+    prev: 'Previous',
     copy: 'Copy message',
     copied: 'Copied',
     retry: 'Retry',

@@ -1,4 +1,4 @@
-/** Config module dictionary (Server Hang Reason Config) */
+/** Config module dictionary (Server Hang Reason Config + System Misc + MES Log Monitor Config + MES Server Hang Monitor Config) */
 export default {
   config: {
     nav: {
@@ -6,6 +6,38 @@ export default {
       rootDesc: 'System administration configurations',
       label: 'Server Hang Reason Config',
       labelDesc: 'Maintain Server Hang Reason Config: Rule × reason × start/end marker lines',
+    },
+    misc: {
+      nav: {
+        label: 'System Misc',
+        labelDesc: 'Maintain platform-wide global variables (environment/IP lists, etc.): edit only, no create/delete',
+      },
+      control: {
+        edit: 'Edit values',
+      },
+      all: 'All',
+      editable: 'Editable',
+      searchPlaceholder: 'Search item / description',
+      on: 'ON',
+      off: 'OFF',
+      value: 'Value',
+      defaultValue: 'Default Value',
+      // View-mode title (2026-11-10: viewing merged into the edit dialog's view mode; Json view dialog retired)
+      viewTitle: 'View Values',
+      editTitle: 'Edit Item',
+      nullValue: '(not set)',
+      confirm: {
+        title: 'Confirm Change',
+        toggleMsg: 'Switch {item} to "{state}"? The change is written immediately.',
+        discardTitle: 'Discard changes?',
+        discardMsg: 'Unsaved changes will be lost. Discard and close?',
+      },
+      validation: {
+        integer: 'Integer only',
+        float: 'Number only (decimals allowed)',
+        jsonTooLong: 'Serialized Json exceeds 4000 characters',
+        jsonTooMany: 'More than 100 top-level entries',
+      },
     },
     warn: {
       // 5-minute effect reminder (2026-11-05): static caption replaced by a Warning confirm at submit time — confirm submits, cancel aborts; add-edit / toggle / delete

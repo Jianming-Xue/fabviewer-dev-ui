@@ -12,6 +12,9 @@ import type { ServiceConfig } from '@/shared/api/http'
 if (import.meta.env.VITE_MOCK === 'true') {
   await import('./mocks/ruleInfoMock')
   await import('./mocks/srvHangConfigMock')
+  await import('./mocks/systemMiscMock')
+  await import('./mocks/logMonitorCfgMock')
+  await import('./mocks/srvHangMonitorCfgMock')
 }
 
 const config: ServiceConfig = {

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 
 /**
  * 全局客服悬浮球（FvSupportBot，2026-10-22 先行造型稿，聊天功能后补）：
- * 主界面右下角圆形浮钮（52px，当日由 64 收小）；机器人图标（2026-10-27 用户提供 iconfont 造型定稿）=
+ * 主界面左下角圆形浮钮（52px，2026-10-22 由 64 收小；2026-11-11 初始位由右下改左下）；机器人图标（2026-10-27 用户提供 iconfont 造型定稿）=
  * 实心剪影（底座+双耳+天线头壳），静止=闭眼眠弧（∩ 镂空带）、悬停=睁眼圆孔（iconfont 原 path），两全图 cross-fade；
  * 可拖拽沿视口下缘/右缘滑动——拖动时就近吸附到边距更近的那条边（另一边贴边），
  * 位置只有一维自由度，天然不会飘离边缘；未移动直接松手=点击（后续接客服会话开合）。
@@ -26,8 +26,9 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 function applyInitial() {
-  dock.value = 'right'
-  along.value = clamp(window.innerHeight - SIZE - EDGE_GAP, EDGE_GAP, window.innerHeight - SIZE - EDGE_GAP)
+  // 初始停左下角：bottom 档贴下缘，滑位取下界即贴左缘（2026-11-11 用户定稿）
+  dock.value = 'bottom'
+  along.value = EDGE_GAP
 }
 
 /* 拖拽：按下记录起点，位移 >4px 才算拖（避免误吞点击）；全程只随指针改吸附边与滑位 */

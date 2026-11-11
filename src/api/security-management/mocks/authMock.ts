@@ -116,11 +116,13 @@ registerMock('GET', '/security-management/api/v1/auth/permissions', ({ params })
       'Function:/log-searching', // 模块级放行（其下全部功能）
       'Function:/security', // 模块级放行（用户和安全管理）
       'Function:/config', // 模块级放行（系统管理）
+      'Function:/monitor-alarm', // 模块级放行（监控告警，2026-11-11 模块搬迁新增）
       'Control:/log-searching/mes-rule-info', // 功能级通配：检索页全部控件
       'Control:/security/roles', // 功能级通配：角色页全部控件
       'Control:/security/users', // 功能级通配：用户页全部控件
       'Control:/security/login-policy', // 功能级通配：登录策略页全部控件
       'Control:/config/srv-hang', // 功能级通配：配置页全部控件
+      'Control:/config/sys-misc', // 功能级通配：System Misc 页全部控件（编辑权限，2026-11-09）
     ])
   }
   if (username === 'test') {

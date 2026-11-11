@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import type { FvDict, FvFeature, FvModule, FvModuleMessages } from '@/shared/module'
 
 import configModule from './config'
+import monitorAlarmModule from './monitor-alarm'
 import ruleSearchingModule from './rule-searching'
 import securityModule from './security'
 
@@ -14,7 +15,8 @@ import securityModule from './security'
 const modules: FvModule[] = [
   ruleSearchingModule, // 日志检索与分析 · MES Rule 信息检索
   securityModule, // 用户和安全管理 · 用户/角色/登录策略
-  configModule, // 系统管理 · Server Hang Reason Config
+  configModule, // 系统管理 · Server Hang Reason Config + System Misc
+  monitorAlarmModule, // 监控告警 · MES 日志关键字监控 / MES 服务挂起监控（2026-11-11 自 config 迁入，组+叶子菜单树）
 ]
 
 /* ===== 菜单：模块根一级 + 功能树（Home 由应用壳补充在最前） =====

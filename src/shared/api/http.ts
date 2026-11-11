@@ -52,8 +52,8 @@ export interface RequestOptions {
   loading?: boolean
 }
 
-/** 服务前缀后的接口路径（Mock 注册键与真实请求共用同一路径口径） */
-function servicePath(base: RequestBase | undefined, path: string): string {
+/** 服务前缀后的接口路径（Mock 注册键与真实请求共用同一路径口径；sse.ts mock 流分支同用） */
+export function servicePath(base: RequestBase | undefined, path: string): string {
   return base?.service ? `/${base.service}${path}` : path
 }
 
@@ -229,12 +229,22 @@ export function setAuthTokenGetter(getter: () => string | null): void {
   authTokenGetter = getter
 }
 
+/** 只读供给（2026-11-11，sse.ts 复用同一注册态）：未注册/登出态返回 null */
+export function getAuthToken(): string | null {
+  return authTokenGetter?.() ?? null
+}
+
 /** 401 未授权全局处理器（2026-11-04，注册式同 setAuthTokenGetter）：任何接口回 401 即调用——
  *  main.ts 注册为「有会话则清会话（含 localStorage）+ 非公共路由回登录页 reason=expired」；
  *  匿名场景（登录页/改密卡）无会话可清，处理器自行 no-op */
 let unauthorizedHandler: (() => void) | null = null
 export function setUnauthorizedHandler(handler: () => void): void {
   unauthorizedHandler = handler
+}
+
+/** 只读触发（2026-11-11，sse.ts 401 收口复用）：未注册 = no-op */
+export function triggerUnauthorized(): void {
+  unauthorizedHandler?.()
 }
 
 export async function loadRuntimeConfig(path = `${import.meta.env.BASE_URL}app-config.json`): Promise<void> {

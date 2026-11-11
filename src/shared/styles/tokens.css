@@ -263,8 +263,10 @@ html.vui-dark .vui-base-overlay .v-overlay__scrim {
 
 /* 点击水波纹全局统一浅灰令牌（用户定稿 2026-10-14）：图标按钮、菜单项、复选/单选、
    ghost 无色按钮、普通按钮、文字按钮——凡非实底彩色钮；
-   唯一例外：实底彩色钮（bg-*）保持白色 currentColor 涟漪（灰涟漪在饱和底色上对比不足） */
-.v-btn--icon .v-ripple__container,
+   唯一例外：实底彩色钮（bg-*）保持白色 currentColor 涟漪（灰涟漪在饱和底色上对比不足）。
+   2026-11-11 修：图标钮选择器漏挂 bg- 排除——实底图标钮（FvNewButton 主题绿圆钮）被误染
+   12% 深灰涟漪、饱和底上近乎不可见（用户报「水波纹没了」）；补 :not([class*='bg-']) 归位白涟漪 */
+.v-btn--icon:not([class*='bg-']) .v-ripple__container,
 .v-btn:not([class*='bg-']) .v-ripple__container,
 .v-list-item .v-ripple__container,
 .v-selection-control .v-ripple__container {

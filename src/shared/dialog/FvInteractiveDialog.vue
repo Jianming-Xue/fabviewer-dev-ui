@@ -27,8 +27,11 @@ withDefaults(
     minHeight?: number
     /** 整卡最大高度（CSS 长度，透传基座）：缺省 80vh，字段多的表单弹窗可放大自适应范围 */
     maxHeight?: string
+    /** 正文区滚动（透传基座，2026-11-11 增）：默认 true=正文整体滚动；false=正文变 flex 列
+        容器不自滚，滚动下放消费方内容区——Tab 弹窗页签条恒显、仅内容区内部滚动用 */
+    bodyScroll?: boolean
   }>(),
-  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined },
+  { title: '', maxWidth: 420, centerTitle: false, scrimOpacity: undefined, minHeight: undefined, maxHeight: undefined, bodyScroll: true },
 )
 
 const open = defineModel<boolean>({ required: true })
@@ -47,6 +50,7 @@ const emit = defineEmits<{ closed: [] }>()
     :scrim-opacity="scrimOpacity"
     :min-height="minHeight"
     :max-height="maxHeight"
+    :body-scroll="bodyScroll"
     @closed="emit('closed')"
   >
     <!-- 条件转发：未提供插槽时必须让基座自己的默认内容（标题回退等）生效 -->

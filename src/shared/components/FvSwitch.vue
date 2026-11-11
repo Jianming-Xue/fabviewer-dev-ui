@@ -6,11 +6,19 @@
  * disabled（2026-11-03 改版）= 锁定交互的禁用态：**与按钮禁用一致的整体置灰**
  * （opacity 0.26 对齐 .v-btn--disabled；原「保持原配色不置灰」2026-10-16 口径退役）——
  * pointer-events 封锁 + tabindex 移除 + 模型更新守卫三重拦截不变。
+ * **label（2026-11-10 用户定稿新增，可为空）**：渲染于**开关之前**（左置设置行口径），风格与
+ * FvTextInput 浮动 label 同档（13px / --vui-text-secondary，FvRadioGroup 组 label 同套组织）；
+ * 空/不传 = 不渲染 label（纯开关形态不变，存量消费方零影响）。此前两路权宜统一收口本 prop：
+ * 调用方手加 span 左置 label（System Misc 工具行）、经 attrs 漏到 v-switch 原生**右置** label（FilterArea）。
  */
-const props = withDefaults(defineProps<{ disabled?: boolean; loading?: boolean }>(), {
-  disabled: false,
-  loading: false,
-})
+const props = withDefaults(
+  defineProps<{ disabled?: boolean; loading?: boolean; label?: string }>(),
+  {
+    disabled: false,
+    loading: false,
+    label: undefined,
+  },
+)
 
 const model = defineModel<boolean>({ required: true })
 
@@ -23,22 +31,41 @@ function onUpdate(v: boolean | null) {
 </script>
 
 <template>
-  <v-switch
-    :model-value="model"
-    class="fv-switch"
-    :class="{ 'fv-switch--locked': disabled }"
-    color="primary"
-    density="compact"
-    hide-details
-    :tabindex="disabled ? -1 : undefined"
-    :aria-disabled="disabled || undefined"
-    :loading="loading"
-    @click.stop
-    @update:model-value="onUpdate"
-  />
+  <!-- label 左置设置行：无 label 时 wrapper 仅包开关、 footprint 与旧根一致 -->
+  <span class="fv-switch-wrap">
+    <span v-if="label" class="fv-switch__label">{{ label }}</span>
+    <v-switch
+      :model-value="model"
+      class="fv-switch"
+      :class="{ 'fv-switch--locked': disabled }"
+      color="primary"
+      density="compact"
+      hide-details
+      :tabindex="disabled ? -1 : undefined"
+      :aria-disabled="disabled || undefined"
+      :loading="loading"
+      @click.stop
+      @update:model-value="onUpdate"
+    />
+  </span>
 </template>
 
 <style scoped>
+/* label 左置设置行（2026-11-10）：label 风格与 FvTextInput 浮动 label 同档（13px/次要色） */
+.fv-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fv-switch__label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--vui-text-secondary);
+}
+
 /* 禁用态：封锁指针交互 + 整体置灰与按钮禁用一致（2026-11-03 定稿；
    0.26 = Vuetify .v-btn--disabled 同款透明度——按钮为硬编码值非变量，此处对齐取值） */
 .fv-switch--locked {
